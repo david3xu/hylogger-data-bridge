@@ -14,7 +14,9 @@
           "candidate_id": "cand-overlap",
           "rank": 1,
           "rationale": "Fixture ordering for interface development; no model produced this.",
-          "evidence_ids": ["synthetic-qa"]
+          "evidence_ids": [
+            "synthetic-qa"
+          ]
         },
         {
           "candidate_id": "cand-qa",
@@ -23,7 +25,9 @@
           "evidence_ids": []
         }
       ],
-      "evidence_gaps": ["Fixture does not assess gaps."],
+      "evidence_gaps": [
+        "Fixture does not assess gaps."
+      ],
       "uncertainty": null,
       "limitations": [
         "Labelled fixture: no trained model was consulted.",
@@ -43,7 +47,9 @@
       "suggestions": [],
       "evidence_gaps": [],
       "uncertainty": null,
-      "limitations": ["No local model is installed; manual or deterministic work remains possible."],
+      "limitations": [
+        "No local model is installed; manual or deterministic work remains possible."
+      ],
       "created_at": "2026-10-14T09:00:00+00:00"
     }
   },
@@ -82,7 +88,9 @@
       ],
       "evidence_gaps": [],
       "uncertainty": null,
-      "limitations": ["No local model is installed."],
+      "limitations": [
+        "No local model is installed."
+      ],
       "created_at": "2026-10-14T09:00:00+00:00"
     },
     "missing-origin": {
@@ -96,7 +104,9 @@
       "suggestions": [],
       "evidence_gaps": [],
       "uncertainty": null,
-      "limitations": ["Origin must always be stated."],
+      "limitations": [
+        "Origin must always be stated."
+      ],
       "created_at": "2026-10-14T09:00:00+00:00"
     },
     "invented-score": {
@@ -119,7 +129,9 @@
       ],
       "evidence_gaps": [],
       "uncertainty": null,
-      "limitations": ["Scores are not geological confidence."],
+      "limitations": [
+        "Scores are not geological confidence."
+      ],
       "created_at": "2026-10-14T09:00:00+00:00"
     },
     "short-hash": {
@@ -134,7 +146,256 @@
       "suggestions": [],
       "evidence_gaps": [],
       "uncertainty": null,
-      "limitations": ["The hash names the exact request."],
+      "limitations": [
+        "The hash names the exact request."
+      ],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    }
+  },
+  "semantic_invalid": {
+    "duplicate-candidate": {
+      "contract_version": 1,
+      "id": "assess-1",
+      "page_id": "page-1",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "available",
+      "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+      "suggestions": [
+        {
+          "candidate_id": "cand-overlap",
+          "rank": 1,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": [
+            "synthetic-qa"
+          ]
+        },
+        {
+          "candidate_id": "cand-overlap",
+          "rank": 2,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": []
+        }
+      ],
+      "evidence_gaps": [
+        "Fixture does not assess gaps."
+      ],
+      "uncertainty": null,
+      "limitations": [
+        "Labelled fixture: no trained model was consulted.",
+        "A ranking never authorises an action."
+      ],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    },
+    "duplicate-rank": {
+      "contract_version": 1,
+      "id": "assess-1",
+      "page_id": "page-1",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "available",
+      "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+      "suggestions": [
+        {
+          "candidate_id": "cand-overlap",
+          "rank": 1,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": [
+            "synthetic-qa"
+          ]
+        },
+        {
+          "candidate_id": "cand-qa",
+          "rank": 1,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": []
+        }
+      ],
+      "evidence_gaps": [
+        "Fixture does not assess gaps."
+      ],
+      "uncertainty": null,
+      "limitations": [
+        "Labelled fixture: no trained model was consulted.",
+        "A ranking never authorises an action."
+      ],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    },
+    "unknown-candidate": {
+      "contract_version": 1,
+      "id": "assess-1",
+      "page_id": "page-1",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "available",
+      "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+      "suggestions": [
+        {
+          "candidate_id": "cand-overlap",
+          "rank": 1,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": [
+            "synthetic-qa"
+          ]
+        },
+        {
+          "candidate_id": "cand-x",
+          "rank": 2,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": []
+        }
+      ],
+      "evidence_gaps": [
+        "Fixture does not assess gaps."
+      ],
+      "uncertainty": null,
+      "limitations": [
+        "Labelled fixture: no trained model was consulted.",
+        "A ranking never authorises an action."
+      ],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    },
+    "unknown-evidence": {
+      "contract_version": 1,
+      "id": "assess-1",
+      "page_id": "page-1",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "available",
+      "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+      "suggestions": [
+        {
+          "candidate_id": "cand-overlap",
+          "rank": 1,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": [
+            "no-such-evidence"
+          ]
+        },
+        {
+          "candidate_id": "cand-qa",
+          "rank": 2,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": []
+        }
+      ],
+      "evidence_gaps": [
+        "Fixture does not assess gaps."
+      ],
+      "uncertainty": null,
+      "limitations": [
+        "Labelled fixture: no trained model was consulted.",
+        "A ranking never authorises an action."
+      ],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    },
+    "wrong-page": {
+      "contract_version": 1,
+      "id": "assess-1",
+      "page_id": "page-9",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "available",
+      "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+      "suggestions": [
+        {
+          "candidate_id": "cand-overlap",
+          "rank": 1,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": [
+            "synthetic-qa"
+          ]
+        },
+        {
+          "candidate_id": "cand-qa",
+          "rank": 2,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": []
+        }
+      ],
+      "evidence_gaps": [
+        "Fixture does not assess gaps."
+      ],
+      "uncertainty": null,
+      "limitations": [
+        "Labelled fixture: no trained model was consulted.",
+        "A ranking never authorises an action."
+      ],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    },
+    "stale-revision": {
+      "contract_version": 1,
+      "id": "assess-1",
+      "page_id": "page-1",
+      "state_revision": 5,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "available",
+      "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+      "suggestions": [
+        {
+          "candidate_id": "cand-overlap",
+          "rank": 1,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": [
+            "synthetic-qa"
+          ]
+        },
+        {
+          "candidate_id": "cand-qa",
+          "rank": 2,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": []
+        }
+      ],
+      "evidence_gaps": [
+        "Fixture does not assess gaps."
+      ],
+      "uncertainty": null,
+      "limitations": [
+        "Labelled fixture: no trained model was consulted.",
+        "A ranking never authorises an action."
+      ],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    },
+    "wrong-hash": {
+      "contract_version": 1,
+      "id": "assess-1",
+      "page_id": "page-1",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "available",
+      "request_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "suggestions": [
+        {
+          "candidate_id": "cand-overlap",
+          "rank": 1,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": [
+            "synthetic-qa"
+          ]
+        },
+        {
+          "candidate_id": "cand-qa",
+          "rank": 2,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": []
+        }
+      ],
+      "evidence_gaps": [
+        "Fixture does not assess gaps."
+      ],
+      "uncertainty": null,
+      "limitations": [
+        "Labelled fixture: no trained model was consulted.",
+        "A ranking never authorises an action."
+      ],
       "created_at": "2026-10-14T09:00:00+00:00"
     }
   }

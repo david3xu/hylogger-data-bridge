@@ -1,9 +1,11 @@
 # Purpose: prove the canonical contract accepts its valid fixtures and rejects every invalid one.
+import copy
 import json
 import unittest
 from pathlib import Path
 from typing import Any
 
+from hylogger_bridge.contracts.assess import check_advice
 from hylogger_bridge.contracts.book import check_book
 from hylogger_bridge.contracts.check import ContractError, problems, validate, walk
 from hylogger_bridge.contracts.digest import digest
@@ -53,11 +55,17 @@ class FixtureTests(unittest.TestCase):
                 with self.assertRaises(ContractError):
                     check_book(value)
 
-    def test_assessment_names_the_exact_request(self) -> None:
+    def test_advice_matches_its_request(self) -> None:
         request = load("AssessmentRequest")["valid"]["basic"]
-        for case, value in load("Assessment")["valid"].items():
+        advice = load("Assessment")
+        for case, value in advice["valid"].items():
             with self.subTest(case=case):
-                self.assertEqual(value["request_hash"], digest(request))
+                check_advice(request, value)
+        for case, value in advice["semantic_invalid"].items():
+            with self.subTest(case=case):
+                self.assertEqual(problems("Assessment", value), [])
+                with self.assertRaises(ContractError):
+                    check_advice(request, value)
 
     def test_advice_may_differ_from_the_action_taken(self) -> None:
         page = load("Page")["valid"]["ready-advised"]
@@ -67,6 +75,51 @@ class FixtureTests(unittest.TestCase):
         self.assertNotEqual(candidates[top["candidate_id"]], page["action"]["type"])
         self.assertEqual(page["action"]["assessment_id"], page["assessment"]["id"])
         self.assertEqual(problems("Page", page), [])
+
+
+class ReviewRegressionTests(unittest.TestCase):
+    def test_complete_result_cannot_carry_failed_or_partial_evidence(self) -> None:
+        for state in ("failed", "partial"):
+            record = copy.deepcopy(load("Completion")["valid"]["complete"])
+            record["evidence"][0]["state"] = state
+            with self.subTest(state=state, shape="Completion"):
+                self.assertNotEqual(problems("Completion", record), [])
+            page = copy.deepcopy(load("Page")["valid"]["ready-advised"])
+            page["evidence"][0]["state"] = state
+            with self.subTest(state=state, shape="Page"):
+                self.assertNotEqual(problems("Page", page), [])
+
+    def test_current_page_is_never_locked_history(self) -> None:
+        for case, book in load("Book")["valid"].items():
+            for page in book["pages"]:
+                if page["status"] == "locked":
+                    moved = {**book, "current_page_id": page["id"]}
+                    with self.subTest(case=case, page=page["id"]):
+                        with self.assertRaises(ContractError):
+                            check_book(moved)
+
+    def test_reader_selection_is_not_snapshot_state(self) -> None:
+        book = load("Book")["valid"]["decided-with-successor"]
+        selected = {**book, "selected_page_id": "page-1"}
+        self.assertNotEqual(problems("Book", selected), [])
+
+    def test_unknown_origin_decisions_stay_history(self) -> None:
+        book = load("Book")["valid"]["legacy-unknown-actor"]
+        first = book["pages"][0]
+        self.assertEqual(first["decision"]["actor"], {"kind": "unknown"})
+        self.assertEqual(book["continuations"], [])
+        self.assertEqual({item["origin"] for item in first["evidence"]}, {"unspecified"})
+
+    def test_request_hash_ignores_number_spelling_and_key_order(self) -> None:
+        self.assertEqual(digest({"n": 1}), digest({"n": 1.0}))
+        self.assertEqual(digest({"a": 1, "b": [2.0, 0.5]}), digest({"b": [2, 0.5], "a": 1.0}))
+        self.assertNotEqual(digest({"n": 0.5}), digest({"n": 0.25}))
+        self.assertNotEqual(digest({"n": 1}), digest({"n": True}))
+        self.assertEqual(digest({"n": -0.0}), digest({"n": 0}))
+
+    def test_request_hash_refuses_non_finite_numbers(self) -> None:
+        with self.assertRaises(ValueError):
+            digest({"n": float("nan")})
 
 
 class ValidatorTests(unittest.TestCase):

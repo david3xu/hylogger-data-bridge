@@ -40,6 +40,7 @@
             }
           ],
           "outcome": "complete",
+          "errors": [],
           "decision": {
             "id": "dec-1",
             "page_id": "page-1",
@@ -48,25 +49,14 @@
             "request_id": "req-1",
             "locked_revision": 7,
             "successor_id": "page-2",
-            "evidence_ids": ["synthetic-qa", "synthetic-overlap"],
-            "actor": { "kind": "human" },
+            "evidence_ids": [
+              "synthetic-qa",
+              "synthetic-overlap"
+            ],
+            "actor": {
+              "kind": "human"
+            },
             "recorded_at": "2026-10-14T09:10:00+00:00"
-          },
-          "continuation": {
-            "id": "cont-1",
-            "decision_id": "dec-1",
-            "page_id": "page-1",
-            "successor_id": "page-2",
-            "locked_revision": 7,
-            "state": "pending",
-            "attempts": 0,
-            "max_attempts": 3,
-            "claimed_by": null,
-            "lease_expires_at": null,
-            "acknowledged_at": null,
-            "last_error": null,
-            "created_at": "2026-10-14T09:10:00+00:00",
-            "updated_at": "2026-10-14T09:10:00+00:00"
           },
           "action": null,
           "assessment": null,
@@ -89,14 +79,277 @@
           "progress": "Waiting for a worker",
           "evidence": [],
           "outcome": null,
+          "errors": [],
           "decision": null,
-          "continuation": null,
           "action": null,
           "assessment": null,
           "created_at": "2026-10-14T09:10:00+00:00",
           "updated_at": "2026-10-14T09:10:00+00:00",
           "scientific_review": "unreviewed",
           "demo_running": false
+        }
+      ],
+      "continuations": [
+        {
+          "id": "cont-1",
+          "decision_id": "dec-1",
+          "page_id": "page-1",
+          "successor_id": "page-2",
+          "locked_revision": 7,
+          "state": "pending",
+          "attempts": 0,
+          "max_attempts": 3,
+          "claimed_by": null,
+          "lease_expires_at": null,
+          "acknowledged_at": null,
+          "last_error": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00"
+        }
+      ],
+      "events": [
+        {
+          "sequence": 1,
+          "type": "page_created",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:00:00+00:00",
+          "detail": "Synthetic case created"
+        },
+        {
+          "sequence": 2,
+          "type": "decision_recorded",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:10:00+00:00",
+          "detail": "User workflow choice recorded; page locked and successor created"
+        }
+      ]
+    },
+    "legacy-unknown-actor": {
+      "contract_version": 1,
+      "run_id": "demo",
+      "source": "synthetic_demo",
+      "current_page_id": "page-2",
+      "sequence": 2,
+      "pages": [
+        {
+          "id": "page-1",
+          "number": 1,
+          "parent_id": null,
+          "template": "investigation",
+          "template_version": 1,
+          "title": "An unfamiliar drill hole",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "locked",
+          "revision": 7,
+          "summary": "The synthetic 214–220 m candidate overlaps an assay record by 3 m (50%).",
+          "progress": "Evidence ready for your workflow decision",
+          "evidence": [
+            {
+              "id": "synthetic-qa",
+              "label": "Quality check",
+              "value": "Synthetic depth coverage and linkage checks passed",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "observation",
+              "origin": "unspecified",
+              "state": "complete"
+            },
+            {
+              "id": "synthetic-overlap",
+              "label": "Depth overlap",
+              "value": "3 m / 6 m = 50% candidate coverage",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "calculation",
+              "origin": "unspecified",
+              "state": "complete"
+            }
+          ],
+          "outcome": "complete",
+          "errors": [],
+          "decision": {
+            "id": "dec-1",
+            "page_id": "page-1",
+            "choice": "modify",
+            "note": "Look at the assay interval first.",
+            "request_id": "legacy",
+            "locked_revision": 7,
+            "successor_id": "page-2",
+            "evidence_ids": [
+              "synthetic-qa",
+              "synthetic-overlap"
+            ],
+            "actor": {
+              "kind": "unknown"
+            },
+            "recorded_at": "2026-10-14T09:10:00+00:00"
+          },
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:00:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        },
+        {
+          "id": "page-2",
+          "number": 2,
+          "parent_id": "page-1",
+          "template": "candidate_evidence",
+          "template_version": 1,
+          "title": "Follow-up investigation",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "draft",
+          "revision": 0,
+          "summary": "Previous workflow choice: modify. Look at the assay interval first.",
+          "progress": "Waiting for a worker",
+          "evidence": [],
+          "outcome": null,
+          "errors": [],
+          "decision": null,
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        }
+      ],
+      "continuations": [],
+      "events": [
+        {
+          "sequence": 1,
+          "type": "page_created",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:00:00+00:00",
+          "detail": "Synthetic case created"
+        },
+        {
+          "sequence": 2,
+          "type": "decision_recorded",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:10:00+00:00",
+          "detail": "User workflow choice recorded; page locked and successor created"
+        }
+      ]
+    },
+    "failed-working-page": {
+      "contract_version": 1,
+      "run_id": "demo",
+      "source": "synthetic_demo",
+      "current_page_id": "page-2",
+      "sequence": 2,
+      "pages": [
+        {
+          "id": "page-1",
+          "number": 1,
+          "parent_id": null,
+          "template": "investigation",
+          "template_version": 1,
+          "title": "An unfamiliar drill hole",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "locked",
+          "revision": 7,
+          "summary": "The synthetic 214–220 m candidate overlaps an assay record by 3 m (50%).",
+          "progress": "Evidence ready for your workflow decision",
+          "evidence": [
+            {
+              "id": "synthetic-qa",
+              "label": "Quality check",
+              "value": "Synthetic depth coverage and linkage checks passed",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "observation",
+              "origin": "synthetic",
+              "state": "complete"
+            },
+            {
+              "id": "synthetic-overlap",
+              "label": "Depth overlap",
+              "value": "3 m / 6 m = 50% candidate coverage",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "calculation",
+              "origin": "synthetic",
+              "state": "complete"
+            }
+          ],
+          "outcome": "complete",
+          "errors": [],
+          "decision": {
+            "id": "dec-1",
+            "page_id": "page-1",
+            "choice": "modify",
+            "note": "Look at the assay interval first.",
+            "request_id": "req-1",
+            "locked_revision": 7,
+            "successor_id": "page-2",
+            "evidence_ids": [
+              "synthetic-qa",
+              "synthetic-overlap"
+            ],
+            "actor": {
+              "kind": "human"
+            },
+            "recorded_at": "2026-10-14T09:10:00+00:00"
+          },
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:00:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        },
+        {
+          "id": "page-2",
+          "number": 2,
+          "parent_id": "page-1",
+          "template": "candidate_evidence",
+          "template_version": 1,
+          "title": "Follow-up investigation",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "ready",
+          "revision": 3,
+          "summary": "The overlap calculation could not run.",
+          "progress": "Failed result ready for your workflow decision",
+          "evidence": [],
+          "outcome": "failed",
+          "errors": [
+            {
+              "error": "Assay depths are missing",
+              "code": "worker_failed",
+              "retryable": true
+            }
+          ],
+          "decision": null,
+          "action": {
+            "type": "overlap_check",
+            "assessment_id": null,
+            "actor": {
+              "kind": "agent",
+              "name": "example-agent"
+            },
+            "recorded_at": "2026-10-14T09:20:00+00:00"
+          },
+          "assessment": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:20:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        }
+      ],
+      "continuations": [
+        {
+          "id": "cont-1",
+          "decision_id": "dec-1",
+          "page_id": "page-1",
+          "successor_id": "page-2",
+          "locked_revision": 7,
+          "state": "pending",
+          "attempts": 0,
+          "max_attempts": 3,
+          "claimed_by": null,
+          "lease_expires_at": null,
+          "acknowledged_at": null,
+          "last_error": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00"
         }
       ],
       "events": [
@@ -139,8 +392,8 @@
           "progress": "Ready to start",
           "evidence": [],
           "outcome": null,
+          "errors": [],
           "decision": null,
-          "continuation": null,
           "action": null,
           "assessment": null,
           "created_at": "2026-10-14T09:00:00+00:00",
@@ -149,6 +402,7 @@
           "demo_running": false
         }
       ],
+      "continuations": [],
       "events": []
     },
     "no-pages": {
@@ -158,6 +412,7 @@
       "current_page_id": "page-1",
       "sequence": 0,
       "pages": [],
+      "continuations": [],
       "events": []
     },
     "missing-version": {
@@ -180,8 +435,8 @@
           "progress": "Ready to start",
           "evidence": [],
           "outcome": null,
+          "errors": [],
           "decision": null,
-          "continuation": null,
           "action": null,
           "assessment": null,
           "created_at": "2026-10-14T09:00:00+00:00",
@@ -190,7 +445,114 @@
           "demo_running": false
         }
       ],
+      "continuations": [],
       "events": []
+    },
+    "missing-continuations": {
+      "contract_version": 1,
+      "run_id": "demo",
+      "source": "synthetic_demo",
+      "current_page_id": "page-2",
+      "sequence": 2,
+      "pages": [
+        {
+          "id": "page-1",
+          "number": 1,
+          "parent_id": null,
+          "template": "investigation",
+          "template_version": 1,
+          "title": "An unfamiliar drill hole",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "locked",
+          "revision": 7,
+          "summary": "The synthetic 214–220 m candidate overlaps an assay record by 3 m (50%).",
+          "progress": "Evidence ready for your workflow decision",
+          "evidence": [
+            {
+              "id": "synthetic-qa",
+              "label": "Quality check",
+              "value": "Synthetic depth coverage and linkage checks passed",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "observation",
+              "origin": "synthetic",
+              "state": "complete"
+            },
+            {
+              "id": "synthetic-overlap",
+              "label": "Depth overlap",
+              "value": "3 m / 6 m = 50% candidate coverage",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "calculation",
+              "origin": "synthetic",
+              "state": "complete"
+            }
+          ],
+          "outcome": "complete",
+          "errors": [],
+          "decision": {
+            "id": "dec-1",
+            "page_id": "page-1",
+            "choice": "modify",
+            "note": "Look at the assay interval first.",
+            "request_id": "req-1",
+            "locked_revision": 7,
+            "successor_id": "page-2",
+            "evidence_ids": [
+              "synthetic-qa",
+              "synthetic-overlap"
+            ],
+            "actor": {
+              "kind": "human"
+            },
+            "recorded_at": "2026-10-14T09:10:00+00:00"
+          },
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:00:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        },
+        {
+          "id": "page-2",
+          "number": 2,
+          "parent_id": "page-1",
+          "template": "candidate_evidence",
+          "template_version": 1,
+          "title": "Follow-up investigation",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "draft",
+          "revision": 0,
+          "summary": "Previous workflow choice: modify. Look at the assay interval first.",
+          "progress": "Waiting for a worker",
+          "evidence": [],
+          "outcome": null,
+          "errors": [],
+          "decision": null,
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        }
+      ],
+      "events": [
+        {
+          "sequence": 1,
+          "type": "page_created",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:00:00+00:00",
+          "detail": "Synthetic case created"
+        },
+        {
+          "sequence": 2,
+          "type": "decision_recorded",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:10:00+00:00",
+          "detail": "User workflow choice recorded; page locked and successor created"
+        }
+      ]
     }
   },
   "semantic_invalid": {
@@ -215,8 +577,8 @@
           "progress": "Ready to start",
           "evidence": [],
           "outcome": null,
+          "errors": [],
           "decision": null,
-          "continuation": null,
           "action": null,
           "assessment": null,
           "created_at": "2026-10-14T09:00:00+00:00",
@@ -225,6 +587,7 @@
           "demo_running": false
         }
       ],
+      "continuations": [],
       "events": []
     },
     "duplicate-page-ids": {
@@ -248,8 +611,8 @@
           "progress": "Ready to start",
           "evidence": [],
           "outcome": null,
+          "errors": [],
           "decision": null,
-          "continuation": null,
           "action": null,
           "assessment": null,
           "created_at": "2026-10-14T09:00:00+00:00",
@@ -271,8 +634,8 @@
           "progress": "Ready to start",
           "evidence": [],
           "outcome": null,
+          "errors": [],
           "decision": null,
-          "continuation": null,
           "action": null,
           "assessment": null,
           "created_at": "2026-10-14T09:00:00+00:00",
@@ -281,6 +644,7 @@
           "demo_running": false
         }
       ],
+      "continuations": [],
       "events": []
     },
     "orphan-parent": {
@@ -304,8 +668,8 @@
           "progress": "Waiting",
           "evidence": [],
           "outcome": null,
+          "errors": [],
           "decision": null,
-          "continuation": null,
           "action": null,
           "assessment": null,
           "created_at": "2026-10-14T09:10:00+00:00",
@@ -314,6 +678,7 @@
           "demo_running": false
         }
       ],
+      "continuations": [],
       "events": []
     },
     "successor-mismatch": {
@@ -337,6 +702,7 @@
           "progress": "Locked",
           "evidence": [],
           "outcome": "complete",
+          "errors": [],
           "decision": {
             "id": "dec-1",
             "page_id": "page-1",
@@ -346,24 +712,10 @@
             "locked_revision": 7,
             "successor_id": "page-3",
             "evidence_ids": [],
-            "actor": { "kind": "human" },
+            "actor": {
+              "kind": "human"
+            },
             "recorded_at": "2026-10-14T09:10:00+00:00"
-          },
-          "continuation": {
-            "id": "cont-1",
-            "decision_id": "dec-1",
-            "page_id": "page-1",
-            "successor_id": "page-3",
-            "locked_revision": 7,
-            "state": "pending",
-            "attempts": 0,
-            "max_attempts": 3,
-            "claimed_by": null,
-            "lease_expires_at": null,
-            "acknowledged_at": null,
-            "last_error": null,
-            "created_at": "2026-10-14T09:10:00+00:00",
-            "updated_at": "2026-10-14T09:10:00+00:00"
           },
           "action": null,
           "assessment": null,
@@ -386,14 +738,32 @@
           "progress": "Waiting",
           "evidence": [],
           "outcome": null,
+          "errors": [],
           "decision": null,
-          "continuation": null,
           "action": null,
           "assessment": null,
           "created_at": "2026-10-14T09:10:00+00:00",
           "updated_at": "2026-10-14T09:10:00+00:00",
           "scientific_review": "unreviewed",
           "demo_running": false
+        }
+      ],
+      "continuations": [
+        {
+          "id": "cont-1",
+          "decision_id": "dec-1",
+          "page_id": "page-1",
+          "successor_id": "page-3",
+          "locked_revision": 7,
+          "state": "pending",
+          "attempts": 0,
+          "max_attempts": 3,
+          "claimed_by": null,
+          "lease_expires_at": null,
+          "acknowledged_at": null,
+          "last_error": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00"
         }
       ],
       "events": []
@@ -419,6 +789,7 @@
           "progress": "Locked",
           "evidence": [],
           "outcome": "complete",
+          "errors": [],
           "decision": {
             "id": "dec-1",
             "page_id": "page-1",
@@ -428,24 +799,10 @@
             "locked_revision": 7,
             "successor_id": "page-2",
             "evidence_ids": [],
-            "actor": { "kind": "human" },
+            "actor": {
+              "kind": "human"
+            },
             "recorded_at": "2026-10-14T09:10:00+00:00"
-          },
-          "continuation": {
-            "id": "cont-1",
-            "decision_id": "dec-1",
-            "page_id": "page-1",
-            "successor_id": "page-2",
-            "locked_revision": 7,
-            "state": "pending",
-            "attempts": 0,
-            "max_attempts": 3,
-            "claimed_by": null,
-            "lease_expires_at": null,
-            "acknowledged_at": null,
-            "last_error": null,
-            "created_at": "2026-10-14T09:10:00+00:00",
-            "updated_at": "2026-10-14T09:10:00+00:00"
           },
           "action": null,
           "assessment": null,
@@ -468,14 +825,32 @@
           "progress": "Waiting",
           "evidence": [],
           "outcome": null,
+          "errors": [],
           "decision": null,
-          "continuation": null,
           "action": null,
           "assessment": null,
           "created_at": "2026-10-14T09:10:00+00:00",
           "updated_at": "2026-10-14T09:10:00+00:00",
           "scientific_review": "unreviewed",
           "demo_running": false
+        }
+      ],
+      "continuations": [
+        {
+          "id": "cont-1",
+          "decision_id": "dec-1",
+          "page_id": "page-1",
+          "successor_id": "page-2",
+          "locked_revision": 7,
+          "state": "pending",
+          "attempts": 0,
+          "max_attempts": 3,
+          "claimed_by": null,
+          "lease_expires_at": null,
+          "acknowledged_at": null,
+          "last_error": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00"
         }
       ],
       "events": []
@@ -501,6 +876,7 @@
           "progress": "Locked",
           "evidence": [],
           "outcome": "complete",
+          "errors": [],
           "decision": {
             "id": "dec-1",
             "page_id": "page-1",
@@ -510,24 +886,10 @@
             "locked_revision": 7,
             "successor_id": "page-2",
             "evidence_ids": [],
-            "actor": { "kind": "human" },
+            "actor": {
+              "kind": "human"
+            },
             "recorded_at": "2026-10-14T09:10:00+00:00"
-          },
-          "continuation": {
-            "id": "cont-1",
-            "decision_id": "dec-9",
-            "page_id": "page-1",
-            "successor_id": "page-2",
-            "locked_revision": 7,
-            "state": "pending",
-            "attempts": 0,
-            "max_attempts": 3,
-            "claimed_by": null,
-            "lease_expires_at": null,
-            "acknowledged_at": null,
-            "last_error": null,
-            "created_at": "2026-10-14T09:10:00+00:00",
-            "updated_at": "2026-10-14T09:10:00+00:00"
           },
           "action": null,
           "assessment": null,
@@ -550,14 +912,32 @@
           "progress": "Waiting",
           "evidence": [],
           "outcome": null,
+          "errors": [],
           "decision": null,
-          "continuation": null,
           "action": null,
           "assessment": null,
           "created_at": "2026-10-14T09:10:00+00:00",
           "updated_at": "2026-10-14T09:10:00+00:00",
           "scientific_review": "unreviewed",
           "demo_running": false
+        }
+      ],
+      "continuations": [
+        {
+          "id": "cont-1",
+          "decision_id": "dec-9",
+          "page_id": "page-1",
+          "successor_id": "page-2",
+          "locked_revision": 7,
+          "state": "pending",
+          "attempts": 0,
+          "max_attempts": 3,
+          "claimed_by": null,
+          "lease_expires_at": null,
+          "acknowledged_at": null,
+          "last_error": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00"
         }
       ],
       "events": []
@@ -583,8 +963,8 @@
           "progress": "Ready to start",
           "evidence": [],
           "outcome": null,
+          "errors": [],
           "decision": null,
-          "continuation": null,
           "action": null,
           "assessment": null,
           "created_at": "2026-10-14T09:00:00+00:00",
@@ -593,6 +973,7 @@
           "demo_running": false
         }
       ],
+      "continuations": [],
       "events": [
         {
           "sequence": 4,
@@ -607,6 +988,772 @@
           "page_id": "page-1",
           "at": "2026-10-14T09:01:00+00:00",
           "detail": "Synthetic runner started"
+        }
+      ]
+    },
+    "current-is-locked-history": {
+      "contract_version": 1,
+      "run_id": "demo",
+      "source": "synthetic_demo",
+      "current_page_id": "page-1",
+      "sequence": 2,
+      "pages": [
+        {
+          "id": "page-1",
+          "number": 1,
+          "parent_id": null,
+          "template": "investigation",
+          "template_version": 1,
+          "title": "An unfamiliar drill hole",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "locked",
+          "revision": 7,
+          "summary": "The synthetic 214–220 m candidate overlaps an assay record by 3 m (50%).",
+          "progress": "Evidence ready for your workflow decision",
+          "evidence": [
+            {
+              "id": "synthetic-qa",
+              "label": "Quality check",
+              "value": "Synthetic depth coverage and linkage checks passed",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "observation",
+              "origin": "synthetic",
+              "state": "complete"
+            },
+            {
+              "id": "synthetic-overlap",
+              "label": "Depth overlap",
+              "value": "3 m / 6 m = 50% candidate coverage",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "calculation",
+              "origin": "synthetic",
+              "state": "complete"
+            }
+          ],
+          "outcome": "complete",
+          "errors": [],
+          "decision": {
+            "id": "dec-1",
+            "page_id": "page-1",
+            "choice": "modify",
+            "note": "Look at the assay interval first.",
+            "request_id": "req-1",
+            "locked_revision": 7,
+            "successor_id": "page-2",
+            "evidence_ids": [
+              "synthetic-qa",
+              "synthetic-overlap"
+            ],
+            "actor": {
+              "kind": "human"
+            },
+            "recorded_at": "2026-10-14T09:10:00+00:00"
+          },
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:00:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        },
+        {
+          "id": "page-2",
+          "number": 2,
+          "parent_id": "page-1",
+          "template": "candidate_evidence",
+          "template_version": 1,
+          "title": "Follow-up investigation",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "draft",
+          "revision": 0,
+          "summary": "Previous workflow choice: modify. Look at the assay interval first.",
+          "progress": "Waiting for a worker",
+          "evidence": [],
+          "outcome": null,
+          "errors": [],
+          "decision": null,
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        }
+      ],
+      "continuations": [
+        {
+          "id": "cont-1",
+          "decision_id": "dec-1",
+          "page_id": "page-1",
+          "successor_id": "page-2",
+          "locked_revision": 7,
+          "state": "pending",
+          "attempts": 0,
+          "max_attempts": 3,
+          "claimed_by": null,
+          "lease_expires_at": null,
+          "acknowledged_at": null,
+          "last_error": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00"
+        }
+      ],
+      "events": [
+        {
+          "sequence": 1,
+          "type": "page_created",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:00:00+00:00",
+          "detail": "Synthetic case created"
+        },
+        {
+          "sequence": 2,
+          "type": "decision_recorded",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:10:00+00:00",
+          "detail": "User workflow choice recorded; page locked and successor created"
+        }
+      ]
+    },
+    "locked-without-continuation": {
+      "contract_version": 1,
+      "run_id": "demo",
+      "source": "synthetic_demo",
+      "current_page_id": "page-2",
+      "sequence": 2,
+      "pages": [
+        {
+          "id": "page-1",
+          "number": 1,
+          "parent_id": null,
+          "template": "investigation",
+          "template_version": 1,
+          "title": "An unfamiliar drill hole",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "locked",
+          "revision": 7,
+          "summary": "The synthetic 214–220 m candidate overlaps an assay record by 3 m (50%).",
+          "progress": "Evidence ready for your workflow decision",
+          "evidence": [
+            {
+              "id": "synthetic-qa",
+              "label": "Quality check",
+              "value": "Synthetic depth coverage and linkage checks passed",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "observation",
+              "origin": "synthetic",
+              "state": "complete"
+            },
+            {
+              "id": "synthetic-overlap",
+              "label": "Depth overlap",
+              "value": "3 m / 6 m = 50% candidate coverage",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "calculation",
+              "origin": "synthetic",
+              "state": "complete"
+            }
+          ],
+          "outcome": "complete",
+          "errors": [],
+          "decision": {
+            "id": "dec-1",
+            "page_id": "page-1",
+            "choice": "modify",
+            "note": "Look at the assay interval first.",
+            "request_id": "req-1",
+            "locked_revision": 7,
+            "successor_id": "page-2",
+            "evidence_ids": [
+              "synthetic-qa",
+              "synthetic-overlap"
+            ],
+            "actor": {
+              "kind": "human"
+            },
+            "recorded_at": "2026-10-14T09:10:00+00:00"
+          },
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:00:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        },
+        {
+          "id": "page-2",
+          "number": 2,
+          "parent_id": "page-1",
+          "template": "candidate_evidence",
+          "template_version": 1,
+          "title": "Follow-up investigation",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "draft",
+          "revision": 0,
+          "summary": "Previous workflow choice: modify. Look at the assay interval first.",
+          "progress": "Waiting for a worker",
+          "evidence": [],
+          "outcome": null,
+          "errors": [],
+          "decision": null,
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        }
+      ],
+      "continuations": [],
+      "events": [
+        {
+          "sequence": 1,
+          "type": "page_created",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:00:00+00:00",
+          "detail": "Synthetic case created"
+        },
+        {
+          "sequence": 2,
+          "type": "decision_recorded",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:10:00+00:00",
+          "detail": "User workflow choice recorded; page locked and successor created"
+        }
+      ]
+    },
+    "legacy-decision-dispatched": {
+      "contract_version": 1,
+      "run_id": "demo",
+      "source": "synthetic_demo",
+      "current_page_id": "page-2",
+      "sequence": 2,
+      "pages": [
+        {
+          "id": "page-1",
+          "number": 1,
+          "parent_id": null,
+          "template": "investigation",
+          "template_version": 1,
+          "title": "An unfamiliar drill hole",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "locked",
+          "revision": 7,
+          "summary": "The synthetic 214–220 m candidate overlaps an assay record by 3 m (50%).",
+          "progress": "Evidence ready for your workflow decision",
+          "evidence": [
+            {
+              "id": "synthetic-qa",
+              "label": "Quality check",
+              "value": "Synthetic depth coverage and linkage checks passed",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "observation",
+              "origin": "unspecified",
+              "state": "complete"
+            },
+            {
+              "id": "synthetic-overlap",
+              "label": "Depth overlap",
+              "value": "3 m / 6 m = 50% candidate coverage",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "calculation",
+              "origin": "unspecified",
+              "state": "complete"
+            }
+          ],
+          "outcome": "complete",
+          "errors": [],
+          "decision": {
+            "id": "dec-1",
+            "page_id": "page-1",
+            "choice": "modify",
+            "note": "Look at the assay interval first.",
+            "request_id": "legacy",
+            "locked_revision": 7,
+            "successor_id": "page-2",
+            "evidence_ids": [
+              "synthetic-qa",
+              "synthetic-overlap"
+            ],
+            "actor": {
+              "kind": "unknown"
+            },
+            "recorded_at": "2026-10-14T09:10:00+00:00"
+          },
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:00:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        },
+        {
+          "id": "page-2",
+          "number": 2,
+          "parent_id": "page-1",
+          "template": "candidate_evidence",
+          "template_version": 1,
+          "title": "Follow-up investigation",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "draft",
+          "revision": 0,
+          "summary": "Previous workflow choice: modify. Look at the assay interval first.",
+          "progress": "Waiting for a worker",
+          "evidence": [],
+          "outcome": null,
+          "errors": [],
+          "decision": null,
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        }
+      ],
+      "continuations": [
+        {
+          "id": "cont-1",
+          "decision_id": "dec-1",
+          "page_id": "page-1",
+          "successor_id": "page-2",
+          "locked_revision": 7,
+          "state": "pending",
+          "attempts": 0,
+          "max_attempts": 3,
+          "claimed_by": null,
+          "lease_expires_at": null,
+          "acknowledged_at": null,
+          "last_error": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00"
+        }
+      ],
+      "events": [
+        {
+          "sequence": 1,
+          "type": "page_created",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:00:00+00:00",
+          "detail": "Synthetic case created"
+        },
+        {
+          "sequence": 2,
+          "type": "decision_recorded",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:10:00+00:00",
+          "detail": "User workflow choice recorded; page locked and successor created"
+        }
+      ]
+    },
+    "continuation-for-working-page": {
+      "contract_version": 1,
+      "run_id": "demo",
+      "source": "synthetic_demo",
+      "current_page_id": "page-2",
+      "sequence": 2,
+      "pages": [
+        {
+          "id": "page-1",
+          "number": 1,
+          "parent_id": null,
+          "template": "investigation",
+          "template_version": 1,
+          "title": "An unfamiliar drill hole",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "locked",
+          "revision": 7,
+          "summary": "The synthetic 214–220 m candidate overlaps an assay record by 3 m (50%).",
+          "progress": "Evidence ready for your workflow decision",
+          "evidence": [
+            {
+              "id": "synthetic-qa",
+              "label": "Quality check",
+              "value": "Synthetic depth coverage and linkage checks passed",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "observation",
+              "origin": "synthetic",
+              "state": "complete"
+            },
+            {
+              "id": "synthetic-overlap",
+              "label": "Depth overlap",
+              "value": "3 m / 6 m = 50% candidate coverage",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "calculation",
+              "origin": "synthetic",
+              "state": "complete"
+            }
+          ],
+          "outcome": "complete",
+          "errors": [],
+          "decision": {
+            "id": "dec-1",
+            "page_id": "page-1",
+            "choice": "modify",
+            "note": "Look at the assay interval first.",
+            "request_id": "req-1",
+            "locked_revision": 7,
+            "successor_id": "page-2",
+            "evidence_ids": [
+              "synthetic-qa",
+              "synthetic-overlap"
+            ],
+            "actor": {
+              "kind": "human"
+            },
+            "recorded_at": "2026-10-14T09:10:00+00:00"
+          },
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:00:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        },
+        {
+          "id": "page-2",
+          "number": 2,
+          "parent_id": "page-1",
+          "template": "candidate_evidence",
+          "template_version": 1,
+          "title": "Follow-up investigation",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "draft",
+          "revision": 0,
+          "summary": "Previous workflow choice: modify. Look at the assay interval first.",
+          "progress": "Waiting for a worker",
+          "evidence": [],
+          "outcome": null,
+          "errors": [],
+          "decision": null,
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        }
+      ],
+      "continuations": [
+        {
+          "id": "cont-1",
+          "decision_id": "dec-1",
+          "page_id": "page-1",
+          "successor_id": "page-2",
+          "locked_revision": 7,
+          "state": "pending",
+          "attempts": 0,
+          "max_attempts": 3,
+          "claimed_by": null,
+          "lease_expires_at": null,
+          "acknowledged_at": null,
+          "last_error": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00"
+        },
+        {
+          "id": "cont-2",
+          "decision_id": "dec-2",
+          "page_id": "page-2",
+          "successor_id": "page-3",
+          "locked_revision": 7,
+          "state": "pending",
+          "attempts": 0,
+          "max_attempts": 3,
+          "claimed_by": null,
+          "lease_expires_at": null,
+          "acknowledged_at": null,
+          "last_error": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00"
+        }
+      ],
+      "events": [
+        {
+          "sequence": 1,
+          "type": "page_created",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:00:00+00:00",
+          "detail": "Synthetic case created"
+        },
+        {
+          "sequence": 2,
+          "type": "decision_recorded",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:10:00+00:00",
+          "detail": "User workflow choice recorded; page locked and successor created"
+        }
+      ]
+    },
+    "second-root": {
+      "contract_version": 1,
+      "run_id": "demo",
+      "source": "synthetic_demo",
+      "current_page_id": "page-2",
+      "sequence": 2,
+      "pages": [
+        {
+          "id": "page-1",
+          "number": 1,
+          "parent_id": null,
+          "template": "investigation",
+          "template_version": 1,
+          "title": "An unfamiliar drill hole",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "locked",
+          "revision": 7,
+          "summary": "The synthetic 214–220 m candidate overlaps an assay record by 3 m (50%).",
+          "progress": "Evidence ready for your workflow decision",
+          "evidence": [
+            {
+              "id": "synthetic-qa",
+              "label": "Quality check",
+              "value": "Synthetic depth coverage and linkage checks passed",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "observation",
+              "origin": "synthetic",
+              "state": "complete"
+            },
+            {
+              "id": "synthetic-overlap",
+              "label": "Depth overlap",
+              "value": "3 m / 6 m = 50% candidate coverage",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "calculation",
+              "origin": "synthetic",
+              "state": "complete"
+            }
+          ],
+          "outcome": "complete",
+          "errors": [],
+          "decision": {
+            "id": "dec-1",
+            "page_id": "page-1",
+            "choice": "modify",
+            "note": "Look at the assay interval first.",
+            "request_id": "req-1",
+            "locked_revision": 7,
+            "successor_id": "page-2",
+            "evidence_ids": [
+              "synthetic-qa",
+              "synthetic-overlap"
+            ],
+            "actor": {
+              "kind": "human"
+            },
+            "recorded_at": "2026-10-14T09:10:00+00:00"
+          },
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:00:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        },
+        {
+          "id": "page-2",
+          "number": 2,
+          "parent_id": "page-1",
+          "template": "candidate_evidence",
+          "template_version": 1,
+          "title": "Follow-up investigation",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "draft",
+          "revision": 0,
+          "summary": "Previous workflow choice: modify. Look at the assay interval first.",
+          "progress": "Waiting for a worker",
+          "evidence": [],
+          "outcome": null,
+          "errors": [],
+          "decision": null,
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        },
+        {
+          "id": "page-3",
+          "number": 1,
+          "parent_id": null,
+          "template": "candidate_evidence",
+          "template_version": 1,
+          "title": "Follow-up investigation",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "draft",
+          "revision": 0,
+          "summary": "Previous workflow choice: modify. Look at the assay interval first.",
+          "progress": "Waiting for a worker",
+          "evidence": [],
+          "outcome": null,
+          "errors": [],
+          "decision": null,
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        }
+      ],
+      "continuations": [
+        {
+          "id": "cont-1",
+          "decision_id": "dec-1",
+          "page_id": "page-1",
+          "successor_id": "page-2",
+          "locked_revision": 7,
+          "state": "pending",
+          "attempts": 0,
+          "max_attempts": 3,
+          "claimed_by": null,
+          "lease_expires_at": null,
+          "acknowledged_at": null,
+          "last_error": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00"
+        }
+      ],
+      "events": [
+        {
+          "sequence": 1,
+          "type": "page_created",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:00:00+00:00",
+          "detail": "Synthetic case created"
+        },
+        {
+          "sequence": 2,
+          "type": "decision_recorded",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:10:00+00:00",
+          "detail": "User workflow choice recorded; page locked and successor created"
+        }
+      ]
+    },
+    "number-gap": {
+      "contract_version": 1,
+      "run_id": "demo",
+      "source": "synthetic_demo",
+      "current_page_id": "page-2",
+      "sequence": 2,
+      "pages": [
+        {
+          "id": "page-1",
+          "number": 1,
+          "parent_id": null,
+          "template": "investigation",
+          "template_version": 1,
+          "title": "An unfamiliar drill hole",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "locked",
+          "revision": 7,
+          "summary": "The synthetic 214–220 m candidate overlaps an assay record by 3 m (50%).",
+          "progress": "Evidence ready for your workflow decision",
+          "evidence": [
+            {
+              "id": "synthetic-qa",
+              "label": "Quality check",
+              "value": "Synthetic depth coverage and linkage checks passed",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "observation",
+              "origin": "synthetic",
+              "state": "complete"
+            },
+            {
+              "id": "synthetic-overlap",
+              "label": "Depth overlap",
+              "value": "3 m / 6 m = 50% candidate coverage",
+              "source": "Built-in synthetic fixture v1",
+              "kind": "calculation",
+              "origin": "synthetic",
+              "state": "complete"
+            }
+          ],
+          "outcome": "complete",
+          "errors": [],
+          "decision": {
+            "id": "dec-1",
+            "page_id": "page-1",
+            "choice": "modify",
+            "note": "Look at the assay interval first.",
+            "request_id": "req-1",
+            "locked_revision": 7,
+            "successor_id": "page-2",
+            "evidence_ids": [
+              "synthetic-qa",
+              "synthetic-overlap"
+            ],
+            "actor": {
+              "kind": "human"
+            },
+            "recorded_at": "2026-10-14T09:10:00+00:00"
+          },
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:00:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        },
+        {
+          "id": "page-2",
+          "number": 3,
+          "parent_id": "page-1",
+          "template": "candidate_evidence",
+          "template_version": 1,
+          "title": "Follow-up investigation",
+          "question": "Show spectral-change intervals that overlap assay records.",
+          "status": "draft",
+          "revision": 0,
+          "summary": "Previous workflow choice: modify. Look at the assay interval first.",
+          "progress": "Waiting for a worker",
+          "evidence": [],
+          "outcome": null,
+          "errors": [],
+          "decision": null,
+          "action": null,
+          "assessment": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00",
+          "scientific_review": "unreviewed",
+          "demo_running": false
+        }
+      ],
+      "continuations": [
+        {
+          "id": "cont-1",
+          "decision_id": "dec-1",
+          "page_id": "page-1",
+          "successor_id": "page-2",
+          "locked_revision": 7,
+          "state": "pending",
+          "attempts": 0,
+          "max_attempts": 3,
+          "claimed_by": null,
+          "lease_expires_at": null,
+          "acknowledged_at": null,
+          "last_error": null,
+          "created_at": "2026-10-14T09:10:00+00:00",
+          "updated_at": "2026-10-14T09:10:00+00:00"
+        }
+      ],
+      "events": [
+        {
+          "sequence": 1,
+          "type": "page_created",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:00:00+00:00",
+          "detail": "Synthetic case created"
+        },
+        {
+          "sequence": 2,
+          "type": "decision_recorded",
+          "page_id": "page-1",
+          "at": "2026-10-14T09:10:00+00:00",
+          "detail": "User workflow choice recorded; page locked and successor created"
         }
       ]
     }

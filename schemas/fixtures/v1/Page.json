@@ -14,8 +14,8 @@
       "progress": "Waiting for a worker",
       "evidence": [],
       "outcome": null,
+      "errors": [],
       "decision": null,
-      "continuation": null,
       "action": null,
       "assessment": null,
       "created_at": "2026-10-14T09:10:00+00:00",
@@ -47,12 +47,15 @@
         }
       ],
       "outcome": "partial",
+      "errors": [],
       "decision": null,
-      "continuation": null,
       "action": {
         "type": "overlap_check",
         "assessment_id": null,
-        "actor": { "kind": "agent", "name": "example-agent" },
+        "actor": {
+          "kind": "agent",
+          "name": "example-agent"
+        },
         "recorded_at": "2026-10-14T09:20:00+00:00"
       },
       "assessment": null,
@@ -85,12 +88,15 @@
         }
       ],
       "outcome": "complete",
+      "errors": [],
       "decision": null,
-      "continuation": null,
       "action": {
         "type": "qa_check",
         "assessment_id": "assess-1",
-        "actor": { "kind": "system", "name": "synthetic runner" },
+        "actor": {
+          "kind": "system",
+          "name": "synthetic runner"
+        },
         "recorded_at": "2026-10-14T09:09:00+00:00"
       },
       "assessment": {
@@ -107,7 +113,9 @@
             "candidate_id": "cand-overlap",
             "rank": 1,
             "rationale": "Fixture ordering for interface development; no model produced this.",
-            "evidence_ids": ["synthetic-qa"]
+            "evidence_ids": [
+              "synthetic-qa"
+            ]
           },
           {
             "candidate_id": "cand-qa",
@@ -116,7 +124,9 @@
             "evidence_ids": []
           }
         ],
-        "evidence_gaps": ["Fixture does not assess gaps."],
+        "evidence_gaps": [
+          "Fixture does not assess gaps."
+        ],
         "uncertainty": null,
         "limitations": [
           "Labelled fixture: no trained model was consulted.",
@@ -162,6 +172,7 @@
         }
       ],
       "outcome": "complete",
+      "errors": [],
       "decision": {
         "id": "dec-1",
         "page_id": "page-1",
@@ -170,30 +181,56 @@
         "request_id": "req-1",
         "locked_revision": 7,
         "successor_id": "page-2",
-        "evidence_ids": ["synthetic-qa", "synthetic-overlap"],
-        "actor": { "kind": "human" },
+        "evidence_ids": [
+          "synthetic-qa",
+          "synthetic-overlap"
+        ],
+        "actor": {
+          "kind": "human"
+        },
         "recorded_at": "2026-10-14T09:10:00+00:00"
-      },
-      "continuation": {
-        "id": "cont-1",
-        "decision_id": "dec-1",
-        "page_id": "page-1",
-        "successor_id": "page-2",
-        "locked_revision": 7,
-        "state": "pending",
-        "attempts": 0,
-        "max_attempts": 3,
-        "claimed_by": null,
-        "lease_expires_at": null,
-        "acknowledged_at": null,
-        "last_error": null,
-        "created_at": "2026-10-14T09:10:00+00:00",
-        "updated_at": "2026-10-14T09:10:00+00:00"
       },
       "action": null,
       "assessment": null,
       "created_at": "2026-10-14T09:00:00+00:00",
       "updated_at": "2026-10-14T09:10:00+00:00",
+      "scientific_review": "unreviewed",
+      "demo_running": false
+    },
+    "ready-failed": {
+      "id": "page-2",
+      "number": 2,
+      "parent_id": "page-1",
+      "template": "candidate_evidence",
+      "template_version": 1,
+      "title": "Follow-up investigation",
+      "question": "Show spectral-change intervals that overlap assay records.",
+      "status": "ready",
+      "revision": 3,
+      "summary": "The overlap calculation could not run.",
+      "progress": "Failed result ready for your workflow decision",
+      "evidence": [],
+      "outcome": "failed",
+      "errors": [
+        {
+          "error": "Assay depths are missing",
+          "code": "worker_failed",
+          "retryable": true
+        }
+      ],
+      "decision": null,
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null,
+        "actor": {
+          "kind": "agent",
+          "name": "example-agent"
+        },
+        "recorded_at": "2026-10-14T09:20:00+00:00"
+      },
+      "assessment": null,
+      "created_at": "2026-10-14T09:10:00+00:00",
+      "updated_at": "2026-10-14T09:20:00+00:00",
       "scientific_review": "unreviewed",
       "demo_running": false
     }
@@ -213,42 +250,8 @@
       "progress": "Locked",
       "evidence": [],
       "outcome": "complete",
+      "errors": [],
       "decision": null,
-      "continuation": null,
-      "action": null,
-      "assessment": null,
-      "created_at": "2026-10-14T09:00:00+00:00",
-      "updated_at": "2026-10-14T09:10:00+00:00",
-      "scientific_review": "unreviewed",
-      "demo_running": false
-    },
-    "locked-without-continuation": {
-      "id": "page-1",
-      "number": 1,
-      "parent_id": null,
-      "template": "investigation",
-      "template_version": 1,
-      "title": "An unfamiliar drill hole",
-      "question": "Show spectral-change intervals that overlap assay records.",
-      "status": "locked",
-      "revision": 7,
-      "summary": "Decision saved but no delivery was recorded.",
-      "progress": "Locked",
-      "evidence": [],
-      "outcome": "complete",
-      "decision": {
-        "id": "dec-1",
-        "page_id": "page-1",
-        "choice": "accept",
-        "note": "",
-        "request_id": "req-1",
-        "locked_revision": 7,
-        "successor_id": "page-2",
-        "evidence_ids": [],
-        "actor": { "kind": "human" },
-        "recorded_at": "2026-10-14T09:10:00+00:00"
-      },
-      "continuation": null,
       "action": null,
       "assessment": null,
       "created_at": "2026-10-14T09:00:00+00:00",
@@ -270,8 +273,8 @@
       "progress": "Ready",
       "evidence": [],
       "outcome": null,
+      "errors": [],
       "decision": null,
-      "continuation": null,
       "action": null,
       "assessment": null,
       "created_at": "2026-10-14T09:00:00+00:00",
@@ -293,8 +296,8 @@
       "progress": "Waiting",
       "evidence": [],
       "outcome": "complete",
+      "errors": [],
       "decision": null,
-      "continuation": null,
       "action": null,
       "assessment": null,
       "created_at": "2026-10-14T09:10:00+00:00",
@@ -316,8 +319,8 @@
       "progress": "Waiting",
       "evidence": [],
       "outcome": null,
+      "errors": [],
       "decision": null,
-      "continuation": null,
       "action": null,
       "assessment": null,
       "created_at": "2026-10-14T09:10:00+00:00",
@@ -339,8 +342,8 @@
       "progress": "Waiting",
       "evidence": [],
       "outcome": null,
+      "errors": [],
       "decision": null,
-      "continuation": null,
       "action": null,
       "assessment": null,
       "created_at": "2026-10-14T09:10:00+00:00",
@@ -362,8 +365,8 @@
       "progress": "Waiting",
       "evidence": [],
       "outcome": null,
+      "errors": [],
       "decision": null,
-      "continuation": null,
       "action": null,
       "assessment": null,
       "created_at": "2026-10-14T09:10:00+00:00",
@@ -371,6 +374,263 @@
       "scientific_review": "unreviewed",
       "demo_running": false,
       "model_confidence": 0.9
+    },
+    "complete-with-failed-evidence": {
+      "id": "page-1",
+      "number": 1,
+      "parent_id": null,
+      "template": "investigation",
+      "template_version": 1,
+      "title": "An unfamiliar drill hole",
+      "question": "Show spectral-change intervals that overlap assay records.",
+      "status": "ready",
+      "revision": 6,
+      "summary": "Quality check complete; the depth overlap has not been calculated yet.",
+      "progress": "Evidence ready for your workflow decision",
+      "evidence": [
+        {
+          "id": "synthetic-qa",
+          "label": "Quality check",
+          "value": "Synthetic depth coverage and linkage checks passed",
+          "source": "Built-in synthetic fixture v1",
+          "kind": "observation",
+          "origin": "synthetic",
+          "state": "failed"
+        }
+      ],
+      "outcome": "complete",
+      "errors": [],
+      "decision": null,
+      "action": {
+        "type": "qa_check",
+        "assessment_id": "assess-1",
+        "actor": {
+          "kind": "system",
+          "name": "synthetic runner"
+        },
+        "recorded_at": "2026-10-14T09:09:00+00:00"
+      },
+      "assessment": {
+        "contract_version": 1,
+        "id": "assess-1",
+        "page_id": "page-1",
+        "state_revision": 6,
+        "model_version": "fixture-v1",
+        "origin": "fixture",
+        "status": "available",
+        "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+        "suggestions": [
+          {
+            "candidate_id": "cand-overlap",
+            "rank": 1,
+            "rationale": "Fixture ordering for interface development; no model produced this.",
+            "evidence_ids": [
+              "synthetic-qa"
+            ]
+          },
+          {
+            "candidate_id": "cand-qa",
+            "rank": 2,
+            "rationale": "Fixture ordering for interface development; no model produced this.",
+            "evidence_ids": []
+          }
+        ],
+        "evidence_gaps": [
+          "Fixture does not assess gaps."
+        ],
+        "uncertainty": null,
+        "limitations": [
+          "Labelled fixture: no trained model was consulted.",
+          "A ranking never authorises an action."
+        ],
+        "created_at": "2026-10-14T09:00:00+00:00"
+      },
+      "created_at": "2026-10-14T09:00:00+00:00",
+      "updated_at": "2026-10-14T09:09:00+00:00",
+      "scientific_review": "unreviewed",
+      "demo_running": false
+    },
+    "complete-with-errors": {
+      "id": "page-1",
+      "number": 1,
+      "parent_id": null,
+      "template": "investigation",
+      "template_version": 1,
+      "title": "An unfamiliar drill hole",
+      "question": "Show spectral-change intervals that overlap assay records.",
+      "status": "ready",
+      "revision": 6,
+      "summary": "Quality check complete; the depth overlap has not been calculated yet.",
+      "progress": "Evidence ready for your workflow decision",
+      "evidence": [
+        {
+          "id": "synthetic-qa",
+          "label": "Quality check",
+          "value": "Synthetic depth coverage and linkage checks passed",
+          "source": "Built-in synthetic fixture v1",
+          "kind": "observation",
+          "origin": "synthetic",
+          "state": "complete"
+        }
+      ],
+      "outcome": "complete",
+      "errors": [
+        {
+          "error": "Assay depths are missing",
+          "code": "worker_failed",
+          "retryable": true
+        }
+      ],
+      "decision": null,
+      "action": {
+        "type": "qa_check",
+        "assessment_id": "assess-1",
+        "actor": {
+          "kind": "system",
+          "name": "synthetic runner"
+        },
+        "recorded_at": "2026-10-14T09:09:00+00:00"
+      },
+      "assessment": {
+        "contract_version": 1,
+        "id": "assess-1",
+        "page_id": "page-1",
+        "state_revision": 6,
+        "model_version": "fixture-v1",
+        "origin": "fixture",
+        "status": "available",
+        "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+        "suggestions": [
+          {
+            "candidate_id": "cand-overlap",
+            "rank": 1,
+            "rationale": "Fixture ordering for interface development; no model produced this.",
+            "evidence_ids": [
+              "synthetic-qa"
+            ]
+          },
+          {
+            "candidate_id": "cand-qa",
+            "rank": 2,
+            "rationale": "Fixture ordering for interface development; no model produced this.",
+            "evidence_ids": []
+          }
+        ],
+        "evidence_gaps": [
+          "Fixture does not assess gaps."
+        ],
+        "uncertainty": null,
+        "limitations": [
+          "Labelled fixture: no trained model was consulted.",
+          "A ranking never authorises an action."
+        ],
+        "created_at": "2026-10-14T09:00:00+00:00"
+      },
+      "created_at": "2026-10-14T09:00:00+00:00",
+      "updated_at": "2026-10-14T09:09:00+00:00",
+      "scientific_review": "unreviewed",
+      "demo_running": false
+    },
+    "failed-without-errors": {
+      "id": "page-2",
+      "number": 2,
+      "parent_id": "page-1",
+      "template": "candidate_evidence",
+      "template_version": 1,
+      "title": "Follow-up investigation",
+      "question": "Show spectral-change intervals that overlap assay records.",
+      "status": "ready",
+      "revision": 3,
+      "summary": "The overlap calculation could not run.",
+      "progress": "Failed result ready for your workflow decision",
+      "evidence": [],
+      "outcome": "failed",
+      "errors": [],
+      "decision": null,
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null,
+        "actor": {
+          "kind": "agent",
+          "name": "example-agent"
+        },
+        "recorded_at": "2026-10-14T09:20:00+00:00"
+      },
+      "assessment": null,
+      "created_at": "2026-10-14T09:10:00+00:00",
+      "updated_at": "2026-10-14T09:20:00+00:00",
+      "scientific_review": "unreviewed",
+      "demo_running": false
+    },
+    "partial-with-nothing-partial": {
+      "id": "page-2",
+      "number": 2,
+      "parent_id": "page-1",
+      "template": "candidate_evidence",
+      "template_version": 1,
+      "title": "Follow-up investigation",
+      "question": "Show spectral-change intervals that overlap assay records.",
+      "status": "ready",
+      "revision": 3,
+      "summary": "Two of three assay intervals were checked; the third has no depth record.",
+      "progress": "Partial evidence ready for your workflow decision",
+      "evidence": [
+        {
+          "id": "overlap-1",
+          "label": "Depth overlap",
+          "value": "Computed for 2 of 3 assay intervals",
+          "source": "Synthetic example, not a real result",
+          "kind": "calculation",
+          "origin": "synthetic",
+          "state": "complete"
+        }
+      ],
+      "outcome": "partial",
+      "errors": [],
+      "decision": null,
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null,
+        "actor": {
+          "kind": "agent",
+          "name": "example-agent"
+        },
+        "recorded_at": "2026-10-14T09:20:00+00:00"
+      },
+      "assessment": null,
+      "created_at": "2026-10-14T09:10:00+00:00",
+      "updated_at": "2026-10-14T09:20:00+00:00",
+      "scientific_review": "unreviewed",
+      "demo_running": false
+    },
+    "draft-with-errors": {
+      "id": "page-2",
+      "number": 2,
+      "parent_id": "page-1",
+      "template": "candidate_evidence",
+      "template_version": 1,
+      "title": "Follow-up investigation",
+      "question": "Show spectral-change intervals that overlap assay records.",
+      "status": "draft",
+      "revision": 0,
+      "summary": "Previous workflow choice: modify. Look at the assay interval first.",
+      "progress": "Waiting for a worker",
+      "evidence": [],
+      "outcome": null,
+      "errors": [
+        {
+          "error": "Assay depths are missing",
+          "code": "worker_failed",
+          "retryable": true
+        }
+      ],
+      "decision": null,
+      "action": null,
+      "assessment": null,
+      "created_at": "2026-10-14T09:10:00+00:00",
+      "updated_at": "2026-10-14T09:10:00+00:00",
+      "scientific_review": "unreviewed",
+      "demo_running": false
     }
   }
 }

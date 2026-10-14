@@ -9,12 +9,32 @@
       "error": "Delivery target is not reachable",
       "code": "delivery_failed",
       "retryable": true
+    },
+    "claim-expired": {
+      "error": "This claim expired and was handed to another worker",
+      "code": "claim_expired",
+      "retryable": false
     }
   },
   "invalid": {
-    "unknown-code": { "error": "Something broke", "code": "oops", "retryable": false },
-    "missing-retryable": { "error": "Something broke", "code": "unavailable" },
-    "empty-message": { "error": "", "code": "unavailable", "retryable": true },
-    "text-retryable": { "error": "Something broke", "code": "unavailable", "retryable": "yes" }
+    "unknown-code": {
+      "error": "Something broke",
+      "code": "oops",
+      "retryable": false
+    },
+    "missing-retryable": {
+      "error": "Something broke",
+      "code": "unavailable"
+    },
+    "empty-message": {
+      "error": "",
+      "code": "unavailable",
+      "retryable": true
+    },
+    "text-retryable": {
+      "error": "Something broke",
+      "code": "unavailable",
+      "retryable": "yes"
+    }
   }
 }

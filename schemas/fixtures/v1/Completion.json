@@ -5,7 +5,10 @@
       "request_id": "work-1",
       "page_id": "page-2",
       "expected_revision": 0,
-      "continuation_id": "cont-1",
+      "claim": {
+        "continuation_id": "cont-1",
+        "attempt": 1
+      },
       "outcome": "complete",
       "summary": "Overlap computed for the assay interval.",
       "evidence": [
@@ -20,15 +23,21 @@
         }
       ],
       "errors": [],
-      "action": { "type": "overlap_check", "assessment_id": null },
-      "worker": { "kind": "agent", "name": "example-agent" }
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent",
+        "name": "example-agent"
+      }
     },
     "partial-with-error": {
       "contract_version": 1,
       "request_id": "work-2",
       "page_id": "page-2",
       "expected_revision": 0,
-      "continuation_id": null,
+      "claim": null,
       "outcome": "partial",
       "summary": "Two of three intervals were checked.",
       "evidence": [
@@ -43,17 +52,29 @@
         }
       ],
       "errors": [
-        { "error": "Assay interval 3 has no depth record", "code": "worker_failed", "retryable": false }
+        {
+          "error": "Assay interval 3 has no depth record",
+          "code": "worker_failed",
+          "retryable": false
+        }
       ],
-      "action": { "type": "overlap_check", "assessment_id": "assess-1" },
-      "worker": { "kind": "system" }
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": "assess-1"
+      },
+      "worker": {
+        "kind": "system"
+      }
     },
     "partial-by-evidence-only": {
       "contract_version": 1,
       "request_id": "work-3",
       "page_id": "page-2",
       "expected_revision": 0,
-      "continuation_id": "cont-1",
+      "claim": {
+        "continuation_id": "cont-1",
+        "attempt": 1
+      },
       "outcome": "partial",
       "summary": "One result is incomplete.",
       "evidence": [
@@ -68,23 +89,40 @@
         }
       ],
       "errors": [],
-      "action": { "type": "overlap_check", "assessment_id": null },
-      "worker": { "kind": "agent" }
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent"
+      }
     },
     "failed": {
       "contract_version": 1,
       "request_id": "work-4",
       "page_id": "page-2",
       "expected_revision": 0,
-      "continuation_id": "cont-1",
+      "claim": {
+        "continuation_id": "cont-1",
+        "attempt": 1
+      },
       "outcome": "failed",
       "summary": "The overlap calculation could not run.",
       "evidence": [],
       "errors": [
-        { "error": "Assay depths are missing", "code": "worker_failed", "retryable": true }
+        {
+          "error": "Assay depths are missing",
+          "code": "worker_failed",
+          "retryable": true
+        }
       ],
-      "action": { "type": "overlap_check", "assessment_id": null },
-      "worker": { "kind": "agent" }
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent"
+      }
     }
   },
   "invalid": {
@@ -93,20 +131,25 @@
       "request_id": "work-4",
       "page_id": "page-2",
       "expected_revision": 0,
-      "continuation_id": null,
+      "claim": null,
       "outcome": "failed",
       "summary": "Nothing explains the failure.",
       "evidence": [],
       "errors": [],
-      "action": { "type": "overlap_check", "assessment_id": null },
-      "worker": { "kind": "agent" }
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent"
+      }
     },
     "complete-with-errors": {
       "contract_version": 1,
       "request_id": "work-1",
       "page_id": "page-2",
       "expected_revision": 0,
-      "continuation_id": null,
+      "claim": null,
       "outcome": "complete",
       "summary": "Claims completeness despite an error.",
       "evidence": [
@@ -120,29 +163,45 @@
           "state": "complete"
         }
       ],
-      "errors": [{ "error": "One interval skipped", "code": "worker_failed", "retryable": false }],
-      "action": { "type": "overlap_check", "assessment_id": null },
-      "worker": { "kind": "agent" }
+      "errors": [
+        {
+          "error": "One interval skipped",
+          "code": "worker_failed",
+          "retryable": false
+        }
+      ],
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent"
+      }
     },
     "complete-without-evidence": {
       "contract_version": 1,
       "request_id": "work-1",
       "page_id": "page-2",
       "expected_revision": 0,
-      "continuation_id": null,
+      "claim": null,
       "outcome": "complete",
       "summary": "Claims completeness with nothing to show.",
       "evidence": [],
       "errors": [],
-      "action": { "type": "overlap_check", "assessment_id": null },
-      "worker": { "kind": "agent" }
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent"
+      }
     },
     "partial-with-nothing-partial": {
       "contract_version": 1,
       "request_id": "work-3",
       "page_id": "page-2",
       "expected_revision": 0,
-      "continuation_id": null,
+      "claim": null,
       "outcome": "partial",
       "summary": "Says partial but reports no gap.",
       "evidence": [
@@ -157,46 +216,210 @@
         }
       ],
       "errors": [],
-      "action": { "type": "overlap_check", "assessment_id": null },
-      "worker": { "kind": "agent" }
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent"
+      }
     },
     "human-worker": {
       "contract_version": 1,
       "request_id": "work-1",
       "page_id": "page-2",
       "expected_revision": 0,
-      "continuation_id": null,
+      "claim": null,
       "outcome": "failed",
       "summary": "A tool write cannot claim to be a person.",
       "evidence": [],
-      "errors": [{ "error": "Skipped", "code": "worker_failed", "retryable": false }],
-      "action": { "type": "overlap_check", "assessment_id": null },
-      "worker": { "kind": "human" }
+      "errors": [
+        {
+          "error": "Skipped",
+          "code": "worker_failed",
+          "retryable": false
+        }
+      ],
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "human"
+      }
     },
     "missing-expected-revision": {
       "contract_version": 1,
       "request_id": "work-1",
       "page_id": "page-2",
-      "continuation_id": null,
       "outcome": "failed",
       "summary": "Cannot be checked for staleness.",
       "evidence": [],
-      "errors": [{ "error": "Skipped", "code": "worker_failed", "retryable": false }],
-      "action": { "type": "overlap_check", "assessment_id": null },
-      "worker": { "kind": "agent" }
+      "errors": [
+        {
+          "error": "Skipped",
+          "code": "worker_failed",
+          "retryable": false
+        }
+      ],
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent"
+      }
     },
     "unregistered-action-type": {
       "contract_version": 1,
       "request_id": "work-1",
       "page_id": "page-2",
       "expected_revision": 0,
-      "continuation_id": null,
+      "claim": null,
       "outcome": "failed",
       "summary": "Action names are tokens.",
       "evidence": [],
-      "errors": [{ "error": "Skipped", "code": "worker_failed", "retryable": false }],
-      "action": { "type": "Run Anything", "assessment_id": null },
-      "worker": { "kind": "agent" }
+      "errors": [
+        {
+          "error": "Skipped",
+          "code": "worker_failed",
+          "retryable": false
+        }
+      ],
+      "action": {
+        "type": "Run Anything",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent"
+      }
+    },
+    "complete-with-failed-evidence": {
+      "contract_version": 1,
+      "request_id": "work-1",
+      "page_id": "page-2",
+      "expected_revision": 0,
+      "claim": {
+        "continuation_id": "cont-1",
+        "attempt": 1
+      },
+      "outcome": "complete",
+      "summary": "Overlap computed for the assay interval.",
+      "evidence": [
+        {
+          "id": "overlap-1",
+          "label": "Depth overlap",
+          "value": "3 m / 6 m = 50% candidate coverage",
+          "source": "Synthetic example, not a real result",
+          "kind": "calculation",
+          "origin": "synthetic",
+          "state": "failed"
+        }
+      ],
+      "errors": [],
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent",
+        "name": "example-agent"
+      }
+    },
+    "complete-with-partial-evidence": {
+      "contract_version": 1,
+      "request_id": "work-1",
+      "page_id": "page-2",
+      "expected_revision": 0,
+      "claim": {
+        "continuation_id": "cont-1",
+        "attempt": 1
+      },
+      "outcome": "complete",
+      "summary": "Overlap computed for the assay interval.",
+      "evidence": [
+        {
+          "id": "overlap-1",
+          "label": "Depth overlap",
+          "value": "3 m / 6 m = 50% candidate coverage",
+          "source": "Synthetic example, not a real result",
+          "kind": "calculation",
+          "origin": "synthetic",
+          "state": "partial"
+        }
+      ],
+      "errors": [],
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent",
+        "name": "example-agent"
+      }
+    },
+    "claim-without-attempt": {
+      "contract_version": 1,
+      "request_id": "work-1",
+      "page_id": "page-2",
+      "expected_revision": 0,
+      "claim": {
+        "continuation_id": "cont-1"
+      },
+      "outcome": "complete",
+      "summary": "Overlap computed for the assay interval.",
+      "evidence": [
+        {
+          "id": "overlap-1",
+          "label": "Depth overlap",
+          "value": "3 m / 6 m = 50% candidate coverage",
+          "source": "Synthetic example, not a real result",
+          "kind": "calculation",
+          "origin": "synthetic",
+          "state": "complete"
+        }
+      ],
+      "errors": [],
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent",
+        "name": "example-agent"
+      }
+    },
+    "claim-attempt-zero": {
+      "contract_version": 1,
+      "request_id": "work-1",
+      "page_id": "page-2",
+      "expected_revision": 0,
+      "claim": {
+        "continuation_id": "cont-1",
+        "attempt": 0
+      },
+      "outcome": "complete",
+      "summary": "Overlap computed for the assay interval.",
+      "evidence": [
+        {
+          "id": "overlap-1",
+          "label": "Depth overlap",
+          "value": "3 m / 6 m = 50% candidate coverage",
+          "source": "Synthetic example, not a real result",
+          "kind": "calculation",
+          "origin": "synthetic",
+          "state": "complete"
+        }
+      ],
+      "errors": [],
+      "action": {
+        "type": "overlap_check",
+        "assessment_id": null
+      },
+      "worker": {
+        "kind": "agent",
+        "name": "example-agent"
+      }
     }
   }
 }
