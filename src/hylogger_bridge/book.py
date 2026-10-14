@@ -247,7 +247,8 @@ class BookStore:
             ack.finish_runner(connection, run, when)
             state.save(connection, book, "page_ready", page_id, "Synthetic evidence ready")
             state.seal(connection)
-        self._runs.pop(page_id, None)
+        if self._runs.get(page_id) == run:
+            del self._runs[page_id]
 
     def decide(
         self, page_id: str, expected_revision: int, choice: str, note: str, request_id: str
@@ -323,12 +324,12 @@ class BookStore:
         chosen = advice_ops.default_candidates() if candidates is None else candidates
         asked = at or moment()
         with transaction(self.path, self.changed) as connection:
-            request = advice_ops.prepare(
+            request, token = advice_ops.prepare(
                 connection, page_id, expected_revision, chosen, instruction
             )
         advice = self.provider.assess(request, stamp(asked))
         with transaction(self.path, self.changed) as connection:
-            advice_ops.record(connection, request, advice)
+            advice_ops.record(connection, request, advice, token)
             state.seal(connection)
             return state.snapshot(connection)
 

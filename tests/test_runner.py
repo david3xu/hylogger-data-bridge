@@ -124,6 +124,20 @@ class SlowProvider:
         return FixtureProvider().assess(request, at)
 
 
+class GatedProvider:
+    """Blocks each ask, named by its instruction, until the test releases it."""
+
+    def __init__(self, *names: str) -> None:
+        self.started = {name: threading.Event() for name in names}
+        self.release = {name: threading.Event() for name in names}
+
+    def assess(self, request: dict[str, Any], at: str) -> dict[str, Any]:
+        name = request["instruction"]
+        self.started[name].set()
+        self.release[name].wait(10)
+        return FixtureProvider().assess(request, at)
+
+
 class RogueProvider:
     def assess(self, request: dict[str, Any], at: str) -> dict[str, Any]:
         advice = FixtureProvider().assess(request, at)
@@ -200,6 +214,56 @@ class AssessTests(BookCase):
         with self.assertRaises(ValueError):
             store.request_assessment(page["id"], page["revision"], at=at(0))
         self.assertEqual(store.snapshot(), before)
+
+    def newer_ask_survives(self, first: dict[str, Any], second: dict[str, Any]) -> None:
+        """Hold the older ask in inference, finish the newer one, then release the older."""
+        gate = GatedProvider("old task", "new task")
+        store = BookStore(self.path, provider=gate)
+        page = working(store.snapshot())
+        outcome: list[BaseException] = []
+
+        def ask_old() -> None:
+            try:
+                store.request_assessment(page["id"], page["revision"], **first)
+            except BaseException as error:
+                outcome.append(error)
+
+        thread = threading.Thread(target=ask_old)
+        thread.start()
+        self.assertTrue(gate.started["old task"].wait(10))
+        gate.release["new task"].set()
+        newest = working(store.request_assessment(page["id"], page["revision"], **second))
+        gate.release["old task"].set()
+        thread.join(10)
+        self.assertFalse(thread.is_alive())
+        (error,) = outcome
+        assert isinstance(error, BookConflict)
+        self.assertEqual(error.code, "stale_revision")
+        kept = working(store.snapshot())
+        self.assertEqual(kept["assessment"], newest["assessment"])
+        self.assertEqual(kept["revision"], page["revision"])
+        check_book(store.snapshot())
+
+    def test_an_older_instruction_cannot_replace_newer_advice(self) -> None:
+        self.newer_ask_survives({"instruction": "old task"}, {"instruction": "new task"})
+
+    def test_older_candidates_cannot_replace_newer_advice(self) -> None:
+        def only(name: str) -> list[dict[str, Any]]:
+            return [{"id": f"cand-{name}", "action_type": name, "arguments": {}}]
+
+        self.newer_ask_survives(
+            {"instruction": "old task", "candidates": only("qa_check")},
+            {"instruction": "new task", "candidates": only("stop")},
+        )
+
+    def test_sequential_asks_each_replace_the_last(self) -> None:
+        page = working(self.store.snapshot())
+        first = self.store.request_assessment(page["id"], page["revision"], instruction="one")
+        second = self.store.request_assessment(page["id"], page["revision"], instruction="two")
+        before = working(first)["assessment"]["id"]
+        after = working(second)["assessment"]["id"]
+        self.assertNotEqual(before, after)
+        self.assertEqual(working(self.store.snapshot()), working(second))
 
     def test_inference_runs_outside_the_database_lock(self) -> None:
         slow = SlowProvider()

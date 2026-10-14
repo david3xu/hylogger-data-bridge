@@ -63,4 +63,7 @@ def create(connection: sqlite3.Connection) -> None:
         "CREATE TABLE IF NOT EXISTS runners ("
         "page_id TEXT PRIMARY KEY, token TEXT NOT NULL, continuation_id TEXT, attempt INTEGER)"
     )
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS asks (page_id TEXT PRIMARY KEY, token TEXT NOT NULL)"
+    )
     connection.execute(f"PRAGMA user_version = {VERSION}")

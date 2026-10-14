@@ -7,16 +7,30 @@ import sys
 import tempfile
 import threading
 import unittest
+from collections.abc import Callable
 from http.client import HTTPConnection
 from pathlib import Path
 from typing import Any
 
-from support import SRC, BookCase, at, claim_of, completion, decided, ready, working
+from support import (
+    SRC,
+    BookCase,
+    Counting,
+    at,
+    claim_of,
+    completion,
+    count,
+    decided,
+    page_of,
+    ready,
+    working,
+)
 
 from hylogger_bridge.book import BookStore
 from hylogger_bridge.book_server import BookServer
 from hylogger_bridge.contracts.book import check_book
 from hylogger_bridge.contracts.check import validate
+from hylogger_bridge.events.runner import RUNNER
 from hylogger_bridge.mcp.server import call, handle, serve
 from hylogger_bridge.mcp.tools import TOOLS
 from hylogger_bridge.walkthrough import LABEL, run
@@ -106,6 +120,53 @@ class HttpWorkTests(HttpWorkCase):
         status, snapshot = self.post(url, {**body, "claim": claim_of(handoff)})
         self.assertEqual(status, 200)
         check_book(snapshot)
+
+    def test_a_delayed_demo_callback_cannot_adopt_a_replacement_run(self) -> None:
+        _, successor = decided(self.store)
+        held: list[Callable[[], None]] = []
+        self.server.launch = held.append
+        self.server.demo_delay = 0
+        start = {"page_id": successor["id"], "expected_revision": successor["revision"]}
+        self.assertEqual(self.post("/api/demo/start", start)[0], 202)
+        self.store.recover_interrupted()
+        page = working(self.store.snapshot())
+        again = {"page_id": page["id"], "expected_revision": page["revision"]}
+        self.assertEqual(self.post("/api/demo/start", again)[0], 202)
+        old, new = held
+        step = self.step()
+        self.assertEqual((step["attempts"], step["claimed_by"]), (2, RUNNER))
+        before = (self.store.snapshot(), self.store.attempts(step["id"]))
+        old()
+        self.assertEqual((self.store.snapshot(), self.store.attempts(step["id"])), before)
+        new()
+        done = self.store.snapshot()
+        check_book(done)
+        self.assertEqual(page_of(done, successor["id"])["status"], "ready")
+        self.assertEqual(self.step()["state"], "completed")
+        ended = [row["ended"] for row in self.store.attempts(step["id"])]
+        self.assertEqual(ended, ["interrupted", "completed"])
+
+    def test_malformed_candidates_are_invalid_requests_over_http(self) -> None:
+        counter = Counting()
+        self.store.provider = counter
+        page = working(self.store.snapshot())
+        before = self.store.snapshot()
+        unregistered = {"id": "c", "action_type": "nope_action", "arguments": {}}
+        bad: list[Any] = [[None], ["x"], [[]], [5], [{}], [unregistered], "x", {}]
+        for candidates in bad:
+            with self.subTest(candidates=repr(candidates)):
+                body = {
+                    "page_id": page["id"],
+                    "expected_revision": page["revision"],
+                    "candidates": candidates,
+                }
+                status, error = self.post("/api/work/request_assessment", body)
+                self.assertEqual(status, 400)
+                validate("Error", error)
+                self.assertEqual(error["code"], "invalid_request")
+        self.assertEqual(counter.calls, 0)
+        self.assertEqual(self.store.snapshot(), before)
+        self.assertEqual(count(self.path, "asks"), 0)
 
     def test_no_operation_records_a_human_decision(self) -> None:
         self.assertFalse([name for name in OPERATIONS if "decid" in name or "decision" in name])
@@ -197,6 +258,28 @@ class McpTests(BookCase):
         self.assertEqual(working(done)["status"], "ready")
         failed, again = self.tool("claim_delivery", {"worker": "mcp-worker"})
         self.assertEqual((failed, again["handoff"]), (False, None))
+
+    def test_malformed_candidates_are_tool_errors_without_inference(self) -> None:
+        counter = Counting()
+        self.store.provider = counter
+        page = working(self.store.snapshot())
+        before = self.store.snapshot()
+        unregistered = {"id": "c", "action_type": "nope_action", "arguments": {}}
+        bad: list[Any] = [[None], ["x"], [[]], [5], [{}], [unregistered], "x", {}]
+        for candidates in bad:
+            with self.subTest(candidates=repr(candidates)):
+                arguments = {
+                    "page_id": page["id"],
+                    "expected_revision": page["revision"],
+                    "candidates": candidates,
+                }
+                failed, error = self.tool("request_assessment", arguments)
+                self.assertTrue(failed)
+                validate("Error", error)
+                self.assertEqual(error["code"], "invalid_request")
+        self.assertEqual(counter.calls, 0)
+        self.assertEqual(self.store.snapshot(), before)
+        self.assertEqual(count(self.path, "asks"), 0)
 
     def test_a_refused_tool_call_is_a_result_not_a_crash(self) -> None:
         decided(self.store)

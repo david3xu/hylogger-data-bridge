@@ -1,10 +1,12 @@
 # Purpose: shared helpers for the delivery tests: a scratch book, a ready page, fixed times.
+import sqlite3
 import tempfile
 import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from hylogger_bridge.advice.provider import FixtureProvider
 from hylogger_bridge.book import BookStore
 
 T0 = datetime(2026, 10, 15, 9, 0, tzinfo=UTC)
@@ -76,6 +78,22 @@ def completion(
         "worker": {"kind": "agent", "name": "test-worker"},
     }
     return {**base, **changes}
+
+
+def count(path: Path, table: str) -> int:
+    with sqlite3.connect(path) as connection:
+        return int(connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
+
+
+class Counting:
+    """A provider that counts calls, to prove a refused request never reaches inference."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def assess(self, request: dict[str, Any], at: str) -> dict[str, Any]:
+        self.calls += 1
+        return FixtureProvider().assess(request, at)
 
 
 class BookCase(unittest.TestCase):
