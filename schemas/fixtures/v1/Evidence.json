@@ -1,0 +1,95 @@
+{
+  "valid": {
+    "complete-observation": {
+      "id": "synthetic-qa",
+      "label": "Quality check",
+      "value": "Synthetic depth coverage and linkage checks passed",
+      "source": "Built-in synthetic fixture v1",
+      "kind": "observation",
+      "origin": "synthetic",
+      "state": "complete"
+    },
+    "partial-calculation": {
+      "id": "synthetic-overlap",
+      "label": "Depth overlap",
+      "value": "Computed for 2 of 3 assay intervals; the third has no depth record",
+      "source": "Synthetic example, not a real result",
+      "kind": "calculation",
+      "origin": "synthetic",
+      "state": "partial"
+    },
+    "failed-calculation": {
+      "id": "synthetic-overlap",
+      "label": "Depth overlap",
+      "value": "Calculation failed: assay depths are missing",
+      "source": "Synthetic example, not a real result",
+      "kind": "calculation",
+      "origin": "synthetic",
+      "state": "failed"
+    },
+    "legacy-unspecified": {
+      "id": "legacy-1",
+      "label": "Earlier note",
+      "value": "Written before provenance was recorded",
+      "source": "Earlier book",
+      "kind": "observation",
+      "origin": "unspecified",
+      "state": "complete"
+    }
+  },
+  "invalid": {
+    "unknown-kind": {
+      "id": "e1",
+      "label": "Result",
+      "value": "x",
+      "source": "s",
+      "kind": "measurement",
+      "origin": "synthetic",
+      "state": "complete"
+    },
+    "empty-value": {
+      "id": "e1",
+      "label": "Result",
+      "value": "",
+      "source": "s",
+      "kind": "observation",
+      "origin": "synthetic",
+      "state": "complete"
+    },
+    "missing-origin": {
+      "id": "e1",
+      "label": "Result",
+      "value": "x",
+      "source": "s",
+      "kind": "observation",
+      "state": "complete"
+    },
+    "missing-state": {
+      "id": "e1",
+      "label": "Result",
+      "value": "x",
+      "source": "s",
+      "kind": "observation",
+      "origin": "synthetic"
+    },
+    "id-with-space": {
+      "id": "bad id",
+      "label": "Result",
+      "value": "x",
+      "source": "s",
+      "kind": "observation",
+      "origin": "synthetic",
+      "state": "complete"
+    },
+    "unknown-field": {
+      "id": "e1",
+      "label": "Result",
+      "value": "x",
+      "source": "s",
+      "kind": "observation",
+      "origin": "synthetic",
+      "state": "complete",
+      "confidence": 0.9
+    }
+  }
+}

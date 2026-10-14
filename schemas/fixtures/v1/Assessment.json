@@ -1,0 +1,141 @@
+{
+  "valid": {
+    "fixture-available": {
+      "contract_version": 1,
+      "id": "assess-1",
+      "page_id": "page-1",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "available",
+      "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+      "suggestions": [
+        {
+          "candidate_id": "cand-overlap",
+          "rank": 1,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": ["synthetic-qa"]
+        },
+        {
+          "candidate_id": "cand-qa",
+          "rank": 2,
+          "rationale": "Fixture ordering for interface development; no model produced this.",
+          "evidence_ids": []
+        }
+      ],
+      "evidence_gaps": ["Fixture does not assess gaps."],
+      "uncertainty": null,
+      "limitations": [
+        "Labelled fixture: no trained model was consulted.",
+        "A ranking never authorises an action."
+      ],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    },
+    "unavailable": {
+      "contract_version": 1,
+      "id": "assess-2",
+      "page_id": "page-1",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "unavailable",
+      "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+      "suggestions": [],
+      "evidence_gaps": [],
+      "uncertainty": null,
+      "limitations": ["No local model is installed; manual or deterministic work remains possible."],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    }
+  },
+  "invalid": {
+    "no-limitations": {
+      "contract_version": 1,
+      "id": "assess-1",
+      "page_id": "page-1",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "available",
+      "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+      "suggestions": [],
+      "evidence_gaps": [],
+      "uncertainty": null,
+      "limitations": [],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    },
+    "unavailable-with-suggestions": {
+      "contract_version": 1,
+      "id": "assess-2",
+      "page_id": "page-1",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "unavailable",
+      "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+      "suggestions": [
+        {
+          "candidate_id": "cand-qa",
+          "rank": 1,
+          "rationale": "Should not exist while unavailable.",
+          "evidence_ids": []
+        }
+      ],
+      "evidence_gaps": [],
+      "uncertainty": null,
+      "limitations": ["No local model is installed."],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    },
+    "missing-origin": {
+      "contract_version": 1,
+      "id": "assess-1",
+      "page_id": "page-1",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "status": "available",
+      "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+      "suggestions": [],
+      "evidence_gaps": [],
+      "uncertainty": null,
+      "limitations": ["Origin must always be stated."],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    },
+    "invented-score": {
+      "contract_version": 1,
+      "id": "assess-1",
+      "page_id": "page-1",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "available",
+      "request_hash": "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e",
+      "suggestions": [
+        {
+          "candidate_id": "cand-qa",
+          "rank": 1,
+          "rationale": "Scores are not part of v1.",
+          "evidence_ids": [],
+          "score": 0.93
+        }
+      ],
+      "evidence_gaps": [],
+      "uncertainty": null,
+      "limitations": ["Scores are not geological confidence."],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    },
+    "short-hash": {
+      "contract_version": 1,
+      "id": "assess-1",
+      "page_id": "page-1",
+      "state_revision": 6,
+      "model_version": "fixture-v1",
+      "origin": "fixture",
+      "status": "available",
+      "request_hash": "77b633",
+      "suggestions": [],
+      "evidence_gaps": [],
+      "uncertainty": null,
+      "limitations": ["The hash names the exact request."],
+      "created_at": "2026-10-14T09:00:00+00:00"
+    }
+  }
+}

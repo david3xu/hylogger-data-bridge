@@ -1,0 +1,20 @@
+{
+  "valid": {
+    "stale": {
+      "error": "Page changed or is locked; refresh before continuing",
+      "code": "stale_revision",
+      "retryable": false
+    },
+    "unavailable": {
+      "error": "Delivery target is not reachable",
+      "code": "delivery_failed",
+      "retryable": true
+    }
+  },
+  "invalid": {
+    "unknown-code": { "error": "Something broke", "code": "oops", "retryable": false },
+    "missing-retryable": { "error": "Something broke", "code": "unavailable" },
+    "empty-message": { "error": "", "code": "unavailable", "retryable": true },
+    "text-retryable": { "error": "Something broke", "code": "unavailable", "retryable": "yes" }
+  }
+}
