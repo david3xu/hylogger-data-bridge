@@ -24,7 +24,7 @@ def main() -> None:
             sys.executable,
             "-m",
             "training.check",
-            "/content/model-run/merged",
+            "/content/model-run/model",
             "--output",
             "/content/model-run/reload.json",
         ],

@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from hylogger_bridge.advice.assets import REQUIRED, verify, write
+from hylogger_bridge.advice.assets import REQUIRED, adapter_view, verify, write
 from hylogger_bridge.advice.encode import encode
 from hylogger_bridge.advice.provider import ModelProvider
 from hylogger_bridge.contracts.assess import check_advice
@@ -114,11 +114,12 @@ def test_unresolved_labels_are_refused(tmp_path: Path) -> None:
 
 def test_checkpoint_tampering_is_detected(tmp_path: Path) -> None:
     # Fake bytes test manifest integrity only; no model loading or inference is claimed.
-    for name in REQUIRED | {"model.safetensors"}:
+    for name in REQUIRED | {"base/model.safetensors"}:
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / name).write_bytes(b"synthetic manifest test")
     write(tmp_path, {"data_origin": "synthetic"})
     verify(tmp_path)
-    (tmp_path / "joint_head.safetensors").write_bytes(b"changed")
+    (tmp_path / "adapter/joint_head.safetensors").write_bytes(b"changed")
     with pytest.raises(ValueError, match="hashes"):
         verify(tmp_path)
 
@@ -130,3 +131,18 @@ def test_real_origin_cannot_be_claimed_without_source_provenance(tmp_path: Path)
     path.write_text("".join(json.dumps(row) + "\n" for row in rows))
     with pytest.raises(ValueError, match="provenance"):
         load(path)
+
+
+def test_adapter_base_resolution_survives_relocation_without_mutation(tmp_path: Path) -> None:
+    bundle = tmp_path / "original"
+    (bundle / "base").mkdir(parents=True)
+    (bundle / "adapter").mkdir()
+    for name in ("adapter_config.json", "unsloth_decision_config.json"):
+        (bundle / "adapter" / name).write_text('{"base_model":"remote/original"}')
+    original = (bundle / "adapter/unsloth_decision_config.json").read_bytes()
+    bundle = bundle.rename(tmp_path / "relocated")
+    with adapter_view(bundle) as view:
+        saved = json.loads((view / "unsloth_decision_config.json").read_text())
+        assert saved["base_model"] == str((bundle / "base").resolve())
+    assert (bundle / "adapter/unsloth_decision_config.json").read_bytes() == original
+    assert not view.exists()

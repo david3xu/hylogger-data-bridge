@@ -18,7 +18,7 @@ The [training record](developer/docs/training.md) captures the proposed data-to-
 
 The [pytsg integration boundary](developer/docs/design.md#tsg-ingestion-with-pytsg) places TSG reading behind a validated scientific adapter shared by offline preparation and live tools. [S1](developer/docs/tasks.md#s1--inspect-and-adapt-one-tsg-package) records the first real-package inspection/comparison task; it remains unassigned and does not expand the current application briefs.
 
-Current code provides a synthetic logistic classifier, a staged synthetic book, SQLite history, HTTP evidence writes and SSE updates. No real scientific adapter, MCP adapter, automatic human-to-chat bridge or one-command product installer exists on this branch. The model experiment adds a local assessment adapter; successful training and local reload require their own recorded evidence. Do not imply that a localhost browser event invokes a model or proves ChatGPT compatibility.
+Current code provides a synthetic logistic classifier, a staged synthetic book, SQLite history, HTTP evidence writes and SSE updates. No real scientific adapter, MCP adapter, automatic human-to-chat bridge or one-command product installer exists on this branch. The model experiment adds a local assessment adapter; the successful local synthetic training/reload evidence is recorded below. Do not imply that a localhost browser event invokes a model or proves ChatGPT compatibility.
 
 Keep one responsibility at directory, module, component and function level. Use short informative names; add modules only for implemented behaviour. Preserve current books, CLI behaviour and import compatibility through bounded migrations. Shared schema changes need coordinated review; separate branches require separate worktrees/clones.
 
@@ -35,7 +35,7 @@ uv build --offline --out-dir outputs/dist
 
 In a restricted workspace, set `UV_CACHE_DIR=cache/uv`. See [README](README.md) for training and demo launch commands. For UI development run the Python service, then `npm --prefix app run dev`; Vite proxies `/api`. Only one service may own a book database. Use `--db outputs/live-book/another.sqlite3 --port 8767` for another case.
 
-Verified locally on this branch on 2026-10-15: formatting/lint, strict mypy for runtime and developer training code, 87 Python tests, documentation links, 12 frontend tests, TypeScript and production build passed. The installed-wheel probe loads the schema and advisory provider outside the checkout without training libraries. Heavy Qwen training/reload is separate evidence maintained in the training guide; unit tests do not establish it. Hosted CI is reported by actual GitHub runs, separately from these local checks.
+Verified locally on this branch on 2026-10-15: formatting/lint, strict mypy for runtime and developer training code, 88 Python tests, documentation links, 12 frontend tests, TypeScript and production build passed. The installed-wheel probe loads the schema and advisory provider outside the checkout without training libraries. Heavy Qwen training/reload is separate evidence below; unit tests do not establish it. Hosted CI is reported by actual GitHub runs, separately from these local checks.
 
 The actual Codex browser demo previously verified live evidence, locked history, a labelled automated test decision, worker HTTP evidence, and reload persistence. These are synthetic transport/lifecycle checks, not expert approval or automatic chat continuation.
 
@@ -48,3 +48,11 @@ Never commit raw HyLogger data, imagery, private briefs, credentials, books, cac
 Repository publication is authorised. Package/plugin publication, hackathon submission, licence selection, paid/cloud services and shared-service changes require their own owner decisions. Do not modify Datacore, Odin or SignalData. None is a runtime dependency. Do not contact other chats under a task brief alone.
 
 No Datacore tools were exposed in this session; no successful startup query or log write is claimed. Optional repository hooks are supplied but not enabled automatically. A workflow file alone does not configure branch protection.
+
+## Local Qwen demonstration evidence
+
+On 2026-10-15, the actual M1 Max run trained Qwen3.5-4B LoRA adapters plus a decision head for 64 steps on 40 synthetic teaching records, with 10 validation and 10 test records. Training took 92.8 seconds; the full preparation/training/export run took 126.4 seconds. Peak accelerator allocation was 25.8 GiB on the 64 GB machine. Both adapter and head parameter fingerprints changed. Model version: `qwen35-4b-21a115245b4d`.
+
+The trained model answered 10/10 synthetic test cases correctly; the untrained validation result was 4/10. These are different source-group partitions with repeated teaching patterns, not evidence of improvement on independent geology or superiority to the deterministic teaching rules. No real HyLogger records or expert action labels were used.
+
+Strict offline reload compared all 10 stored reference requests and valid assessments, with maximum probability drift 0.0003. The quantized merged export failed that comparison and is not promoted; the working artifact bundles the exact base, adapters and head. Usage, source revisions and the failed-export rationale are in [training](developer/docs/training.md#verified-local-demonstration). Generated weights, manifests and run reports are ignored and not published.

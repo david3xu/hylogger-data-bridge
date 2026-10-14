@@ -1,7 +1,7 @@
 # Local model training
 
 Updated: 2026-10-15
-Status: owner selected Qwen3.5-4B and authorised the initial fine-tuning feasibility implementation on 2026-10-15. Real HyLogger preparation remains a separate slice; no successful model training or local inference is claimed yet.
+Status: owner selected Qwen3.5-4B and authorised the initial fine-tuning feasibility implementation on 2026-10-15. Real HyLogger preparation remains a separate slice; the local synthetic demonstration has completed training and strict offline reload. Real organiser-data validation remains outstanding.
 
 ## Purpose and authority
 
@@ -110,7 +110,7 @@ Reviewed on 2026-10-15: Unsloth's [Qwen3.5-4B decision notebook](https://github.
 
 The notebook demonstrates the selected 4B configuration. Do not silently substitute the previously discussed 2B checkpoint. Record and pin the reviewed notebook/code revision and dependencies before any authorised experiment. Do not assume the notebook's generic row holdout supplies independent drill-hole evaluation; partition source groups before conversion and training.
 
-Before substantial training, prove a small training/save/reload cycle and local inference on the target laptop. Preserve the base-model revision, tokenizer/input preparation, adapters, decision head, action mapping and any calibration. Downloading adapters alone does not demonstrate a complete runnable model. A CUDA/4-bit training configuration does not establish a supported Mac inference path. Compare local outputs with the training implementation and measure actual memory and latency. Stop the feasibility experiment for architecture review if the custom head cannot be loaded locally.
+Before substantial real-data training, prove a small training/save/reload cycle and local inference on the target laptop. Preserve the base-model revision, tokenizer/input preparation, adapters, decision head, action mapping and any calibration. Downloading adapters alone does not demonstrate a complete runnable model. A CUDA/4-bit training configuration does not establish a supported Mac inference path. Compare local outputs with the training implementation and measure actual memory and latency. Stop the feasibility experiment for architecture review if the custom head cannot be loaded locally.
 
 ### Colab training infrastructure candidate
 
@@ -172,7 +172,7 @@ Evaluate complete investigations on states produced by actual chosen actions, no
 
 ## 6. Export and participate in chat
 
-Package trained weights, tokenizer, numerical preprocessing, schema/action versions, hashes and a model card with actual inference dependencies. Keep training dependencies separate. End users install a trained artifact; they do not retrain during setup or each interaction. Verify installed local inference without network access and compare exported outputs against the training implementation.
+Package trained weights, tokenizer, numerical preprocessing, schema/action versions, hashes and a model card with actual inference dependencies. The measured Mac artifact keeps the exact pinned base and trained adapters/head together; it does not use the failed quantized merged export. Keep training dependencies separate. End users install a trained artifact; they do not retrain during setup or each interaction. Verify installed local inference without network access and compare exported outputs against the training implementation.
 
 ```text
 Question / relevant tool result / committed human note
@@ -185,9 +185,9 @@ Question / relevant tool result / committed human note
 
 Consult at meaningful investigation checkpoints. Read-only navigation, keystrokes and heartbeats never trigger inference. Advice may be declined without bypassing authorisation or scientific prerequisites. Refresh or label stale assessments; expose unavailable inference honestly.
 
-## Next bounded step
+## Next real-data step
 
-For a quick demo, keep one bounded question family and only implemented scientific actions. Select and inspect actual packages, then review a small batch of grounded training records and their labels. For the selected Qwen3.5-4B experiment, prove save/reload and target-laptop inference early, fine-tune on the reviewed records and compare against the exact teaching rules on held-out source groups. One-hole results demonstrate mechanics, not unseen-hole generalisation. Do not promise a useful model merely from generating hundreds or thousands of rule-labelled states.
+The synthetic local training and portability demonstration is complete. For the next real-data experiment, keep one bounded question family and only implemented scientific actions. Select and inspect actual packages, then review a small batch of grounded training records and their labels. Fine-tune Qwen3.5-4B on those reviewed records and compare against the exact teaching rules on held-out source groups. One-hole results demonstrate mechanics, not unseen-hole generalisation. Do not promise a useful model merely from generating hundreds or thousands of rule-labelled states.
 
 Decide who implements the required scientific calculations before assigning training code. Frontend/backend work continues against the assessment interface. The model recommends follow-ups; the agent/human chooses and the backend independently validates execution. Implementation is now authorised for the bounded model portability experiment. This document records intent and actual checks; it does not establish that a training run or deployment succeeded.
 
@@ -199,23 +199,43 @@ Model work is isolated on `codex/model-feasibility`, based on the reviewed contr
 | --- | --- |
 | `training/records.py` | Validate label provenance and independent source-group partitions; convert records |
 | `training/smoke.py` | Generate explicitly synthetic portability records outside Git |
-| `training/fit.py` | Train adapters/head, evaluate and export a complete merged checkpoint |
+| `training/fit.py` | Train adapters/head, evaluate and export a complete base/adapter checkpoint |
 | `training/check.py` | Reload offline and compare saved predictions |
 | `src/hylogger_bridge/advice/encode.py` | Shared bounded input encoding |
 | `src/hylogger_bridge/advice/provider.py` | Validate actual option predictions and return assessment metadata |
 | `src/hylogger_bridge/advice/assets.py` | Manifest and checkpoint integrity |
 | `src/hylogger_bridge/advice/local.py` | Local model loading behind the provider interface |
+| `src/hylogger_bridge/advice/precision.py` | Safe Qwen floating precision on M1/M2; packed weights stay quantized |
 | `src/hylogger_bridge/advice/cli.py` | One-request command-line access |
 
 Developer invocation from the experiment checkout, using its isolated model environment:
 
 ```sh
 PYTHONPATH=src cache/model-env/bin/python -m training.smoke data/decision/smoke.jsonl
-PYTHONPATH=src cache/model-env/bin/python -m training.fit --config training/mac.json --records data/decision/smoke.jsonl --output outputs/model/smoke
-PYTHONPATH=src cache/model-env/bin/python -m training.check outputs/model/smoke/merged
-PYTHONPATH=src cache/model-env/bin/python -m hylogger_bridge.advice.cli --model outputs/model/smoke/merged --request outputs/model/request.json
+PYTHONPATH=src cache/model-env/bin/python -m training.fit --config training/mac.json --records data/decision/smoke.jsonl --output outputs/model/demo
+PYTHONPATH=src cache/model-env/bin/python -m training.check outputs/model/demo/model
+PYTHONPATH=src cache/model-env/bin/python -m hylogger_bridge.advice.cli --model outputs/model/demo/model --request outputs/model/request.json
 ```
 
 The request file must contain a canonical AssessmentRequest. Predictions remain model advice, with training-data origin visible; rationales explicitly state that no explanation was generated. Missing/invalid candidate predictions, unsupported action types and over-budget inputs fail rather than becoming fabricated advice. Input encoding version and declared action coverage travel with the artifact. Organiser records require source hashes and processing provenance; the smoke records remain synthetic. `training/bundle.py` uploads an explicit allowlist of source files; `training/remote.py` extracts that bundle and runs the same fit/reload checks in Colab. The backend can use `LocalProvider.assess(request, at)` as its replaceable provider; inference must run outside the SQLite writer transaction. The adapter does not launch tools or create human decisions.
 
 A generated smoke dataset demonstrates training mechanics only. Its repeated teaching situations are not independent geological cases, even though grouped partitions prevent exact source-group overlap. Use inspected organiser records and independent hole/project groups before making real-data or generalisation claims. A successful import, unit test or checkpoint download alone is not a successful training run.
+
+## Verified local demonstration
+
+The owner-selected Qwen3.5-4B architecture now has an actual local fine-tuned demonstration. See [the project instructions](../../CLAUDE.md) for measured run/check counts and limitations. Runtime training reports, model files and the per-file manifest stay under ignored `outputs/model/demo/`; the published source contains the reproducible preparation and checks.
+
+The first quantized merged checkpoint changed predictions substantially after reload and was rejected. Loading the exact saved adapters/head over the pinned original base restored parity. The promoted format therefore bundles `base/` and `adapter/`, with immutable hashed files and a temporary adapter view that resolves the base locally. No remote model cache is required, and relocating the bundle does not require rewriting its metadata. The failed merge is retained locally as diagnostic evidence rather than relabelled as successful.
+
+The M1/M2 loader initially chooses float16. Before the first forward pass, the shared precision helper promotes floating tensors to float32 without unpacking integer weights. Training and inference use the same correction. No application processes were closed or shared services changed. The installed command was tested outside the checkout with an empty Hugging Face cache and Python network connections blocked.
+
+For this prepared local checkout, run:
+
+```sh
+./scripts/advice.sh
+./scripts/advice.sh /absolute/path/to/assessment-request.json
+```
+
+The default request is the ignored synthetic demo request generated during preparation. `HYLOGGER_MODEL_DIR` and `HYLOGGER_MODEL_PYTHON` can select another verified bundle/environment. Framework diagnostics go to stderr; stdout is one validated Assessment JSON. This is a local developer demonstration, not a published installer or proof of automatic host-chat continuation.
+
+The demonstration's test cases reuse its teaching patterns. Its scores establish functional training and export behavior only. Real-data performance, expert usefulness, cross-hole generalisation and added value over the teaching rules remain unverified. Colab authentication/compute availability also remains unverified; the actual successful run used the owner's Mac.

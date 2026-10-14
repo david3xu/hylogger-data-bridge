@@ -1,4 +1,4 @@
-# Purpose: reload a verified merged decision model offline and compare advisory predictions.
+# Purpose: reload a verified base/adapter decision model offline and compare advisory predictions.
 import argparse
 import json
 import os

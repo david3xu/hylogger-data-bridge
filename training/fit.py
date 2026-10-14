@@ -1,10 +1,11 @@
-# Purpose: run the selected small LoRA/decision-head experiment and export a merged model.
+# Purpose: train the selected LoRA/decision head and export its complete local model.
 import argparse
 import hashlib
 import importlib
 import importlib.metadata
 import json
 import platform
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -13,6 +14,7 @@ from uuid import uuid4
 
 from hylogger_bridge.advice.assets import sha, write
 from hylogger_bridge.advice.encode import VERSION as INPUT_VERSION
+from hylogger_bridge.advice.precision import prepare
 from training.records import convert, load
 
 
@@ -63,6 +65,7 @@ def run(config: Path, records: Path, output: Path) -> None:
         load_in_4bit=True,
         random_state=settings["seed"],
     )
+    precision = prepare(model)
     model = FastDecisionModel.get_peft_model(
         model,
         r=settings["lora_rank"],
@@ -116,8 +119,16 @@ def run(config: Path, records: Path, output: Path) -> None:
         reference.append({"request": row["request"], "answers": answers})
     output.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(str(output / "adapter"), tokenizer)
-    merged = output / "merged"
-    model.save_pretrained_merged(str(merged), tokenizer, save_method="merged_16bit")
+    # Preserve the trained adapters over the exact pinned base. Merging a quantized Qwen
+    # checkpoint changed predictions in the measured Mac run; never promote that export.
+    from huggingface_hub import snapshot_download
+
+    base = Path(
+        snapshot_download(settings["model"], revision=settings["revision"], local_files_only=True)
+    )
+    packaged = output / "model"
+    shutil.copytree(base, packaged / "base", ignore=shutil.ignore_patterns(".cache"))
+    shutil.copytree(output / "adapter", packaged / "adapter")
     dependencies = {
         dist.metadata["Name"]: dist.version for dist in importlib.metadata.distributions()
     }
@@ -132,6 +143,7 @@ def run(config: Path, records: Path, output: Path) -> None:
     report = {
         "version": f"qwen35-4b-{uuid4().hex[:12]}",
         "input_version": INPUT_VERSION,
+        "precision": precision,
         "action_types": sorted(
             {c["action_type"] for r in rows for c in r["request"]["candidates"]}
         ),
@@ -163,9 +175,9 @@ def run(config: Path, records: Path, output: Path) -> None:
             "No claim of geological usefulness or unseen-hole generalisation.",
         ],
     }
-    write(merged, report)
+    write(packaged, report)
     (output / "run.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
-    print(f"Saved adapter and merged model to {output}; local reload is still required.")
+    print(f"Saved self-contained base/adapter model to {output}; local reload is still required.")
 
 
 def main() -> None:

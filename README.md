@@ -2,7 +2,7 @@
 
 An expert-in-the-loop investigation toolkit for reviewing unfamiliar drill holes. AI coordinates the investigation, scientific tools calculate evidence, and geologists supply geological judgement.
 
-**Current prototype:** a live investigation book and a small trained action selector using synthetic examples. A separate Qwen3.5-4B LoRA/decision-head experiment supplies a local assessment interface; its training/reload status is recorded in the training guide. Real HyLogger analysis and automatic decision delivery back to chat remain unfinished. The staged book runner does not consult the selector.
+**Current prototype:** a live investigation book and a small trained action selector using synthetic examples. A separate fine-tuned Qwen3.5-4B demonstration supplies a verified offline local assessment interface; measured evidence is in the training guide. Real HyLogger analysis and automatic decision delivery back to chat remain unfinished. The staged book runner does not consult the selector.
 
 ## Run the demo
 

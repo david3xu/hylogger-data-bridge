@@ -5,8 +5,9 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from hylogger_bridge.advice.assets import verify
+from hylogger_bridge.advice.assets import adapter_view, verify
 from hylogger_bridge.advice.encode import VERSION as INPUT_VERSION
+from hylogger_bridge.advice.precision import prepare
 from hylogger_bridge.advice.provider import ModelProvider
 
 
@@ -20,12 +21,14 @@ class LocalProvider(ModelProvider):
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
         # The host must call providers outside its database writer transaction.
         api = importlib.import_module("unsloth").FastDecisionModel
-        self.model, self.tokenizer = api.from_pretrained(
-            model_name=str(folder.resolve()),
-            local_files_only=True,
-            max_seq_length=manifest["config"]["max_seq_length"],
-            load_in_4bit=False,
-        )
+        with adapter_view(folder) as checkpoint:
+            self.model, self.tokenizer = api.from_pretrained(
+                model_name=str(checkpoint),
+                local_files_only=True,
+                max_seq_length=manifest["config"]["max_seq_length"],
+                load_in_4bit=True,
+            )
+        self.precision = prepare(self.model)
         api.for_inference(self.model)
 
         lock = threading.Lock()
