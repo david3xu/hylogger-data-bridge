@@ -323,7 +323,9 @@ class BookStore:
         chosen = advice_ops.default_candidates() if candidates is None else candidates
         asked = at or moment()
         with transaction(self.path, self.changed) as connection:
-            request = advice_ops.prepare(connection, page_id, expected_revision, chosen, instruction)
+            request = advice_ops.prepare(
+                connection, page_id, expected_revision, chosen, instruction
+            )
         advice = self.provider.assess(request, stamp(asked))
         with transaction(self.path, self.changed) as connection:
             advice_ops.record(connection, request, advice)
