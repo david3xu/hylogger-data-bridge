@@ -1,0 +1,41 @@
+# Local reference documents, private development records and credentials
+/private/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+.DS_Store
+
+# Never commit downloaded HyLogger packages, imagery or working caches
+/data/*
+!/data/README.md
+/artifacts/
+/outputs/
+/cache/
+*.tsg
+*.tsg.gz
+*.bip
+*.bil
+*.bsq
+*.sqlite
+*.sqlite3
+*.db
+*.parquet
+*.zip
+*.tar.gz
+
+# Local environments and generated files
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+node_modules/
+dist/
+build/
+*.egg-info/
+.coverage
+htmlcov/
