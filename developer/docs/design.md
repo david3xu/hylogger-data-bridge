@@ -1,6 +1,6 @@
 # Investigation design
 
-Updated: 2026-10-14
+Updated: 2026-10-15
 Status: agreed product boundaries and proposed implementation; current behaviour is in the [API](api.md).
 
 ## Purpose and authority
@@ -78,7 +78,7 @@ First prove a supported round trip in Codex desktop. A generic browser SSE event
 
 The owner requires a locally installed fine-tuned model grounded in the organiser's HyLogger datasets. It must be meaningfully consulted during chat, not merely loaded or added as a decorative endorsement. The organiser supplies scientific measurements; that does not imply expert next-action labels exist. No real dataset is downloaded in this repository yet.
 
-The existing synthetic logistic classifier is a mechanics baseline. It is fitted from scratch, lacks question/instruction/evidence inputs and is not the target fine-tuned model. No base checkpoint or inference runtime has been selected for the target.
+The existing synthetic logistic classifier is a mechanics baseline. It is fitted from scratch, lacks question/instruction/evidence inputs and is not the target fine-tuned model. The owner selected Qwen3.5-4B with LoRA and a decision head for the first experiment on 2026-10-15. Local runtime compatibility remains to be verified.
 
 Reserve this versioned boundary before parallel implementation:
 
@@ -96,7 +96,7 @@ Only train output fields supported by labels. Action rankings do not automatical
 
 ### Training and evaluation
 
-The proposed data-to-model process is maintained in [local model training](training.md): real-package inspection, grounded partial-observation records, explicit label origins, pretrained ranker fine-tuning, independent source-group evaluation and local export. Checkpoint/runtime selection and implementation remain open for owner discussion. Recording the proposal does not authorise training or data downloads.
+The proposed data-to-model process is maintained in [local model training](training.md): real-package inspection, grounded partial-observation records, explicit label origins, advisory-model fine-tuning, independent source-group evaluation and local export. That record includes encoder/ranker and LoRA decision-head candidates, Colab training feasibility and an early target-laptop inference check. The owner authorised the bounded Qwen3.5-4B feasibility implementation on 2026-10-15. Real-data preparation and demonstrated local runtime compatibility remain separate work; this does not authorise additional compute purchases or broad dataset downloads.
 
 The full model feature requires demonstrated local fine-tuning, meaningful advisory integration and evaluated investigation outcomes. Gemini and Claude's initial application tasks remain separate from model/data work.
 

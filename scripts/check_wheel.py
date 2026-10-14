@@ -8,6 +8,8 @@ from pathlib import Path
 MEMBER = "hylogger_bridge/contracts/v1.json"
 PROBE = (
     "import sys\n"
+    "from hylogger_bridge.advice.provider import ModelProvider\n"
+    "assert callable(ModelProvider.assess)\n"
     "import hylogger_bridge.contracts.load as load\n"
     "assert load.__file__.startswith(sys.argv[1]), load.__file__\n"
     "assert load.schema()['title'].startswith('HyLogger')\n"
