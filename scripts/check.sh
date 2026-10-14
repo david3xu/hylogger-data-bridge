@@ -7,4 +7,5 @@ uv run --locked --offline ruff check src scripts tests
 uv run --locked --offline mypy
 uv run --locked --offline pytest
 uv run --locked --offline python scripts/check_docs.py
+uv run --locked --offline python scripts/check_wheel.py
 npm --prefix app run check

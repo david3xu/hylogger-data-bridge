@@ -1,0 +1,1347 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HyLogger Data Bridge contract v1",
+  "description": "Canonical shared shapes. Validate a value against #/$defs/<Name>. Fixtures: schemas/fixtures/v1/<Name>.json. Rules JSON Schema cannot express are in contracts/book.py and contracts/assess.py and must be matched by every consumer. A breaking change needs v2.json; v1 only grows by optional fields. Hashes such as request_hash are issued by the server and opaque to clients: never recompute them.",
+  "$defs": {
+    "Id": {
+      "description": "Stable opaque identifier.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "MaybeId": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "RequestId": {
+      "description": "Caller-chosen idempotency key.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "Time": {
+      "description": "RFC 3339 timestamp with an explicit offset.",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "MaybeTime": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "Revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "Version": {
+      "description": "Contract version carried by exchanged messages.",
+      "const": 1
+    },
+    "Hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "MaybeText": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Text"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "Note": {
+      "description": "Exact human text; may be empty.",
+      "type": "string",
+      "maxLength": 4000
+    },
+    "Name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "Token": {
+      "description": "Registered action type.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "Choice": {
+      "enum": [
+        "accept",
+        "modify",
+        "reject"
+      ]
+    },
+    "Outcome": {
+      "enum": [
+        "complete",
+        "partial",
+        "failed"
+      ]
+    },
+    "Kind": {
+      "enum": [
+        "observation",
+        "calculation",
+        "limitation"
+      ]
+    },
+    "State": {
+      "enum": [
+        "complete",
+        "partial",
+        "failed"
+      ]
+    },
+    "Error": {
+      "description": "HTTP error body and embedded failure. 'error' keeps the existing message key.",
+      "type": "object",
+      "required": [
+        "error",
+        "code",
+        "retryable"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "$ref": "#/$defs/Text"
+        },
+        "code": {
+          "enum": [
+            "invalid_request",
+            "not_found",
+            "stale_revision",
+            "page_locked",
+            "not_ready",
+            "unrelated_page",
+            "request_reuse",
+            "unavailable",
+            "delivery_failed",
+            "worker_failed",
+            "claim_expired"
+          ]
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Actor": {
+      "description": "Who actually acted, never inferred from model advice.",
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "human",
+            "agent",
+            "system"
+          ]
+        },
+        "name": {
+          "$ref": "#/$defs/Name"
+        }
+      }
+    },
+    "Worker": {
+      "description": "A tool or agent writer. Workers cannot claim to be human.",
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "agent",
+            "system"
+          ]
+        },
+        "name": {
+          "$ref": "#/$defs/Name"
+        }
+      }
+    },
+    "Evidence": {
+      "description": "One referenced result. 'origin' is declared provenance; 'unspecified' marks records written before provenance existed. 'partial' and 'failed' state are shown, never hidden.",
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "value",
+        "source",
+        "kind",
+        "origin",
+        "state"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "value": {
+          "$ref": "#/$defs/Text"
+        },
+        "source": {
+          "$ref": "#/$defs/Text"
+        },
+        "kind": {
+          "$ref": "#/$defs/Kind"
+        },
+        "origin": {
+          "enum": [
+            "actual",
+            "synthetic",
+            "unspecified"
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/State"
+        }
+      }
+    },
+    "DecisionRequest": {
+      "description": "Browser request to commit a human choice. Unchanged from the existing API.",
+      "type": "object",
+      "required": [
+        "choice",
+        "note",
+        "expected_revision",
+        "request_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "choice": {
+          "$ref": "#/$defs/Choice"
+        },
+        "note": {
+          "$ref": "#/$defs/Note"
+        },
+        "expected_revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        }
+      }
+    },
+    "Decision": {
+      "description": "Committed decision. 'locked_revision' equals the locked page's final revision. 'evidence_ids' are the evidence the page held when locked. actor 'human' is the person who used the browser; 'unknown' attributes migrated records whose origin was never recorded (some were automated tests). An 'unknown' decision is never dispatched.",
+      "type": "object",
+      "required": [
+        "id",
+        "page_id",
+        "choice",
+        "note",
+        "request_id",
+        "locked_revision",
+        "successor_id",
+        "evidence_ids",
+        "actor",
+        "recorded_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "page_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "choice": {
+          "$ref": "#/$defs/Choice"
+        },
+        "note": {
+          "$ref": "#/$defs/Note"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "locked_revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "successor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "evidence_ids": {
+          "type": "array",
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "actor": {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "human",
+                "unknown"
+              ]
+            },
+            "name": {
+              "$ref": "#/$defs/Name"
+            }
+          }
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/Time"
+        }
+      }
+    },
+    "Continuation": {
+      "description": "Mutable delivery record, kept in Book.continuations so locked pages stay immutable. 'running' means claimed under a lease. 'attempts' is the fencing number: a Handoff carries it, and a result is applied only while state is running, the attempt matches and the lease has not expired (otherwise claim_expired). 'completed' means the result was applied, which is separate from 'acknowledged_at' (the host accepted the handoff). 'failed' is terminal after bounded attempts (attempts <= max_attempts, checked by the application).",
+      "type": "object",
+      "required": [
+        "id",
+        "decision_id",
+        "page_id",
+        "successor_id",
+        "locked_revision",
+        "state",
+        "attempts",
+        "max_attempts",
+        "claimed_by",
+        "lease_expires_at",
+        "acknowledged_at",
+        "last_error",
+        "created_at",
+        "updated_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "decision_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "page_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "successor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "locked_revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "running",
+            "completed",
+            "failed"
+          ]
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "claimed_by": {
+          "$ref": "#/$defs/MaybeId"
+        },
+        "lease_expires_at": {
+          "$ref": "#/$defs/MaybeTime"
+        },
+        "acknowledged_at": {
+          "$ref": "#/$defs/MaybeTime"
+        },
+        "last_error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Error"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/Time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "pending"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "claimed_by": {
+                "type": "null"
+              },
+              "lease_expires_at": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "running"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "claimed_by": {
+                "type": "string"
+              },
+              "lease_expires_at": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "completed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "acknowledged_at": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "last_error": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Handoff": {
+      "description": "Compact message delivered to the agent: the exact committed choice and note. Only a human-attributed decision is ever handed off. 'attempt' is the fencing number the worker must return in its Completion. Tools fetch authoritative context; this is never a keystroke or an autosaved draft.",
+      "type": "object",
+      "required": [
+        "contract_version",
+        "continuation_id",
+        "decision_id",
+        "run_id",
+        "page_id",
+        "successor_id",
+        "locked_revision",
+        "attempt",
+        "choice",
+        "note",
+        "evidence_ids",
+        "actor",
+        "decided_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "continuation_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "decision_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "run_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "page_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "successor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "locked_revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "choice": {
+          "$ref": "#/$defs/Choice"
+        },
+        "note": {
+          "$ref": "#/$defs/Note"
+        },
+        "evidence_ids": {
+          "type": "array",
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "actor": {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "human"
+            },
+            "name": {
+              "$ref": "#/$defs/Name"
+            }
+          }
+        },
+        "decided_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        }
+      }
+    },
+    "Completion": {
+      "description": "Worker result for one draft page. 'request_id' makes retries idempotent. 'claim' proves the worker holds the current delivery attempt; it is required when the page is the successor of an undelivered continuation and the server rejects an expired or superseded claim. 'action' records what was actually done and which advice, if any, was consulted; it need not follow the top suggestion and advice never authorises it. 'complete' has evidence, all of it complete, and no errors; 'failed' has errors; 'partial' has errors or partial/failed evidence.",
+      "type": "object",
+      "required": [
+        "contract_version",
+        "request_id",
+        "page_id",
+        "expected_revision",
+        "claim",
+        "outcome",
+        "summary",
+        "evidence",
+        "errors",
+        "action",
+        "worker"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "page_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "expected_revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "outcome": {
+          "$ref": "#/$defs/Outcome"
+        },
+        "summary": {
+          "$ref": "#/$defs/Text"
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        },
+        "errors": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/Error"
+          }
+        },
+        "action": {
+          "type": "object",
+          "required": [
+            "type",
+            "assessment_id"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "$ref": "#/$defs/Token"
+            },
+            "assessment_id": {
+              "$ref": "#/$defs/MaybeId"
+            }
+          }
+        },
+        "worker": {
+          "$ref": "#/$defs/Worker"
+        },
+        "claim": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "continuation_id",
+                "attempt"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "continuation_id": {
+                  "$ref": "#/$defs/Id"
+                },
+                "attempt": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "complete"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "minItems": 1,
+                "items": {
+                  "properties": {
+                    "state": {
+                      "const": "complete"
+                    }
+                  }
+                }
+              },
+              "errors": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "errors": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "partial"
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "properties": {
+                  "errors": {
+                    "minItems": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "evidence": {
+                    "contains": {
+                      "properties": {
+                        "state": {
+                          "enum": [
+                            "partial",
+                            "failed"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Action": {
+      "description": "The recorded actual action, kept separate from any assessment it consulted.",
+      "type": "object",
+      "required": [
+        "type",
+        "assessment_id",
+        "actor",
+        "recorded_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/Token"
+        },
+        "assessment_id": {
+          "$ref": "#/$defs/MaybeId"
+        },
+        "actor": {
+          "$ref": "#/$defs/Worker"
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/Time"
+        }
+      }
+    },
+    "AssessmentRequest": {
+      "description": "Input to the replaceable assessment provider. 'features' hold bounded numbers; null means unobserved, never zero.",
+      "type": "object",
+      "required": [
+        "contract_version",
+        "page_id",
+        "state_revision",
+        "question",
+        "instruction",
+        "evidence",
+        "candidates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "page_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "state_revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "question": {
+          "$ref": "#/$defs/Text"
+        },
+        "instruction": {
+          "$ref": "#/$defs/Note"
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "required": [
+              "evidence_id",
+              "kind",
+              "state",
+              "features"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "evidence_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "kind": {
+                "$ref": "#/$defs/Kind"
+              },
+              "state": {
+                "$ref": "#/$defs/State"
+              },
+              "features": {
+                "type": "object",
+                "maxProperties": 32,
+                "additionalProperties": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "candidates": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "action_type",
+              "arguments"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "action_type": {
+                "$ref": "#/$defs/Token"
+              },
+              "arguments": {
+                "type": "object",
+                "maxProperties": 16,
+                "additionalProperties": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Assessment": {
+      "description": "Model advice, never an authorisation. Advice is stale when state_revision is below the page revision. origin 'fixture' is a labelled stand-in, not the trained model. 'unavailable' carries no suggestions. Scores are deliberately absent: they are not geological confidence.",
+      "type": "object",
+      "required": [
+        "contract_version",
+        "id",
+        "page_id",
+        "state_revision",
+        "model_version",
+        "origin",
+        "status",
+        "request_hash",
+        "suggestions",
+        "evidence_gaps",
+        "uncertainty",
+        "limitations",
+        "created_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "page_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "state_revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "model_version": {
+          "$ref": "#/$defs/Name"
+        },
+        "origin": {
+          "enum": [
+            "fixture",
+            "model"
+          ]
+        },
+        "status": {
+          "enum": [
+            "available",
+            "unavailable"
+          ]
+        },
+        "request_hash": {
+          "$ref": "#/$defs/Hash",
+          "description": "Issued by the server for the exact request; opaque to clients."
+        },
+        "suggestions": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "required": [
+              "candidate_id",
+              "rank",
+              "rationale",
+              "evidence_ids"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "candidate_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "rank": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "rationale": {
+                "$ref": "#/$defs/Text"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "maxItems": 100,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/$defs/Id"
+                }
+              }
+            }
+          }
+        },
+        "evidence_gaps": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/Text"
+          }
+        },
+        "uncertainty": {
+          "$ref": "#/$defs/MaybeText"
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/Text"
+          }
+        },
+        "created_at": {
+          "$ref": "#/$defs/Time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "unavailable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "suggestions": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Page": {
+      "description": "One book page. Everything here is immutable once locked; mutable delivery state lives in Book.continuations. draft: no outcome, decision or errors. ready: outcome set. 'complete' holds only complete evidence and no errors; 'failed' holds errors; 'partial' holds errors or partial/failed evidence. locked: a decision is set.",
+      "type": "object",
+      "required": [
+        "id",
+        "number",
+        "parent_id",
+        "template",
+        "template_version",
+        "title",
+        "question",
+        "status",
+        "revision",
+        "summary",
+        "progress",
+        "evidence",
+        "outcome",
+        "errors",
+        "decision",
+        "action",
+        "assessment",
+        "created_at",
+        "updated_at",
+        "scientific_review",
+        "demo_running"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "parent_id": {
+          "$ref": "#/$defs/MaybeId"
+        },
+        "template": {
+          "$ref": "#/$defs/Name"
+        },
+        "template_version": {
+          "const": 1
+        },
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "question": {
+          "$ref": "#/$defs/Text"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "ready",
+            "locked"
+          ]
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "summary": {
+          "$ref": "#/$defs/Text"
+        },
+        "progress": {
+          "$ref": "#/$defs/Text"
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Outcome"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Decision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Action"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assessment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Assessment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "scientific_review": {
+          "const": "unreviewed"
+        },
+        "demo_running": {
+          "type": "boolean"
+        },
+        "errors": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/Error"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "draft"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "outcome": {
+                "type": "null"
+              },
+              "decision": {
+                "type": "null"
+              },
+              "errors": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "ready"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "outcome": {
+                "type": "string"
+              },
+              "decision": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "locked"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "outcome": {
+                "type": "string"
+              },
+              "decision": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "complete"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "items": {
+                  "properties": {
+                    "state": {
+                      "const": "complete"
+                    }
+                  }
+                }
+              },
+              "errors": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "errors": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "partial"
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "properties": {
+                  "errors": {
+                    "minItems": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "evidence": {
+                    "contains": {
+                      "properties": {
+                        "state": {
+                          "enum": [
+                            "partial",
+                            "failed"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Event": {
+      "type": "object",
+      "required": [
+        "sequence",
+        "type",
+        "page_id",
+        "at",
+        "detail"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "type": {
+          "enum": [
+            "page_created",
+            "demo_started",
+            "demo_interrupted",
+            "evidence_added",
+            "page_ready",
+            "decision_recorded",
+            "continuation_changed",
+            "assessment_recorded"
+          ]
+        },
+        "page_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "at": {
+          "$ref": "#/$defs/Time"
+        },
+        "detail": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "Book": {
+      "description": "Authoritative snapshot returned by GET /api/book and after every mutation. current_page_id is the one unlocked working page at the end of the chain; it is never a locked page. Which page a reader is viewing is client state and is not part of this snapshot. Every locked page with a human decision has exactly one continuation; a decision of unknown origin has none.",
+      "type": "object",
+      "required": [
+        "contract_version",
+        "run_id",
+        "source",
+        "current_page_id",
+        "sequence",
+        "pages",
+        "continuations",
+        "events"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "run_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "source": {
+          "enum": [
+            "synthetic_demo",
+            "live"
+          ]
+        },
+        "current_page_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "sequence": {
+          "$ref": "#/$defs/Revision"
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Page"
+          }
+        },
+        "events": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/Event"
+          }
+        },
+        "continuations": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/Continuation"
+          }
+        }
+      }
+    }
+  }
+}

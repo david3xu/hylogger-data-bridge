@@ -1,0 +1,153 @@
+{
+  "valid": {
+    "committed": {
+      "contract_version": 1,
+      "continuation_id": "cont-1",
+      "decision_id": "dec-1",
+      "run_id": "demo",
+      "page_id": "page-1",
+      "successor_id": "page-2",
+      "locked_revision": 7,
+      "attempt": 1,
+      "choice": "modify",
+      "note": "Look at the assay interval first.",
+      "evidence_ids": [
+        "synthetic-qa",
+        "synthetic-overlap"
+      ],
+      "actor": {
+        "kind": "human"
+      },
+      "decided_at": "2026-10-14T09:10:00+00:00"
+    }
+  },
+  "invalid": {
+    "future-version": {
+      "contract_version": 2,
+      "continuation_id": "cont-1",
+      "decision_id": "dec-1",
+      "run_id": "demo",
+      "page_id": "page-1",
+      "successor_id": "page-2",
+      "locked_revision": 7,
+      "attempt": 1,
+      "choice": "modify",
+      "note": "",
+      "evidence_ids": [],
+      "actor": {
+        "kind": "human"
+      },
+      "decided_at": "2026-10-14T09:10:00+00:00"
+    },
+    "boolean-version": {
+      "contract_version": true,
+      "continuation_id": "cont-1",
+      "decision_id": "dec-1",
+      "run_id": "demo",
+      "page_id": "page-1",
+      "successor_id": "page-2",
+      "locked_revision": 7,
+      "attempt": 1,
+      "choice": "modify",
+      "note": "",
+      "evidence_ids": [],
+      "actor": {
+        "kind": "human"
+      },
+      "decided_at": "2026-10-14T09:10:00+00:00"
+    },
+    "missing-note": {
+      "contract_version": 1,
+      "continuation_id": "cont-1",
+      "decision_id": "dec-1",
+      "run_id": "demo",
+      "page_id": "page-1",
+      "successor_id": "page-2",
+      "locked_revision": 7,
+      "attempt": 1,
+      "choice": "modify",
+      "evidence_ids": [],
+      "actor": {
+        "kind": "human"
+      },
+      "decided_at": "2026-10-14T09:10:00+00:00"
+    },
+    "keystrokes-field": {
+      "contract_version": 1,
+      "continuation_id": "cont-1",
+      "decision_id": "dec-1",
+      "run_id": "demo",
+      "page_id": "page-1",
+      "successor_id": "page-2",
+      "locked_revision": 7,
+      "attempt": 1,
+      "choice": "modify",
+      "note": "",
+      "draft": "autosaved text",
+      "evidence_ids": [],
+      "actor": {
+        "kind": "human"
+      },
+      "decided_at": "2026-10-14T09:10:00+00:00"
+    },
+    "unknown-actor": {
+      "contract_version": 1,
+      "continuation_id": "cont-1",
+      "decision_id": "dec-1",
+      "run_id": "demo",
+      "page_id": "page-1",
+      "successor_id": "page-2",
+      "locked_revision": 7,
+      "attempt": 1,
+      "choice": "modify",
+      "note": "Look at the assay interval first.",
+      "evidence_ids": [
+        "synthetic-qa",
+        "synthetic-overlap"
+      ],
+      "actor": {
+        "kind": "unknown"
+      },
+      "decided_at": "2026-10-14T09:10:00+00:00"
+    },
+    "missing-attempt": {
+      "contract_version": 1,
+      "continuation_id": "cont-1",
+      "decision_id": "dec-1",
+      "run_id": "demo",
+      "page_id": "page-1",
+      "successor_id": "page-2",
+      "locked_revision": 7,
+      "choice": "modify",
+      "note": "Look at the assay interval first.",
+      "evidence_ids": [
+        "synthetic-qa",
+        "synthetic-overlap"
+      ],
+      "actor": {
+        "kind": "human"
+      },
+      "decided_at": "2026-10-14T09:10:00+00:00"
+    },
+    "attempt-zero": {
+      "contract_version": 1,
+      "continuation_id": "cont-1",
+      "decision_id": "dec-1",
+      "run_id": "demo",
+      "page_id": "page-1",
+      "successor_id": "page-2",
+      "locked_revision": 7,
+      "attempt": 0,
+      "choice": "modify",
+      "note": "Look at the assay interval first.",
+      "evidence_ids": [
+        "synthetic-qa",
+        "synthetic-overlap"
+      ],
+      "actor": {
+        "kind": "human"
+      },
+      "decided_at": "2026-10-14T09:10:00+00:00"
+    }
+  }
+}

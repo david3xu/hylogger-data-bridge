@@ -1,0 +1,63 @@
+{
+  "valid": {
+    "basic": {
+      "contract_version": 1,
+      "page_id": "page-1",
+      "state_revision": 6,
+      "question": "Show spectral-change intervals that overlap assay records.",
+      "instruction": "",
+      "evidence": [
+        {
+          "evidence_id": "synthetic-qa",
+          "kind": "observation",
+          "state": "complete",
+          "features": { "coverage_fraction": 0.98, "valid_count": 120, "gap_count": null }
+        }
+      ],
+      "candidates": [
+        {
+          "id": "cand-overlap",
+          "action_type": "overlap_check",
+          "arguments": { "interval": "synthetic-candidate" }
+        },
+        { "id": "cand-qa", "action_type": "qa_check", "arguments": {} }
+      ]
+    }
+  },
+  "invalid": {
+    "no-candidates": {
+      "contract_version": 1,
+      "page_id": "page-1",
+      "state_revision": 6,
+      "question": "Show spectral-change intervals that overlap assay records.",
+      "instruction": "",
+      "evidence": [],
+      "candidates": []
+    },
+    "text-feature": {
+      "contract_version": 1,
+      "page_id": "page-1",
+      "state_revision": 6,
+      "question": "Show spectral-change intervals that overlap assay records.",
+      "instruction": "",
+      "evidence": [
+        {
+          "evidence_id": "synthetic-qa",
+          "kind": "observation",
+          "state": "complete",
+          "features": { "coverage_fraction": "high" }
+        }
+      ],
+      "candidates": [{ "id": "cand-qa", "action_type": "qa_check", "arguments": {} }]
+    },
+    "unregistered-action-type": {
+      "contract_version": 1,
+      "page_id": "page-1",
+      "state_revision": 6,
+      "question": "Show spectral-change intervals that overlap assay records.",
+      "instruction": "",
+      "evidence": [],
+      "candidates": [{ "id": "cand-x", "action_type": "Run Anything", "arguments": {} }]
+    }
+  }
+}

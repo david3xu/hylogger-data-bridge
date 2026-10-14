@@ -1,0 +1,113 @@
+{
+  "valid": {
+    "committed": {
+      "id": "dec-1",
+      "page_id": "page-1",
+      "choice": "modify",
+      "note": "Look at the assay interval first.",
+      "request_id": "req-1",
+      "locked_revision": 7,
+      "successor_id": "page-2",
+      "evidence_ids": [
+        "synthetic-qa",
+        "synthetic-overlap"
+      ],
+      "actor": {
+        "kind": "human"
+      },
+      "recorded_at": "2026-10-14T09:10:00+00:00"
+    },
+    "no-evidence-held": {
+      "id": "dec-2",
+      "page_id": "page-1",
+      "choice": "reject",
+      "note": "",
+      "request_id": "req-2",
+      "locked_revision": 1,
+      "successor_id": "page-2",
+      "evidence_ids": [],
+      "actor": {
+        "kind": "human",
+        "name": "Reviewer"
+      },
+      "recorded_at": "2026-10-14T09:10:00Z"
+    },
+    "legacy-unknown-actor": {
+      "id": "legacy-1",
+      "page_id": "page-1",
+      "choice": "modify",
+      "note": "Look at the assay interval first.",
+      "request_id": "legacy",
+      "locked_revision": 7,
+      "successor_id": "page-2",
+      "evidence_ids": [
+        "synthetic-qa",
+        "synthetic-overlap"
+      ],
+      "actor": {
+        "kind": "unknown"
+      },
+      "recorded_at": "2026-10-14T09:10:00+00:00"
+    }
+  },
+  "invalid": {
+    "agent-actor": {
+      "id": "dec-1",
+      "page_id": "page-1",
+      "choice": "accept",
+      "note": "",
+      "request_id": "req-1",
+      "locked_revision": 7,
+      "successor_id": "page-2",
+      "evidence_ids": [],
+      "actor": {
+        "kind": "agent"
+      },
+      "recorded_at": "2026-10-14T09:10:00+00:00"
+    },
+    "missing-successor": {
+      "id": "dec-1",
+      "page_id": "page-1",
+      "choice": "accept",
+      "note": "",
+      "request_id": "req-1",
+      "locked_revision": 7,
+      "evidence_ids": [],
+      "actor": {
+        "kind": "human"
+      },
+      "recorded_at": "2026-10-14T09:10:00+00:00"
+    },
+    "repeated-evidence-id": {
+      "id": "dec-1",
+      "page_id": "page-1",
+      "choice": "accept",
+      "note": "",
+      "request_id": "req-1",
+      "locked_revision": 7,
+      "successor_id": "page-2",
+      "evidence_ids": [
+        "synthetic-qa",
+        "synthetic-qa"
+      ],
+      "actor": {
+        "kind": "human"
+      },
+      "recorded_at": "2026-10-14T09:10:00+00:00"
+    },
+    "timestamp-without-offset": {
+      "id": "dec-1",
+      "page_id": "page-1",
+      "choice": "accept",
+      "note": "",
+      "request_id": "req-1",
+      "locked_revision": 7,
+      "successor_id": "page-2",
+      "evidence_ids": [],
+      "actor": {
+        "kind": "human"
+      },
+      "recorded_at": "2026-10-14T09:10:00"
+    }
+  }
+}
