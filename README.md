@@ -30,6 +30,7 @@ Training and inference run locally. This synthetic classifier checks workflow me
 ## Project guide
 
 - [Design](developer/docs/design.md): expert authority, local model, book and package boundaries.
+- [Model training](developer/docs/training.md): grounded examples, supervision, fine-tuning and evaluation proposal.
 - [API](developer/docs/api.md): implemented demo routes and event contract.
 - [Tasks](developer/docs/tasks.md): frontend/backend branches and acceptance gates.
 - [Contributing and CI](developer/docs/github.md): branches, checks and publication rules.
@@ -49,7 +50,9 @@ Run `bash scripts/check.sh` after installing dependencies. Private notes, raw da
 
 ## Scope and rights
 
-The intended Data Adoption use case is evidence review supporting resource evaluation. A flagged interval is a review candidate, not proof of ore, grade or mineralisation. Scientific review remains unreviewed until a real expert assessment is recorded.
+The selected Data Adoption focus is **expert evidence review supporting resource evaluation**. The first real demonstration targets one hole, a bounded spectral-change/assay-overlap investigation and an auditable expert review cycle. Full resource estimation, grade control, ore–waste classification, alteration mapping, geometallurgy and environmental assessment are outside the MVP. See the [scope and value criteria](developer/docs/design.md#mvp-scope-resource-evaluation-evidence-review).
+
+A flagged interval is a review candidate, not proof of ore, grade or mineralisation. Scientific review remains unreviewed until a real expert assessment is recorded.
 
 This is an independent project repository for the GSWA HyLogger Hackathon 2026; repository creation does not submit an entry or establish eligibility. Team details and a real demonstration hole remain to be selected. Refer to the [organiser repository](https://github.com/Geological-Survey-of-Western-Australia/gswa-hackathon-2026) for event requirements.
 

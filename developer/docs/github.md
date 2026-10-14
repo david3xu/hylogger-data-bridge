@@ -5,7 +5,7 @@ Status: the owner authorised a public GitHub repository, explicit document allow
 
 ## Repository hygiene
 
-Publish only source, tests, locked dependencies, small synthetic examples and essential documentation. `.gitignore` excludes Markdown by default and explicitly allows the root guide/instructions, data guide and four maintained project documents. Internal planning notes and historical decision drafts remain local and ignored. Previously tracked preparation notes are removed from the current index without deleting local copies. Ignore rules do not erase prior Git history; the initial preparation commit was reviewed separately and contains no raw/private data or credentials.
+Publish only source, tests, locked dependencies, small synthetic examples and essential documentation. `.gitignore` excludes Markdown by default and explicitly allows the root guide/instructions, data guide and maintained project documents. Internal planning notes and historical decision drafts remain local and ignored. Previously tracked preparation notes are removed from the current index without deleting local copies. Ignore rules do not erase prior Git history; the initial preparation commit was reviewed separately and contains no raw/private data or credentials.
 
 Stage explicit paths and inspect the complete staged diff before pushing. Never force-add ignored notes, raw packages, books, model training records, credentials, caches or generated outputs. Do not select a licence, publish a package/plugin or submit an entry under repository-creation authorisation alone.
 
@@ -15,7 +15,7 @@ Use one focused branch per task, with the default `codex/` prefix: for example `
 
 Each implementer owns the paths in their brief. Shared schemas and dependency changes need a coordinated handoff; only the assigned owner integrates shared lockfile/build changes at a time; the first backend slice assigns Python configuration to Claude and frontend configuration to Gemini. Rebase or merge the current base before resolving a shared-contract change. Do not force-push another implementer's branch or mix unrelated repairs into a task PR.
 
-Run the canonical local check from [CLAUDE.md](../../CLAUDE.md#local-selector-commands) before requesting review. Open a draft PR early enough to inspect its concrete scope, then mark ready when its own checks pass and its evidence is complete. Run CI on draft PRs too. PR descriptions lead with resulting behaviour, then relevant validation, migration effects and limitations. Identify synthetic fixtures and unverified host support explicitly.
+Run the canonical local check from [CLAUDE.md](../../CLAUDE.md#commands) before requesting review. Open a draft PR early enough to inspect its concrete scope, then mark ready when its own checks pass and its evidence is complete. Run CI on draft PRs too. PR descriptions lead with resulting behaviour, then relevant validation, migration effects and limitations. Identify synthetic fixtures and unverified host support explicitly.
 
 Codex reviews architecture, single responsibility, short informative names, correctness and evidence. Implementers repair their findings. An agent must not treat its own automated review as independent approval. Merge only after required checks pass on the current PR revision and review is resolved. Repository protection/rulesets must be configured separately; a YAML file alone does not protect `main`.
 
