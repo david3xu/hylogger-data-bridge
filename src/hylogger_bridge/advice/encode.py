@@ -4,6 +4,8 @@ from typing import Any
 
 from hylogger_bridge.contracts.check import validate
 
+VERSION = 1
+
 INSTRUCTIONS = "Which offered follow-up best serves the question and committed instruction?"
 
 

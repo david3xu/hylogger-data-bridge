@@ -30,13 +30,18 @@ def records() -> list[dict[str, Any]]:
             "The requested valid-sample comparison is complete; no additional analysis requested.",
             "stop",
         ),
+        (
+            "Calculate how much of the selected candidate overlaps the loaded assay intervals.",
+            "Depth alignment and valid coverage are checked; the overlap calculation is pending.",
+            "overlap_check",
+        ),
     ]
     for group in range(12):
         split = "train" if group < 8 else "validation" if group < 10 else "test"
         for index, (question, instruction, action) in enumerate(cases):
             choices = [
                 {"id": f"cand-{a}", "action_type": a, "arguments": {}}
-                for a in ("qa_check", "interval_compare", "clarify", "stop")
+                for a in ("qa_check", "interval_compare", "clarify", "stop", "overlap_check")
             ]
             rng.shuffle(choices)
             rows.append(
@@ -63,6 +68,7 @@ def records() -> list[dict[str, Any]]:
                                     "coverage_fraction": 0.8 + group / 100,
                                     "mask_checked": 0 if index == 0 else 1,
                                     "comparison_done": 1 if index == 3 else 0,
+                                    "assays_loaded": 1 if index == 4 else 0,
                                 },
                             }
                         ],

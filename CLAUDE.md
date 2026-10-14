@@ -35,7 +35,7 @@ uv build --offline --out-dir outputs/dist
 
 In a restricted workspace, set `UV_CACHE_DIR=cache/uv`. See [README](README.md) for training and demo launch commands. For UI development run the Python service, then `npm --prefix app run dev`; Vite proxies `/api`. Only one service may own a book database. Use `--db outputs/live-book/another.sqlite3 --port 8767` for another case.
 
-Verified locally on this branch on 2026-10-15: formatting/lint, strict mypy for runtime and developer training code, 86 Python tests, documentation links, 12 frontend tests, TypeScript and production build passed. The installed-wheel probe loads the schema and advisory provider outside the checkout without training libraries. Heavy Qwen training/reload is separate evidence maintained in the training guide; unit tests do not establish it. Hosted CI is reported by actual GitHub runs, separately from these local checks.
+Verified locally on this branch on 2026-10-15: formatting/lint, strict mypy for runtime and developer training code, 87 Python tests, documentation links, 12 frontend tests, TypeScript and production build passed. The installed-wheel probe loads the schema and advisory provider outside the checkout without training libraries. Heavy Qwen training/reload is separate evidence maintained in the training guide; unit tests do not establish it. Hosted CI is reported by actual GitHub runs, separately from these local checks.
 
 The actual Codex browser demo previously verified live evidence, locked history, a labelled automated test decision, worker HTTP evidence, and reload persistence. These are synthetic transport/lifecycle checks, not expert approval or automatic chat continuation.
 

@@ -1,5 +1,6 @@
 # Purpose: validate grounded teaching records and convert them without leaking labels.
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,15 @@ def load(path: Path) -> list[dict[str, Any]]:
         groups[group] = split
         if row["origin"] not in {"synthetic", "organiser"}:
             raise ValueError("unknown scientific-data origin")
+        if row["origin"] == "organiser":
+            source = row.get("provenance", {})
+            required = {"source_url", "source_sha256", "tool_version", "method_version"}
+            if not required <= set(source) or any(
+                not isinstance(source[k], str) or not source[k].strip() for k in required
+            ):
+                raise ValueError("organiser records require source and processing provenance")
+            if not re.fullmatch(r"[0-9a-f]{64}", source["source_sha256"]):
+                raise ValueError("organiser source hash must be SHA-256")
         if row["label_origin"] not in {"teaching_rule", "calculated_reference", "expert_reviewed"}:
             raise ValueError("unresolved labels cannot be used for training")
         _, _, mapping = encode(row["request"])

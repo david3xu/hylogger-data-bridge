@@ -121,3 +121,12 @@ def test_checkpoint_tampering_is_detected(tmp_path: Path) -> None:
     (tmp_path / "joint_head.safetensors").write_bytes(b"changed")
     with pytest.raises(ValueError, match="hashes"):
         verify(tmp_path)
+
+
+def test_real_origin_cannot_be_claimed_without_source_provenance(tmp_path: Path) -> None:
+    rows = records()
+    rows[0]["origin"] = "organiser"
+    path = tmp_path / "records.jsonl"
+    path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    with pytest.raises(ValueError, match="provenance"):
+        load(path)

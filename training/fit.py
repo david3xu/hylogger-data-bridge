@@ -12,6 +12,7 @@ from typing import Any
 from uuid import uuid4
 
 from hylogger_bridge.advice.assets import sha, write
+from hylogger_bridge.advice.encode import VERSION as INPUT_VERSION
 from training.records import convert, load
 
 
@@ -109,7 +110,7 @@ def run(config: Path, records: Path, output: Path) -> None:
     FastDecisionModel.for_inference(model)
     metrics = FastDecisionModel.evaluate(model, tokenizer, partitions["test"])
     reference = []
-    for row in [r for r in rows if r["split"] == "test"][:2]:
+    for row in [r for r in rows if r["split"] == "test"]:
         item = convert(row)
         answers = FastDecisionModel.predict(model, tokenizer, item["state"], item["questions"])
         reference.append({"request": row["request"], "answers": answers})
@@ -130,6 +131,10 @@ def run(config: Path, records: Path, output: Path) -> None:
         peak_memory = int(torch.cuda.max_memory_allocated())
     report = {
         "version": f"qwen35-4b-{uuid4().hex[:12]}",
+        "input_version": INPUT_VERSION,
+        "action_types": sorted(
+            {c["action_type"] for r in rows for c in r["request"]["candidates"]}
+        ),
         "config": settings,
         "data_origin": settings["data_origin"],
         "purpose": settings["purpose"],
@@ -144,7 +149,12 @@ def run(config: Path, records: Path, output: Path) -> None:
         "train_metrics": trained.metrics,
         "elapsed_seconds": time.monotonic() - start,
         "host": platform.platform(),
-        "source_files": {str(p): sha(p) for p in sorted(Path("training").glob("*.py"))},
+        "source_files": {
+            str(p): sha(p)
+            for p in sorted(
+                [*Path("training").glob("*.py"), *Path("src/hylogger_bridge/advice").glob("*.py")]
+            )
+        },
         "python": sys.version,
         "peak_accelerator_bytes": peak_memory,
         "reference": reference,
