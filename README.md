@@ -2,7 +2,7 @@
 
 An expert-in-the-loop investigation toolkit for reviewing unfamiliar drill holes. AI coordinates the investigation, scientific tools calculate evidence, and geologists supply geological judgement.
 
-**Current prototype:** a live investigation book and a small trained action selector using synthetic examples. Real HyLogger analysis, the target fine-tuned model, and automatic decision delivery back to chat are not implemented. The staged book runner does not consult the selector.
+**Current prototype:** a live investigation book and a small trained action selector using synthetic examples. A separate fine-tuned Qwen3.5-4B demonstration supplies a verified offline local assessment interface; measured evidence is in the training guide. Real HyLogger analysis and automatic decision delivery back to chat remain unfinished. The staged book runner does not consult the selector.
 
 ## Run the demo
 
@@ -27,10 +27,16 @@ uv run --locked hylogger-policy recommend --model outputs/decision-policy/model.
 
 Training and inference run locally. This synthetic classifier checks workflow mechanics; it is not a fine-tuned geological decision model or a validated resource-evaluation method.
 
+## Qwen decision-model experiment
+
+The selected model is Qwen3.5-4B with LoRA and a decision head. Developer preparation, bounded training, complete checkpoint export and local assessment commands are in the [training guide](developer/docs/training.md#running-the-selected-experiment). Training software uses a separate environment; ordinary validation does not download weights or run large training. Generated records and model artifacts stay outside Git.
+
+The local provider returns ranked candidate follow-ups through the shared assessment contract. The agent/human chooses what to do; scientific tools and backend prerequisites validate execution. Synthetic teaching records establish mechanics only, not geological usefulness.
+
 ## Project guide
 
 - [Design](developer/docs/design.md): expert authority, local model, book and package boundaries.
-- [Model training](developer/docs/training.md): grounded examples, supervision, fine-tuning and evaluation proposal.
+- [Model training](developer/docs/training.md): grounded examples, supervision, selected experiment, operating commands, supervision and evaluation.
 - [API](developer/docs/api.md): implemented demo routes and event contract.
 - [Tasks](developer/docs/tasks.md): frontend/backend branches and acceptance gates.
 - [Contributing and CI](developer/docs/github.md): branches, checks and publication rules.
@@ -42,6 +48,7 @@ src/hylogger_bridge/   Python runtime and synthetic baseline
 examples/              Small synthetic inputs
 tests/                 Python checks
 scripts/               Developer validation and fixture generation
+training/              Developer-only Qwen training and portability checks
 developer/docs/        Essential project documentation
 data/                  Local source data; only README tracked
 ```

@@ -1,0 +1,10 @@
+# Purpose: direct dependency pins for the Linux GPU feasibility environment.
+unsloth[base] @ git+https://github.com/unslothai/unsloth@26df9508df53cbc963b6474f9ea170929aaeb8f2
+unsloth_zoo[base] @ git+https://github.com/unslothai/unsloth-zoo@a8cb3bea46b86657b14e3ead20b555223d69a18d
+torch==2.8.0
+torchvision==0.23.0
+torchaudio==2.8.0
+transformers==5.2.0
+peft==0.18.1
+trl==0.22.2
+bitsandbytes==0.49.2
