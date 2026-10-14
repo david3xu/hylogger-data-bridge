@@ -170,7 +170,9 @@ class McpTests(BookCase):
         self.assertEqual(unknown["error"]["code"], -32602)
         note = {"jsonrpc": "2.0", "method": "notifications/initialized"}
         self.assertIsNone(handle(self.store, note))
-        self.assertEqual(handle(self.store, [])["error"]["code"], -32600)
+        refused = handle(self.store, [])
+        assert refused is not None
+        self.assertEqual(refused["error"]["code"], -32600)
 
     def test_tools_carry_a_worker_from_claim_to_ready(self) -> None:
         _, successor = decided(self.store)
