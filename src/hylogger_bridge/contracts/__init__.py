@@ -1,1 +1,1 @@
-# Purpose: validated shared shapes; the canonical schema lives in the repository's schemas/ directory.
+# Purpose: validated shared shapes; the canonical schema is under the root schemas/ directory.
