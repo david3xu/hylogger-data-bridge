@@ -171,10 +171,11 @@ class BookHandler(BaseHTTPRequestHandler):
                 result = store.add_evidence(page_id, body["expected_revision"], body["evidence"])
             self._json(200, result)
         except BookConflict as error:
-            self._json(409, {"error": str(error)})
+            self._json(409, {"error": str(error), "code": error.code, "retryable": False})
         except (ValueError, UnicodeError, TimeoutError) as error:
             message = "Invalid JSON" if isinstance(error, json.JSONDecodeError) else str(error)
-            self._json(400, {"error": message})
+            body = {"error": message or "Invalid request", "code": "invalid_request"}
+            self._json(400, {**body, "retryable": False})
 
     @staticmethod
     def _fields(body: dict[str, Any], required: set[str]) -> None:

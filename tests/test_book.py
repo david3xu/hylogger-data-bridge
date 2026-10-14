@@ -70,7 +70,12 @@ def test_worker_evidence_persists_and_emits_a_recoverable_event(store: BookStore
     draft = current(before)
     item = evidence()
     after = store.add_evidence(page_id(draft), revision(draft), item)
-    assert item in cast(list[dict[str, object]], current(after)["evidence"])
+    stored = cast(list[dict[str, object]], current(after)["evidence"])
+    kept = [entry for entry in stored if entry["id"] == item["id"]]
+    assert len(kept) == 1
+    # The stored item keeps every submitted field and adds the contract's provenance fields.
+    assert {key: kept[0][key] for key in item} == item
+    assert (kept[0]["origin"], kept[0]["state"]) == ("unspecified", "complete")
     assert revision(current(after)) > revision(draft)
     changes = store.events_after(cast(int, before["sequence"]))
     assert any(event["type"] == "evidence_added" for event in changes)
