@@ -131,7 +131,13 @@ def test_decision_locks_evidence_and_creates_exactly_one_linked_draft(
     assert all(page["scientific_review"] == "unreviewed" for page in pages(result))
 
     frozen = deepcopy(locked)
-    updated = store.add_evidence(page_id(successor), revision(successor), evidence("new-page"))
+    # The successor follows a delivery, so even incremental evidence needs the current claim.
+    handoff = store.claim_delivery("test-worker")
+    assert handoff is not None
+    store.acknowledge_delivery(handoff["continuation_id"], handoff["attempt"])
+    claim = {"continuation_id": handoff["continuation_id"], "attempt": handoff["attempt"]}
+    item = evidence("new-page")
+    updated = store.add_evidence(page_id(successor), revision(successor), item, claim)
     assert next(page for page in pages(updated) if page["id"] == locked["id"]) == frozen
 
 
