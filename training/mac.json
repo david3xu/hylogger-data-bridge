@@ -6,11 +6,11 @@
   "notebook_revision": "31a8d597f678f54ea343368713d8db880af008a7",
   "seed": 3407,
   "max_seq_length": 768,
-  "max_steps": 2,
+  "max_steps": 64,
   "lora_rank": 8,
   "learning_rate": 0.0002,
   "data_origin": "synthetic",
-  "purpose": "portability_only",
+  "purpose": "synthetic_demo",
   "quantized_conversion": true,
   "conversion_provenance": "MLX community Qwen3.5-4B conversion; verified architecture/config, not bitwise weight equivalence to the Colab checkpoint."
 }

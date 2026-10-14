@@ -193,7 +193,7 @@ Decide who implements the required scientific calculations before assigning trai
 
 ## Running the selected experiment
 
-Model work is isolated on `codex/model-feasibility`, based on the reviewed contracts branch plus the scope/training documentation. The selected architecture is Qwen3.5-4B with a trainable decision head and LoRA adapters. `training/qwen.json` pins the Colab checkpoint; `training/mac.json` pins the MLX community 4-bit conversion of the same architecture for the first local run. Architecture/configuration were inspected; bitwise equivalence of those two source checkpoints is not asserted. Save their actual identifiers and hashes with each run.
+Model work is isolated on `codex/model-feasibility`, based on the reviewed contracts branch plus the scope/training documentation. The selected architecture is Qwen3.5-4B with a trainable decision head and LoRA adapters. `training/qwen.json` pins the Colab checkpoint; `training/mac.json` pins the MLX community 4-bit conversion of the same architecture for the first local run. The local demonstration uses 64 small-batch steps; the Colab configuration retains a two-step portability check. Architecture/configuration were inspected; bitwise equivalence of those two source checkpoints is not asserted. Save their actual identifiers and hashes with each run.
 
 | Path | Responsibility |
 | --- | --- |
