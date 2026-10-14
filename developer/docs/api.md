@@ -52,7 +52,16 @@ Every write to a page that follows a delivery is fenced: it must present the cur
 
 The staged synthetic runner is a built-in worker: it takes and acknowledges the delivery itself, is bound to its exact attempt, and is refused when a delivery has used its retries. Advice comes from a replaceable provider passed to `BookStore(path, provider=...)`: the default labelled fixture (`origin: fixture`), an unavailable stand-in, or the runtime `ModelProvider`/`LocalProvider` (`origin: model`, scores are not geological confidence). It never authorises an action; a result may name any registered action and cites the advice it consulted only if that advice is recorded on the page. Inference runs outside any database transaction: the request is validated and named as the page's latest ask in one short transaction, and the advice is recorded in another only if that ask is still the latest and the page has not changed or locked, so a slow older ask can never replace newer advice. A malformed `candidates` element is an `invalid_request` and never reaches the provider. `POST /api/demo/start` binds the started run to its own callback, so a late callback cannot adopt a replacement run.
 
-`hylogger-mcp --db <book>` exposes the same operations as MCP tools over stdio (stdout carries only JSON-RPC). No operation records a human decision or scientific approval. `hylogger-walkthrough` runs the whole flow against a fresh book and prints each step; it is a synthetic, tool-driven mechanics demonstration, not Codex model continuation, which remains unverified.
+`hylogger-mcp --db <book>` exposes the same operations as MCP tools over stdio (stdout carries only JSON-RPC, including while a model loads and runs; framework and native output go to stderr).
+
+**Choosing advice at startup.** Both `python -m hylogger_bridge.book_server` and `hylogger-mcp` accept `--model <folder>` through one shared selection function. Without it they use the labelled fixture and print `Advice provider: fixture (...)` on stderr. With it they verify the bundle's hashes and load `LocalProvider` (model code and `unsloth` are imported only then); a missing folder, a tampered or incomplete bundle or a missing runtime stops startup with `error: ...` before the book is touched, and never falls back to fixture advice. Inference runs outside database transactions, and model advice stays advisory. To exercise the prepared synthetic checkpoint by hand (this is the actual-checkpoint check; the automated startup tests use stubs and load no weights):
+
+```sh
+PYTHONPATH=src cache/model-env/bin/python -m hylogger_bridge.book_server --model outputs/model/demo/model
+PYTHONPATH=src cache/model-env/bin/python -m hylogger_bridge.mcp.server --db outputs/live-book/demo.sqlite3 --model outputs/model/demo/model
+```
+
+Then call `request_assessment` (HTTP `/api/work/request_assessment` or the MCP tool) and read the page's `assessment`: `origin: model` with the training-data origin in its limitations. A worker or agent must call the tools explicitly; nothing here makes a chat agent continue automatically. The model was trained on synthetic teaching records, so its advice demonstrates mechanics only. No operation records a human decision or scientific approval. `hylogger-walkthrough` runs the whole flow against a fresh book and prints each step; it is a synthetic, tool-driven mechanics demonstration, not Codex model continuation, which remains unverified.
 
 ## Acceptance
 
