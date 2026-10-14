@@ -8,6 +8,7 @@ from typing import Any
 from hylogger_bridge.book import BookStore
 
 T0 = datetime(2026, 10, 15, 9, 0, tzinfo=UTC)
+SRC = Path(__file__).resolve().parents[1] / "src"
 NOTE = "  Exact note – keep every space  "
 
 

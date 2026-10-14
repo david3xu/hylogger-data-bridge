@@ -34,6 +34,26 @@ Event = {sequence,type,page_id,at,detail}
 
 For this demo `template` is `investigation` for the initial page and `candidate_evidence` for successors. Event types include `page_created`, `demo_started`, `evidence_added`, `page_ready`, `decision_recorded`. Event IDs are monotonic. The single decision event represents the committed lock/create operation; clients obtain the complete result from the snapshot. The service binds loopback only and rejects cross-origin mutations. Vite proxies `/api` during development; the production build can be served by the Python service.
 
+## Worker lifecycle
+
+The snapshot is the contract v1 `Book` in [`schemas/v1.json`](../../schemas/v1.json): pages are immutable once locked, and delivery state lives in `continuations`. Committing a decision records one `pending` continuation in the same transaction. A worker then claims it, acknowledges it, writes evidence or a result under that claim, and the page becomes `ready`. Nothing on this path invokes a model; see [design](design.md#decision-return) for the host gate.
+
+| Route | Body | Effect |
+| --- | --- | --- |
+| `POST /api/work/claim_delivery` | `{worker, seconds?}` | Returns `{handoff}` with the exact committed choice and note and the attempt number, or `{handoff:null}`. |
+| `POST /api/work/acknowledge_delivery` | `{continuation_id, attempt, seconds?}` | The worker accepted its attempt; repeating renews the lease. |
+| `POST /api/work/fail_delivery` | `{continuation_id, attempt, error}` | Gives the attempt back; retried while attempts remain (three). |
+| `POST /api/work/submit_evidence` | `{page_id, expected_revision, evidence, claim}` | Adds one evidence item; `origin` and `state` may be stated and are kept. |
+| `POST /api/work/submit_result` | a `Completion` | Moves the page to `ready` as `complete`, `partial` or `failed`; replaying a `request_id` is harmless, reusing it for different content is a conflict. |
+| `POST /api/work/request_assessment` | `{page_id, expected_revision, candidates?, instruction?}` | Records labelled advice. |
+| `POST /api/work/read_attempts` | `{continuation_id}` | Every attempt with its own acknowledgement. |
+
+Every write to a page that follows a delivery is fenced: it must present the current `attempt` from its own Handoff, hold an unexpired lease and have acknowledged. An old attempt, an expired lease, an unacknowledged claim or another page's claim is refused, including on `POST /api/pages/{id}/evidence`, which takes an optional `claim`. A claim is a fencing token, not authentication. A new attempt starts unacknowledged; earlier receipts stay in their attempt records. Refusals carry `{error, code, retryable}`: `claim_expired`, `not_ready`, `unrelated_page`, `stale_revision`, `page_locked`, `request_reuse`, `invalid_request`, `not_found`.
+
+The staged synthetic runner is a built-in worker: it takes and acknowledges the delivery itself, is bound to its exact attempt, and is refused when a delivery has used its retries. Advice (`origin: fixture` until a trained model exists) never authorises an action; a result may name any registered action and cites the advice it consulted only if that advice is recorded on the page. Inference runs outside any database transaction.
+
+`hylogger-mcp --db <book>` exposes the same operations as MCP tools over stdio (stdout carries only JSON-RPC). No operation records a human decision or scientific approval. `hylogger-walkthrough` runs the whole flow against a fresh book and prints each step; it is a synthetic, tool-driven mechanics demonstration, not Codex model continuation, which remains unverified.
+
 ## Acceptance
 
 Observe evidence appear without reload. Submit a real UI choice and see a linked page open automatically. Verify previous-page content cannot be changed, duplicate submissions cannot create extra pages, stale worker results fail, and reconnect/reload preserves history. Test in the actual Codex browser before claiming integration. Maintain the existing selector tests.
