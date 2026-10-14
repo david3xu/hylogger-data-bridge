@@ -49,4 +49,18 @@ def create(connection: sqlite3.Connection) -> None:
         "claimed_by TEXT, lease_expires_at TEXT, acknowledged_at TEXT, last_error TEXT, "
         "created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"
     )
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS results (request_id TEXT PRIMARY KEY, payload TEXT NOT NULL)"
+    )
+    # Every delivery attempt stays on record, so one worker's receipt is never credited to another.
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS attempts ("
+        "continuation_id TEXT NOT NULL, attempt INTEGER NOT NULL, worker TEXT NOT NULL, "
+        "claimed_at TEXT NOT NULL, acknowledged_at TEXT, ended_at TEXT, ended TEXT, "
+        "PRIMARY KEY (continuation_id, attempt))"
+    )
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS runners ("
+        "page_id TEXT PRIMARY KEY, token TEXT NOT NULL, continuation_id TEXT, attempt INTEGER)"
+    )
     connection.execute(f"PRAGMA user_version = {VERSION}")

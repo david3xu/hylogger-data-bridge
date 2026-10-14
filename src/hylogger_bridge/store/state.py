@@ -34,10 +34,20 @@ def find(book: dict[str, Any], page_id: str, revision: int) -> dict[str, Any]:
     raise ValueError("unknown page")
 
 
+def put(book: dict[str, Any], page: dict[str, Any]) -> None:
+    """Store a page without counting a revision: for advisory metadata only."""
+    book["pages"] = [page if item["id"] == page["id"] else item for item in book["pages"]]
+
+
 def replace(book: dict[str, Any], page: dict[str, Any]) -> None:
     page["revision"] += 1
     page["updated_at"] = now()
-    book["pages"] = [page if item["id"] == page["id"] else item for item in book["pages"]]
+    put(book, page)
+
+
+def log(connection: sqlite3.Connection, event_type: str, page_id: str, detail: str) -> None:
+    event = {"type": event_type, "page_id": page_id, "at": now(), "detail": detail}
+    connection.execute("INSERT INTO events(data) VALUES (?)", (json.dumps(event),))
 
 
 def save(
@@ -48,8 +58,7 @@ def save(
     detail: str,
 ) -> None:
     connection.execute("UPDATE book SET data=? WHERE id=1", (json.dumps(book),))
-    event = {"type": event_type, "page_id": page_id, "at": now(), "detail": detail}
-    connection.execute("INSERT INTO events(data) VALUES (?)", (json.dumps(event),))
+    log(connection, event_type, page_id, detail)
 
 
 def events(connection: sqlite3.Connection, after: int) -> list[dict[str, Any]]:
