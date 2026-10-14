@@ -1,0 +1,7 @@
+{
+  "goal": "changes_with_assays",
+  "data_loaded": true,
+  "qa_status": "passed",
+  "changes_ready": true,
+  "assays_status": "not_loaded"
+}

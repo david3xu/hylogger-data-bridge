@@ -39,3 +39,14 @@ build/
 *.egg-info/
 .coverage
 htmlcov/
+
+# Markdown is private by default; publish only maintained project documentation.
+*.md
+!/README.md
+!/AGENTS.md
+!/CLAUDE.md
+!/data/README.md
+!/developer/docs/design.md
+!/developer/docs/api.md
+!/developer/docs/tasks.md
+!/developer/docs/github.md

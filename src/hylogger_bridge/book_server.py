@@ -1,0 +1,204 @@
+# Purpose: serve the local book API, committed SSE notifications and the built frontend.
+import argparse
+import json
+import mimetypes
+import re
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+from urllib.parse import parse_qs, urlparse
+
+from hylogger_bridge.book import BookConflict, BookStore
+
+
+class BookServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def __init__(self, port: int, store: BookStore, static_root: Path) -> None:
+        self.store = store
+        self.static_root = static_root.resolve()
+        super().__init__(("127.0.0.1", port), BookHandler)
+
+
+class BookHandler(BaseHTTPRequestHandler):
+    server: BookServer
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, format: str, *args: Any) -> None:
+        # Do not log evidence, user notes or arbitrary request payloads.
+        return
+
+    def _json(self, status: int, value: object) -> None:
+        raw = json.dumps(value, allow_nan=False).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(raw)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(raw)
+
+    def _local_request(self, mutation: bool = False) -> bool:
+        host = self.headers.get("Host", "")
+        if host not in {
+            f"127.0.0.1:{self.server.server_port}",
+            f"localhost:{self.server.server_port}",
+            "127.0.0.1:5173",
+            "localhost:5173",
+        }:
+            return False
+        origin = self.headers.get("Origin")
+        allowed_origins = {f"http://{host}", "http://127.0.0.1:5173", "http://localhost:5173"}
+        if origin is not None and origin not in allowed_origins:
+            return False
+        return not mutation or self.headers.get("Sec-Fetch-Site") != "cross-site"
+
+    def do_GET(self) -> None:
+        if not self._local_request():
+            self._json(403, {"error": "Local requests only"})
+            return
+        parsed = urlparse(self.path)
+        if parsed.path == "/api/book":
+            self._json(200, self.server.store.snapshot())
+        elif parsed.path == "/api/events":
+            raw_cursor = (
+                self.headers.get("Last-Event-ID") or parse_qs(parsed.query).get("after", ["0"])[0]
+            )
+            try:
+                cursor = int(raw_cursor)
+                if cursor < 0:
+                    raise ValueError
+            except ValueError:
+                self._json(400, {"error": "Invalid event cursor"})
+                return
+            self._stream(cursor)
+        elif parsed.path.startswith("/api/"):
+            self._json(404, {"error": "Unknown endpoint"})
+        else:
+            relative = "index.html" if parsed.path == "/" else parsed.path.lstrip("/")
+            path = (self.server.static_root / relative).resolve()
+            if not path.is_relative_to(self.server.static_root) or not path.is_file():
+                self._json(404, {"error": "Frontend not built or file not found"})
+                return
+            raw = path.read_bytes()
+            self.send_response(200)
+            self.send_header(
+                "Content-Type", mimetypes.guess_type(path)[0] or "application/octet-stream"
+            )
+            self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            self.wfile.write(raw)
+
+    def _stream(self, cursor: int) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("X-Accel-Buffering", "no")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        try:
+            self.wfile.write(b"retry: 1000\n: connected\n\n")
+            self.wfile.flush()
+            while True:
+                with self.server.store.changed:
+                    events = self.server.store.events_after(cursor)
+                    if not events:
+                        self.server.store.changed.wait(timeout=15)
+                        events = self.server.store.events_after(cursor)
+                if not events:
+                    # A keepalive maintains the connection; it never changes application state.
+                    self.wfile.write(b": keepalive\n\n")
+                for event in events:
+                    cursor = event["sequence"]
+                    payload = {key: event[key] for key in ("sequence", "type", "page_id")}
+                    frame = f"id: {cursor}\nevent: book_updated\ndata: {json.dumps(payload)}\n\n"
+                    self.wfile.write(frame.encode())
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, TimeoutError):
+            return
+        finally:
+            self.close_connection = True
+
+    def do_POST(self) -> None:
+        self.close_connection = True
+        if not self._local_request(mutation=True):
+            self._json(403, {"error": "Local same-origin mutations only"})
+            return
+        if self.headers.get("Content-Type", "").split(";", 1)[0] != "application/json":
+            self._json(415, {"error": "Use application/json"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if not 0 < length <= 32768:
+                raise ValueError("Request body must be between 1 and 32768 bytes")
+            self.connection.settimeout(5)
+            body = json.loads(self.rfile.read(length))
+            if not isinstance(body, dict):
+                raise ValueError("Request body must be an object")
+            path = urlparse(self.path).path
+            store = self.server.store
+            if path == "/api/demo/start":
+                self._fields(body, {"page_id", "expected_revision"})
+                if not isinstance(body["page_id"], str):
+                    raise ValueError("page_id must be text")
+                store.start_demo(body["page_id"], body["expected_revision"])
+                threading.Thread(
+                    target=store.run_demo, args=(body["page_id"],), daemon=True
+                ).start()
+                self._json(202, {"started": True})
+                return
+            matched = re.fullmatch(r"/api/pages/([a-zA-Z0-9-]+)/(decision|evidence)", path)
+            if matched is None:
+                self._json(404, {"error": "Unknown endpoint"})
+                return
+            page_id, operation = matched.groups()
+            if operation == "decision":
+                self._fields(body, {"choice", "note", "expected_revision", "request_id"})
+                result = store.decide(
+                    page_id,
+                    body["expected_revision"],
+                    body["choice"],
+                    body["note"],
+                    body["request_id"],
+                )
+            else:
+                self._fields(body, {"expected_revision", "evidence"})
+                if not isinstance(body["evidence"], dict):
+                    raise ValueError("evidence must be an object")
+                result = store.add_evidence(page_id, body["expected_revision"], body["evidence"])
+            self._json(200, result)
+        except BookConflict as error:
+            self._json(409, {"error": str(error)})
+        except (ValueError, UnicodeError, TimeoutError) as error:
+            message = "Invalid JSON" if isinstance(error, json.JSONDecodeError) else str(error)
+            self._json(400, {"error": message})
+
+    @staticmethod
+    def _fields(body: dict[str, Any], required: set[str]) -> None:
+        if set(body) != required:
+            raise ValueError("Request fields do not match the endpoint contract")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Local synthetic live-book demo")
+    parser.add_argument("--port", type=int, default=8766)
+    parser.add_argument("--db", type=Path, default=Path("outputs/live-book/demo.sqlite3"))
+    parser.add_argument("--static-root", type=Path, default=Path("app/dist"))
+    args = parser.parse_args()
+    store = BookStore(args.db)
+    server = BookServer(args.port, store, args.static_root)
+    store.recover_interrupted()
+    print(f"Live book: http://127.0.0.1:{server.server_port} (synthetic demo)", flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+
+
+if __name__ == "__main__":
+    main()

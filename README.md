@@ -1,30 +1,56 @@
 # HyLogger Data Bridge
 
-Preparation workspace for a GSWA HyLogger Hackathon 2026 project. No application or dataset processing has been implemented yet.
+An expert-in-the-loop investigation toolkit for reviewing unfamiliar drill holes. AI coordinates the investigation, scientific tools calculate evidence, and geologists supply geological judgement.
 
-The proposed tool helps a geologist inspect one drill-hole package, check its completeness and depth alignment, review a transparently flagged interval, and export source-linked evidence. Geological interpretation remains subject to specialist review.
+**Current prototype:** a live investigation book and a small trained action selector using synthetic examples. Real HyLogger analysis, the target fine-tuned model, and automatic decision delivery back to chat are not implemented. The staged book runner does not consult the selector.
 
-## Start here
+## Run the demo
 
-- [Preparation and next decisions](developer/docs/preparation.md)
-- [Official requirements and sources](developer/docs/research/official-requirements.md)
-- [Data handling](data/README.md)
-- [Developer instructions](CLAUDE.md)
+Requires Python 3.12, [uv](https://docs.astral.sh/uv/getting-started/installation/) and Node.js 22 for development.
 
-Original concept documents and dated official snapshots are preserved locally under `private/`. They are excluded from Git; they are not needed to run a future public application. Their checksums are in `private/reference-manifest.json`.
+```sh
+uv sync --locked
+npm --prefix app ci
+npm --prefix app run build
+uv run --locked --offline python -m hylogger_bridge.book_server
+```
 
-## Repository choice
+Open `http://127.0.0.1:8766` beside your chat. Start the synthetic example, watch evidence arrive, then submit a choice and note. That page locks and a linked working page opens. Browse history or return to the latest page. SQLite preserves the book under ignored `outputs/live-book/`; keepalives do not invoke AI.
 
-This is an independent local Git repository, not a fork of the organiser's coordination repository. The [official README](https://github.com/Geological-Survey-of-Western-Australia/gswa-hackathon-2026#-submitting-your-project) asks teams to build in their own public repository and submit its link. No GitHub remote has been created or submission posted.
+## Try the baseline selector
 
-## Submission information
+```sh
+uv run --locked python scripts/make_demo_training.py --out outputs/decision-policy/training.json
+uv run --locked hylogger-policy train --data outputs/decision-policy/training.json --out outputs/decision-policy/model.json
+uv run --locked hylogger-policy recommend --model outputs/decision-policy/model.json --state examples/policy-state.json
+```
 
-Team name, members and captain are not yet recorded. The proposed primary theme is Data Adoption. No drill hole has been selected or downloaded. Installation instructions, implemented results and demo evidence will be added after the first tested implementation. See the requirements document for the deadline and submission checklist.
+Training and inference run locally. This synthetic classifier checks workflow mechanics; it is not a fine-tuned geological decision model or a validated resource-evaluation method.
 
-AI assisted this preparation. The final submission must describe actual AI use accurately.
+## Project guide
 
-## Rights and scientific limits
+- [Design](developer/docs/design.md): expert authority, local model, book and package boundaries.
+- [API](developer/docs/api.md): implemented demo routes and event contract.
+- [Tasks](developer/docs/tasks.md): frontend/backend branches and acceptance gates.
+- [Contributing and CI](developer/docs/github.md): branches, checks and publication rules.
+- [Development instructions](CLAUDE.md) and [data handling](data/README.md).
 
-No project licence has been selected. The event terms specify MIT code sharing; confirm contributor rights and that choice before public release. Source data retain their own licences. Do not commit raw HyLogger packages or imagery, credentials, private development records or confidential material.
+```text
+app/                   React and TypeScript frontend
+src/hylogger_bridge/   Python runtime and synthetic baseline
+examples/              Small synthetic inputs
+tests/                 Python checks
+scripts/               Developer validation and fixture generation
+developer/docs/        Essential project documentation
+data/                  Local source data; only README tracked
+```
 
-An automated flag is a review priority, not proof of ore, grade, mineralisation or a geological contact. Datacore may support private development but must not be required by the submitted application.
+Run `bash scripts/check.sh` after installing dependencies. Private notes, raw data, generated models, books and build outputs are ignored. Markdown uses an explicit public allowlist.
+
+## Scope and rights
+
+The intended Data Adoption use case is evidence review supporting resource evaluation. A flagged interval is a review candidate, not proof of ore, grade or mineralisation. Scientific review remains unreviewed until a real expert assessment is recorded.
+
+This is an independent project repository for the GSWA HyLogger Hackathon 2026; repository creation does not submit an entry or establish eligibility. Team details and a real demonstration hole remain to be selected. Refer to the [organiser repository](https://github.com/Geological-Survey-of-Western-Australia/gswa-hackathon-2026) for event requirements.
+
+No project licence has been selected. Source datasets retain their own licences. AI assisted preparation and implementation; final claims must describe demonstrated capabilities accurately.

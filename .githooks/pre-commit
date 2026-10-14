@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Purpose: run the canonical checks when the owner enables this repository hook.
+set -euo pipefail
+bash scripts/check.sh

@@ -2,6 +2,8 @@
 
 No HyLogger package has been downloaded or selected.
 
+The owner confirmed that the organiser's HyLogger datasets are the source for the core decision-model work. See [model design](../developer/docs/design.md#local-decision-model) for constructing supervised investigation decisions from actual scientific results. Do not substitute fabricated workflow fixtures or assume geological/assay records already contain next-action labels.
+
 Keep downloaded packages, drillcore images and local caches under ignored subfolders such as `data/raw/` and `data/cache/`. Only this README is tracked under `data/`. Do not force-add ignored files.
 
 Official entry points:
