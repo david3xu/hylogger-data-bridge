@@ -5,6 +5,7 @@ import mimetypes
 import re
 import sqlite3
 import threading
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -14,12 +15,19 @@ from hylogger_bridge.book import BookConflict, BookStore
 from hylogger_bridge.work import OPERATIONS
 
 
+def _start(job: Callable[[], None]) -> None:
+    threading.Thread(target=job, daemon=True).start()
+
+
 class BookServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(self, port: int, store: BookStore, static_root: Path) -> None:
         self.store = store
         self.static_root = static_root.resolve()
+        # How background jobs start; a test may hold a job to prove it is fenced by its own run.
+        self.launch: Callable[[Callable[[], None]], None] = _start
+        self.demo_delay = 0.7
         super().__init__(("127.0.0.1", port), BookHandler)
 
 
@@ -152,10 +160,10 @@ class BookHandler(BaseHTTPRequestHandler):
                 self._fields(body, {"page_id", "expected_revision"})
                 if not isinstance(body["page_id"], str):
                     raise ValueError("page_id must be text")
-                store.start_demo(body["page_id"], body["expected_revision"])
-                threading.Thread(
-                    target=store.run_demo, args=(body["page_id"],), daemon=True
-                ).start()
+                # The exact run is captured now; a late callback must never look one up by page.
+                run = store.begin_demo(body["page_id"], body["expected_revision"])
+                delay = self.server.demo_delay
+                self.server.launch(lambda: store.run_demo(run.page_id, delay, run))
                 self._json(202, {"started": True})
                 return
             work_route = re.fullmatch(r"/api/work/([a-z_]+)", path)

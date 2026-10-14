@@ -58,8 +58,8 @@ def run(path: Path) -> list[dict[str, Any]]:
     try:
         client = Client(server.server_port)
         page = working(client.book())
-        store.start_demo(page["id"], page["revision"])
-        store.run_demo(page["id"], delay=0)
+        run = store.begin_demo(page["id"], page["revision"])
+        store.run_demo(page["id"], delay=0, run=run)
         ready = working(client.book())
         note("The staged synthetic runner made page 1 ready", evidence=len(ready["evidence"]))
 
