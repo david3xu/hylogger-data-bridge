@@ -1,0 +1,14 @@
+{
+  "model": "unsloth/Qwen3.5-4B",
+  "revision": "3764fa359b9082ea5a1e4a5e3ac3aaf6e9671636",
+  "unsloth_revision": "26df9508df53cbc963b6474f9ea170929aaeb8f2",
+  "zoo_revision": "a8cb3bea46b86657b14e3ead20b555223d69a18d",
+  "notebook_revision": "31a8d597f678f54ea343368713d8db880af008a7",
+  "seed": 3407,
+  "max_seq_length": 768,
+  "max_steps": 2,
+  "lora_rank": 8,
+  "learning_rate": 0.0002,
+  "data_origin": "synthetic",
+  "purpose": "portability_only"
+}

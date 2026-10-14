@@ -6,7 +6,7 @@ from typing import Any
 
 from support import BookCase, at, completion, decided, page_of, ready, working
 
-from hylogger_bridge.advice.provider import FixtureProvider, UnavailableProvider
+from hylogger_bridge.advice.provider import FixtureProvider, ModelProvider, UnavailableProvider
 from hylogger_bridge.book import BookConflict, BookStore
 from hylogger_bridge.contracts.book import check_book
 from hylogger_bridge.events.runner import RUNNER
@@ -264,6 +264,27 @@ class AssessTests(BookCase):
         after = working(second)["assessment"]["id"]
         self.assertNotEqual(before, after)
         self.assertEqual(working(self.store.snapshot()), working(second))
+
+    def test_model_provider_advice_is_recorded_and_still_not_obeyed(self) -> None:
+        def double(state: str, questions: dict[str, Any]) -> dict[str, Any]:
+            # A test double standing in for a checkpoint; it is not a trained model.
+            keys = sorted(questions["follow_up"]["criteria"])
+            top = keys[-1]
+            odds = {key: 0.6 if key == top else 0.1 for key in keys}
+            return {"follow_up": {"answer": top, "probabilities": odds}}
+
+        store = BookStore(self.path, provider=ModelProvider(double, "double-v0", "synthetic"))
+        page = working(store.snapshot())
+        advice = working(store.request_assessment(page["id"], page["revision"]))["assessment"]
+        self.assertEqual((advice["origin"], advice["model_version"]), ("model", "double-v0"))
+        self.assertIn("Training data origin: synthetic", advice["limitations"][0])
+        self.assertEqual(advice["suggestions"][0]["candidate_id"], "cand-stop")
+        own = {"type": "overlap_check", "assessment_id": advice["id"]}
+        done = store.submit_result(completion(page, None, action=own), at=at(0))
+        recorded = working(done)["action"]
+        used = (recorded["type"], recorded["assessment_id"])
+        self.assertEqual(used, ("overlap_check", advice["id"]))
+        check_book(done)
 
     def test_inference_runs_outside_the_database_lock(self) -> None:
         slow = SlowProvider()

@@ -1,7 +1,11 @@
 # Application implementation tasks
 
 Updated: 2026-10-14
-Status: briefs prepared for the owner to give to implementers; no session contacted.
+Status: owner-mediated implementation briefs and planned follow-up slices; this document does not dispatch work.
+
+## Scope gate
+
+All slices serve the [resource-evaluation evidence-review MVP](design.md#mvp-scope-resource-evaluation-evidence-review). The first real case is a bounded one-hole investigation with referenced evidence and a recorded expert review cycle, not a platform implementing every Data Adoption application. Preserve the local fine-tuned advisory-model boundary. UI/transport acceptance, model quality, scientific correctness and expert usefulness require separate evidence; a synthetic demonstration cannot certify all four. Application expansion needs an explicit scope decision.
 
 ## Ownership and branches
 
@@ -50,6 +54,22 @@ Work on `codex/gemini-frontend` in your isolated checkout. Build on the existing
 Own `app/` and its package/lock files and frontend tests. Coordinate schema requests through Claude. Do not edit Python storage, training, runtime packaging, root CI or shared release files concurrently. Do not implement an installer, model fitting, data preparation, cloud service or custom scheduler under this brief.
 
 Pass: demonstrate streaming, a real submitted choice/note, persisted immutable history, successor navigation, retries/reconnect, visible delivery failure and clearly labelled advice fixtures. A heartbeat must not trigger content or model work. Return changed paths, responsibilities, exact checks, visible demo evidence and remaining limits.
+
+## S1 — Inspect and adapt one TSG package
+
+Status: planned, unassigned scientific slice. This does not expand Claude's current backend brief or Gemini's frontend brief. The owner and Codex retain model/data planning; choose a scientific implementer before starting this slice.
+
+Follow the [pytsg boundary](design.md#tsg-ingestion-with-pytsg) and [data handling](../../data/README.md). The first deliverable is a package inventory and verified mapping, before broad parser or analysis work:
+
+1. Select one manageable real organiser package and record source, retrieval time, licence, hashes and file inventory. Inspect available spectra, wavelengths, depths, masks, scalars/mineral outputs and processing levels; explicitly record missing or ambiguous fields.
+2. Verify pytsg compatibility in an isolated environment. Exercise its documented reader on that package. Return actual shapes, field meanings, row/depth correspondence and any loading failures. Coordinate dependency/lock changes with the assigned Python configuration owner; do not install speculative imaging options by default.
+3. Implement only the needed adapter under proposed `science/tsg.py` after mapping review. Keep file reading separate from QA and calculations. Return a validated internal contract with stable sample references, source/method metadata, units and explicit unknowns. Preserve original values and processing provenance.
+4. Add the smallest independently checked QA and interval-comparison operation justified by the inspected data. Use explicit depth boundaries, mask handling, valid counts and method/parameter versions. Verify a small known selection against an independent calculation; fixture tests must cover missing products, dimensional mismatch, empty selections and invalid measurements where relevant.
+5. Demonstrate one real interval result suitable for the book and one bounded observed-feature record suitable for training preparation. These are scientific results, not expert-approved conclusions or next-action labels. Share the same feature definitions with live inference preparation.
+
+Pass: a reproducible one-hole load and independently verified comparison, with provenance, limitations and an inventory of unsupported fields. No fabricated fallback values or synthetic-to-real relabelling. Keep real data out of Git/hosted CI; ordinary tests use small clearly labelled fixtures. Do not infer cross-hole generalisation from this pilot.
+
+Later scientific slices may add change detection, a separate assay reader and verified interval overlap. Do not claim that pytsg alone provides those analyses, assay linkage or model supervision. Schema changes require coordination with Claude; frontend presentation uses Gemini's existing evidence contract. Return changed paths, module responsibilities, exact checks and unresolved scientific questions.
 
 ## Review and next gates
 

@@ -1,1 +1,1 @@
-# Purpose: the replaceable assessment boundary; advice is never an authorisation.
+# Purpose: runtime advice: the provider boundary, model inference and labelled stand-ins.

@@ -1,0 +1,11 @@
+# Purpose: direct dependency pins for Apple Silicon decision-model feasibility.
+unsloth @ git+https://github.com/unslothai/unsloth@26df9508df53cbc963b6474f9ea170929aaeb8f2
+unsloth_zoo @ git+https://github.com/unslothai/unsloth-zoo@a8cb3bea46b86657b14e3ead20b555223d69a18d
+transformers==5.2.0
+torch==2.8.0
+torchvision==0.23.0
+peft==0.18.1
+trl==0.22.2
+mlx==0.32.3
+mlx-lm==0.31.3
+mlx-vlm==0.4.4

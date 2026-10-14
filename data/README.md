@@ -11,7 +11,7 @@ Official entry points:
 - [WA NVCL catalogue](https://thredds.nci.org.au/thredds/catalog/rs07/WA/catalog.html)
 - [DASC](https://dasc.dmirs.wa.gov.au/) — search for HyLogger Drillhole Package
 - [GSWA data FAQ](https://github.com/Geological-Survey-of-Western-Australia/gswa-hackathon-2026/discussions/1)
-- [pytsg](https://github.com/Geological-Survey-of-Western-Australia/pytsg) — reader to evaluate after package selection
+- [pytsg](https://github.com/Geological-Survey-of-Western-Australia/pytsg) — proposed TSG reader behind the [scientific adapter](../developer/docs/design.md#tsg-ingestion-with-pytsg); validate against the selected package before integration
 
 For the first package, record its hole identifier, exact download URL, retrieval time, licence, file sizes/hashes and processing level before analysis. Record missing fields and unknown units explicitly. Do not invent a common schema before inspecting the files.
 

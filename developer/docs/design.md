@@ -1,6 +1,6 @@
 # Investigation design
 
-Updated: 2026-10-14
+Updated: 2026-10-15
 Status: agreed product boundaries and proposed implementation; current behaviour is in the [API](api.md).
 
 ## Purpose and authority
@@ -14,6 +14,47 @@ Question → agent interprets goal → current evidence + local model advice
 ```
 
 The chat agent coordinates the investigation. Reproducible scientific code ingests data, checks QA/depth alignment and calculates changes, overlap, comparisons and statistics. The local model supplies structured decision support. The geologist retains final judgement. Reuse the host's agent facilities; do not build a new multi-agent scheduler.
+
+## MVP scope: resource-evaluation evidence review
+
+Focus on one application within Data Adoption: helping an expert understand and review drill-hole evidence supporting resource evaluation. The broader theme's application examples are not this project's feature checklist. The first version does not promise coverage of every industry use case.
+
+The target user task is: review an unfamiliar drill hole, identify intervals deserving attention, compare available evidence and record a traceable review decision. The initial real demonstration is one hole, one bounded investigation and one auditable expert review cycle:
+
+> Review this hole for spectral-change intervals that overlap available assays. Compare selected intervals, show data limitations and prepare an evidence package for geological review.
+
+| Area | First-version boundary |
+| --- | --- |
+| Resource-evaluation support | Package/QA review, transparent change candidates, interval comparisons, available assay overlap and referenced evidence |
+| Alteration-related evidence | Spectral/mineral changes may inform the investigation; a complete alteration-mapping product is outside the MVP |
+| Resource estimation and reporting | Tonnage/grade estimation, block modelling, reserves and formal resource reporting are outside the MVP |
+| Operational applications | Grade-control decisions and ore–waste classification are outside the MVP |
+| Other applications | Geometallurgy and environmental assessment are outside the MVP |
+
+The fine-tuned local advisory model remains a core requirement within this bounded workflow; narrowing the application does not remove it. The agent interprets questions, scientific tools calculate evidence, the model advises on useful follow-ups and the book records actual expert decisions. A flagged interval is a review candidate, not proof of ore or mineralisation.
+
+Judge product value on a real case: whether an expert can find and verify relevant evidence with fewer manual steps, clear limitations and source provenance. Where feasible, compare task time, manual steps, evidence completeness and expert usability against the existing manual workflow. Define success criteria before evaluation and record actual reviewer feedback; do not claim improvement from a synthetic UI demo. Separately evaluate whether model advice improves investigation outcomes as specified in [training](training.md#5-evaluate-added-value).
+
+A one-hole product demonstration is distinct from the independent source groups needed to assess model generalisation. Propose a feature only when it helps complete this review workflow; expanding to another application needs an explicit scope decision. Current synthetic demos remain mechanics evidence, not proof of immediate industry value.
+
+## TSG ingestion with pytsg
+
+Use GSWA's [pytsg](https://github.com/Geological-Survey-of-Western-Australia/pytsg) as the TSG-package reader behind our scientific adapter. Its documented `pytsg.read_tsg(package_path)` interface exposes package data, including spectral arrays and wavelengths. This is a proposed integration; no dependency installation or real-package validation has been performed in this project.
+
+```text
+Local TSG package → pytsg → validated internal data contract
+    → reproducible scientific operations
+        → referenced evidence and plots for the book
+        → observed features for model training and live assessment
+```
+
+Keep the dependency boundary in a focused proposed module, `src/hylogger_bridge/science/tsg.py`. It loads inspected packages, maps their available fields and reports missing products with provenance. Validate dimensions, row/depth correspondence, units, processing levels and mask semantics before downstream calculations. Do not invent universal mineral/scalar fields or assume all packages contain all spectral regions. Preserve the meaning of existing TSG processing; reading interpreted outputs does not independently validate them or rerun mineral unmixing.
+
+Separate QA, interval comparison, change detection and depth overlap into their own scientific operations. Associated assay tables need a separate reader and verified hole/depth/unit linkage; the pytsg adapter does not establish that linkage. The frontend, chat adapter and model inference must not import pytsg directly. Bounded application tools invoke the scientific layer and return referenced results, not entire raw arrays to the chat.
+
+Use the same adapter, calculation methods and feature definitions for offline training preparation and live investigations. pytsg provides access to scientific data; it does not supply next-action supervision or the fine-tuned decision model. Keep raw packages, large arrays and generated records outside Git. Inspect dependency compatibility and pin the reviewed version through the assigned Python configuration owner when integration is authorised.
+
+The next bounded scientific slice is [S1 in the task plan](tasks.md#s1--inspect-and-adapt-one-tsg-package). It is separate from the initial frontend/backend assignments; recording it does not dispatch implementation or download data.
 
 ## Live book
 
@@ -37,7 +78,7 @@ First prove a supported round trip in Codex desktop. A generic browser SSE event
 
 The owner requires a locally installed fine-tuned model grounded in the organiser's HyLogger datasets. It must be meaningfully consulted during chat, not merely loaded or added as a decorative endorsement. The organiser supplies scientific measurements; that does not imply expert next-action labels exist. No real dataset is downloaded in this repository yet.
 
-The existing synthetic logistic classifier is a mechanics baseline. It is fitted from scratch, lacks question/instruction/evidence inputs and is not the target fine-tuned model. No base checkpoint or inference runtime has been selected for the target.
+The existing synthetic logistic classifier is a mechanics baseline. It is fitted from scratch, lacks question/instruction/evidence inputs and is not the target fine-tuned model. The owner selected Qwen3.5-4B with LoRA and a decision head for the first experiment on 2026-10-15. A synthetic local run and offline base/adapter reload have been verified; measured evidence and remaining real-data limits are in [project instructions](../../CLAUDE.md#local-qwen-demonstration-evidence).
 
 Reserve this versioned boundary before parallel implementation:
 
@@ -53,20 +94,11 @@ Consult after a structured question, relevant tool result and committed human mo
 
 Only train output fields supported by labels. Action rankings do not automatically teach evidence-gap classification, calibrated uncertainty or causal explanations. Scores are not geological confidence. Clearly label `origin=fixture` for parallel UI/backend work; unavailable inference may allow authorised manual/deterministic work, but cannot masquerade as the trained model.
 
-### Training and evaluation, held for owner discussion
+### Training and evaluation
 
-A compact pretrained encoder/ranker with numerical features is a candidate architecture. Fine-tuning must update pretrained parameters; fitting only a frozen-embedding head is a baseline. Benchmark laptop latency, memory and install size before choosing the checkpoint/export/runtime. Ship tokenizer, preprocessing, schema/action versions, hashes and a model card with trained weights; isolate training dependencies from inference.
+The proposed data-to-model process is maintained in [local model training](training.md): real-package inspection, grounded partial-observation records, explicit label origins, advisory-model fine-tuning, independent source-group evaluation and local export. That record includes encoder/ranker and LoRA decision-head candidates, Colab training feasibility and an early target-laptop inference check. The owner authorised the bounded Qwen3.5-4B feasibility implementation on 2026-10-15. Real-data preparation and expert validation remain separate work; this does not authorise additional compute purchases or broad dataset downloads.
 
-1. Inspect real packages and freeze independent hole/project train/validation/test groups before generating tasks, windows, paraphrases or fitted preprocessing.
-2. Produce independently checked scientific results with source/method/parameter provenance. Define bounded answerable and unanswerable tasks and their evidence requirements.
-3. Construct partial-observation episodes with meaningful alternative actions and human changes of direction. Separate native missingness from controlled masking.
-4. Compare valid actions/short continuations against predeclared evidence criteria and costs. Allow ties. Record calculated, teacher-proposed, expert-reviewed and unresolved label origins; an LLM preference is not geological ground truth.
-5. Keep future results and terminal outcomes out of pre-action inputs. Related windows, revisions and trajectories stay in one source group. Raw data and private trajectories remain ignored.
-6. Compare rules, synthetic baseline, frozen encoder, fine-tuned ranker and the same agent without local advice on equal tools/tasks/budgets.
-
-Evaluate acceptable-action ranking, invalid calls, clarification/stop choices, answer correctness, traceability, missing evidence and unnecessary tool cost. Run complete investigations using states created by actual chosen actions. Hold the question fixed while varying observed evidence, and evidence fixed while changing the question. Preserve failures and cases where advice worsens outcomes. One hole does not establish cross-hole generalisation.
-
-Full acceptance requires actual fine-tuning and local advice at question/result/human-decision checkpoints, useful held-out/rollout results, and a live demonstration where the agent can disagree without bypassing scientific validation. Geological usefulness needs separately recorded expert feedback. Model work remains with the owner and Codex; it is not assigned to the two application implementers.
+The full model feature requires demonstrated local fine-tuning, meaningful advisory integration and evaluated investigation outcomes. Gemini and Claude's initial application tasks remain separate from model/data work.
 
 ## Package and hosts
 
