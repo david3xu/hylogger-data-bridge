@@ -11,6 +11,8 @@ dependencies = []
 
 [project.scripts]
 hylogger-policy = "hylogger_bridge.cli:main"
+hylogger-mcp = "hylogger_bridge.mcp.server:main"
+hylogger-walkthrough = "hylogger_bridge.walkthrough:main"
 
 [dependency-groups]
 train = ["scikit-learn==1.7.2"]
