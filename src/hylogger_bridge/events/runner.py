@@ -38,7 +38,7 @@ def valid(connection: sqlite3.Connection, run: Run, at: datetime) -> bool:
     if run.continuation_id is None:
         return True
     step = cont.get(connection, run.continuation_id)
-    return (
+    return bool(
         step is not None
         and step["state"] == "running"
         and step["attempts"] == run.attempt

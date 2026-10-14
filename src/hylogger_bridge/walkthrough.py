@@ -1,4 +1,4 @@
-# Purpose: a repeatable synthetic walkthrough: decision, claim, acknowledgement, evidence, result, reload.
+# Purpose: a repeatable synthetic walkthrough: decision, claim, evidence, result and reload.
 import argparse
 import json
 import tempfile

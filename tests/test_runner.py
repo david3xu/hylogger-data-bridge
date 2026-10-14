@@ -4,7 +4,7 @@ import threading
 import unittest
 from typing import Any
 
-from support import BookCase, at, claim_of, completion, decided, page_of, ready, working
+from support import BookCase, at, completion, decided, page_of, ready, working
 
 from hylogger_bridge.advice.provider import FixtureProvider, UnavailableProvider
 from hylogger_bridge.book import BookConflict, BookStore
