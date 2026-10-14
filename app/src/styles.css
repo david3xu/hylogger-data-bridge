@@ -445,9 +445,60 @@ p {
   color: #4f5e51;
   margin: 0;
 }
+.chat-followup-row {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 9px 11px;
+  background: #f1f3e8;
+  border: 1px solid #d5dbc8;
+  border-radius: 3px;
+}
+.chat-followup-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.chat-followup-code {
+  font-size: 10px;
+  color: #2f4b3e;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.chat-followup-fallback-box {
+  display: grid;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #d5dbc8;
+}
+.chat-followup-error {
+  margin: 0;
+  font-size: 10px;
+  color: #754b23;
+}
+.chat-followup-fallback {
+  width: 100%;
+  padding: 6px 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  color: #2f4b3e;
+  background: #fffffb;
+  border: 1px solid #c5ccb7;
+  border-radius: 2px;
+}
+.delivery-footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
 .delivery-meta {
   display: block;
-  margin-top: 6px;
+  margin-top: 2px;
   font-size: 9px;
   color: #7c8474;
 }
@@ -608,7 +659,8 @@ p {
   background: #fbf6e9;
   border-color: #d6c394;
 }
-.assessment-panel.status-unavailable {
+.assessment-panel.status-unavailable,
+.assessment-panel.status-none {
   background: #f4f3ee;
   border-color: #d2d1c8;
 }
@@ -630,7 +682,8 @@ p {
   border-color: #d8be89;
   color: #74561e;
 }
-.assessment-badge.badge-unavailable {
+.assessment-badge.badge-unavailable,
+.assessment-badge.badge-none {
   background: #eae9e2;
   border-color: #cecdc3;
   color: #67685f;
@@ -884,13 +937,13 @@ textarea::placeholder {
   gap: 12px;
   margin-top: 10px;
 }
-.declined-pill {
+.actor-pill {
   font-size: 9px;
   padding: 3px 7px;
-  background: #f2e2dc;
-  border: 1px solid #d7b4a9;
+  background: #eaeee3;
+  border: 1px solid #cbd2bf;
   border-radius: 3px;
-  color: #743e2f;
+  color: #365041;
 }
 .page-footer {
   display: flex;

@@ -1,6 +1,8 @@
 // Validate canonical v1 contracts against schemas/v1.json and shared semantic rules.
 import v1Schema from "../../../schemas/v1.json";
 
+export const BUILTIN_SYNTHETIC_SOURCE = "Built-in synthetic fixture v1";
+
 export type DecisionChoice = "accept" | "modify" | "reject";
 export type EvidenceKind = "observation" | "calculation" | "limitation";
 export type EvidenceOrigin = "actual" | "synthetic" | "unspecified";
@@ -657,6 +659,19 @@ function isLegacySnapshotCandidate(value: Record<string, unknown>): boolean {
   );
 }
 
+function isLegacyDecisionActor(value: unknown): value is DecisionActor {
+  if (!isObject(value)) return false;
+  const keys = Object.keys(value);
+  if (keys.some((k) => k !== "kind" && k !== "name")) return false;
+  if (value.kind !== "human" && value.kind !== "unknown") return false;
+  if (value.name !== undefined) {
+    if (typeof value.name !== "string" || value.name.length < 1 || value.name.length > 200) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function decodeLegacyBook(value: Record<string, unknown>): Book {
   const invalid = new Error("The local service returned an unsupported book snapshot.");
   const allowedKeys = new Set([
@@ -715,20 +730,47 @@ function decodeLegacyBook(value: Record<string, unknown>): Book {
         !isObject(ev) ||
         !isId(ev.id) ||
         typeof ev.label !== "string" ||
+        ev.label.length < 1 ||
+        ev.label.length > 4000 ||
         typeof ev.value !== "string" ||
+        ev.value.length < 1 ||
+        ev.value.length > 4000 ||
         typeof ev.source !== "string" ||
+        ev.source.length < 1 ||
+        ev.source.length > 4000 ||
         !["observation", "calculation", "limitation"].includes(String(ev.kind))
       ) {
         throw invalid;
       }
+
+      let origin: EvidenceOrigin;
+      if (ev.origin !== undefined) {
+        if (ev.origin !== "actual" && ev.origin !== "synthetic" && ev.origin !== "unspecified") {
+          throw invalid;
+        }
+        origin = ev.origin;
+      } else {
+        origin = ev.source === BUILTIN_SYNTHETIC_SOURCE ? "synthetic" : "unspecified";
+      }
+
+      let state: EvidenceState;
+      if (ev.state !== undefined) {
+        if (ev.state !== "complete" && ev.state !== "partial" && ev.state !== "failed") {
+          throw invalid;
+        }
+        state = ev.state;
+      } else {
+        state = "complete";
+      }
+
       return {
         id: ev.id,
         label: ev.label,
         value: ev.value,
         source: ev.source,
         kind: ev.kind as EvidenceKind,
-        origin: (ev.origin as EvidenceOrigin | undefined) ?? "synthetic",
-        state: (ev.state as EvidenceState | undefined) ?? "complete",
+        origin,
+        state,
       };
     });
 
@@ -738,22 +780,94 @@ function decodeLegacyBook(value: Record<string, unknown>): Book {
         !isObject(rawPage.decision) ||
         !["accept", "modify", "reject"].includes(String(rawPage.decision.choice)) ||
         typeof rawPage.decision.note !== "string" ||
-        typeof rawPage.decision.recorded_at !== "string"
+        rawPage.decision.note.length > 4000 ||
+        !isTime(rawPage.decision.recorded_at)
       ) {
         throw invalid;
       }
+
+      let actor: DecisionActor = { kind: "unknown" };
+      if (rawPage.decision.actor !== undefined) {
+        if (!isLegacyDecisionActor(rawPage.decision.actor)) {
+          throw invalid;
+        }
+        actor = rawPage.decision.actor;
+      }
+
+      let requestId: string | undefined;
+      if (rawPage.decision.request_id !== undefined) {
+        if (
+          typeof rawPage.decision.request_id !== "string" ||
+          rawPage.decision.request_id.length < 1 ||
+          rawPage.decision.request_id.length > 200
+        ) {
+          throw invalid;
+        }
+        requestId = rawPage.decision.request_id;
+      }
+
+      let decisionId: string | undefined;
+      if (rawPage.decision.id !== undefined) {
+        if (!isId(rawPage.decision.id)) {
+          throw invalid;
+        }
+        decisionId = rawPage.decision.id;
+      }
+
+      let successorId: string | undefined;
+      if (rawPage.decision.successor_id !== undefined) {
+        if (!isId(rawPage.decision.successor_id)) {
+          throw invalid;
+        }
+        successorId = rawPage.decision.successor_id;
+      }
+
+      let lockedRevision: number | undefined;
+      if (rawPage.decision.locked_revision !== undefined) {
+        if (
+          typeof rawPage.decision.locked_revision !== "number" ||
+          !Number.isSafeInteger(rawPage.decision.locked_revision) ||
+          rawPage.decision.locked_revision < 0
+        ) {
+          throw invalid;
+        }
+        lockedRevision = rawPage.decision.locked_revision;
+      }
+
+      let evidenceIds: string[] | undefined;
+      if (rawPage.decision.evidence_ids !== undefined) {
+        if (
+          !Array.isArray(rawPage.decision.evidence_ids) ||
+          !rawPage.decision.evidence_ids.every(isId)
+        ) {
+          throw invalid;
+        }
+        evidenceIds = rawPage.decision.evidence_ids;
+      }
+
       decision = {
         choice: rawPage.decision.choice as DecisionChoice,
         note: rawPage.decision.note,
         recorded_at: rawPage.decision.recorded_at,
-        ...(typeof rawPage.decision.request_id === "string"
-          ? { request_id: rawPage.decision.request_id }
-          : {}),
+        actor,
+        ...(decisionId !== undefined ? { id: decisionId } : {}),
+        ...(requestId !== undefined ? { request_id: requestId } : {}),
+        ...(successorId !== undefined ? { successor_id: successorId } : {}),
+        ...(lockedRevision !== undefined ? { locked_revision: lockedRevision } : {}),
+        ...(evidenceIds !== undefined ? { evidence_ids: evidenceIds } : {}),
       };
     }
 
     if (rawPage.status === "locked" && decision === null) {
       throw invalid;
+    }
+
+    let assessment: Assessment | null = null;
+    if (rawPage.assessment !== undefined && rawPage.assessment !== null) {
+      if (!isAssessment(rawPage.assessment)) {
+        throw invalid;
+      }
+      assessment = rawPage.assessment;
     }
 
     return {
@@ -773,7 +887,7 @@ function decodeLegacyBook(value: Record<string, unknown>): Book {
       errors: [],
       decision,
       action: null,
-      assessment: isAssessment(rawPage.assessment) ? rawPage.assessment : null,
+      assessment,
       created_at: rawPage.created_at,
       updated_at: rawPage.updated_at,
       scientific_review: "unreviewed",

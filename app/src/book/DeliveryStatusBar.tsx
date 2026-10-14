@@ -16,29 +16,84 @@ function normalizedKey(state: DeliveryState): DeliveryState {
   return state === "needs_input" ? "failed" : state;
 }
 
+export type ClipboardLike = {
+  clipboard?: {
+    writeText?: (value: string) => Promise<void>;
+  };
+};
+
+export async function copyTextToClipboard(
+  text: string,
+  nav: ClipboardLike | undefined = typeof navigator !== "undefined" ? navigator : undefined,
+): Promise<{ ok: boolean; error: string | null }> {
+  if (!nav?.clipboard || typeof nav.clipboard.writeText !== "function") {
+    return {
+      ok: false,
+      error:
+        "Clipboard access is unavailable in this browser. Select and copy the follow-up text below.",
+    };
+  }
+  try {
+    await nav.clipboard.writeText(text);
+    return { ok: true, error: null };
+  } catch (failure) {
+    const reason =
+      failure instanceof Error && failure.message.trim().length > 0
+        ? `Clipboard copy failed (${failure.message}).`
+        : "Clipboard permission was denied.";
+    return {
+      ok: false,
+      error: `${reason} Select and copy the follow-up text below.`,
+    };
+  }
+}
+
 type DeliveryStatusBarProps = {
   delivery: ResolvedDelivery;
   busy?: boolean;
+  initialCopyError?: string | null;
   onRetryHostDelivery?: (pageId: string) => void;
 };
 
 export function DeliveryStatusBar({
   delivery,
   busy = false,
+  initialCopyError = null,
   onRetryHostDelivery,
 }: DeliveryStatusBarProps) {
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<{
+    status: "idle" | "copied" | "failed";
+    error: string | null;
+    forText: string | null;
+  }>({
+    status: initialCopyError ? "failed" : "idle",
+    error: initialCopyError,
+    forText: delivery.chatFollowUp ?? null,
+  });
+
   const activeKey = normalizedKey(delivery.state);
   const hostPageId = delivery.hostDeliveryPageId;
 
-  const handleCopyFollowUp = () => {
-    if (!delivery.chatFollowUp) return;
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      void navigator.clipboard.writeText(delivery.chatFollowUp).then(() => {
-        setCopied(true);
+  const isSameText = copyState.forText === (delivery.chatFollowUp ?? null);
+  const effectiveStatus = isSameText ? copyState.status : initialCopyError ? "failed" : "idle";
+  const effectiveError = isSameText ? copyState.error : initialCopyError;
+
+  const handleCopyFollowUp = async () => {
+    const targetText = delivery.chatFollowUp;
+    if (!targetText) return;
+    const outcome = await copyTextToClipboard(targetText);
+    if (outcome.ok) {
+      setCopyState({
+        status: "copied",
+        error: null,
+        forText: targetText,
       });
     } else {
-      setCopied(true);
+      setCopyState({
+        status: "failed",
+        error: outcome.error,
+        forText: targetText,
+      });
     }
   };
 
@@ -73,10 +128,39 @@ export function DeliveryStatusBar({
       </p>
       {delivery.chatFollowUp && (
         <section className="chat-followup-row" aria-label="Explicit chat follow-up">
-          <code className="chat-followup-code">{delivery.chatFollowUp}</code>
-          <button type="button" className="secondary-button" onClick={handleCopyFollowUp}>
-            {copied ? "Copied chat follow-up" : "Copy chat follow-up"}
-          </button>
+          <div className="chat-followup-main">
+            <code className="chat-followup-code">{delivery.chatFollowUp}</code>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                void handleCopyFollowUp();
+              }}
+            >
+              {effectiveStatus === "copied"
+                ? "Copied chat follow-up"
+                : effectiveStatus === "failed"
+                  ? "Retry copy chat follow-up"
+                  : "Copy chat follow-up"}
+            </button>
+          </div>
+          {effectiveStatus === "failed" && effectiveError && (
+            <div className="chat-followup-fallback-box" role="alert">
+              <p className="chat-followup-error">{effectiveError}</p>
+              <label className="visually-hidden" htmlFor="chat-followup-fallback-input">
+                Selectable chat follow-up text
+              </label>
+              <input
+                id="chat-followup-fallback-input"
+                type="text"
+                readOnly
+                className="chat-followup-fallback"
+                aria-label="Selectable chat follow-up text"
+                value={delivery.chatFollowUp}
+                onFocus={(event) => event.currentTarget.select()}
+              />
+            </div>
+          )}
         </section>
       )}
       {(delivery.continuationId ||

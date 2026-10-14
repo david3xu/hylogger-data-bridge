@@ -46,6 +46,17 @@ export type CommittedDecisionNotice = {
   recorded_at: string;
 };
 
+export type ParsedChatFollowUp = {
+  run_id: string;
+  page_id: string;
+  locked_revision: number;
+  successor_id: string;
+  decision_id: string | null;
+  continuation_id: string | null;
+  choice: DecisionChoice;
+  note: string;
+};
+
 export type HostTransport = {
   readonly contractVersion: 1;
   readonly hostName: string;
@@ -174,7 +185,8 @@ export function buildCommittedDecisionNotice(
   if (!book || lockedPage.status !== "locked" || !lockedPage.decision) {
     return null;
   }
-  if (lockedPage.decision.actor && lockedPage.decision.actor.kind !== "human") {
+  // Only an explicitly human-attributed decision produces a committed-decision notice.
+  if (lockedPage.decision.actor?.kind !== "human") {
     return null;
   }
   const continuation = book.continuations?.find((item) => item.page_id === lockedPage.id);
@@ -204,16 +216,58 @@ export function buildCommittedDecisionNotice(
   return isCommittedDecisionNotice(notice) ? notice : null;
 }
 
+const FOLLOW_UP_RE =
+  /^Continue HyLogger investigation \(run=([^\s)]+) page=([^\s@]+)@r(\d+) successor=([^\s)]+) decision=([^\s)]+) continuation=([^\s)]+)\): choice=(accept|modify|reject) note=([\s\S]+)$/;
+
 export function formatChatFollowUp(notice: CommittedDecisionNotice): string {
   const refs = [
     `run=${notice.run_id}`,
     `page=${notice.page_id}@r${notice.locked_revision}`,
     `successor=${notice.successor_id}`,
-    ...(notice.decision_id ? [`decision=${notice.decision_id}`] : []),
-    ...(notice.continuation_id ? [`continuation=${notice.continuation_id}`] : []),
+    `decision=${notice.decision_id ?? "none"}`,
+    `continuation=${notice.continuation_id ?? "none"}`,
   ].join(" ");
-  const notePart = notice.note.trim() ? ` — "${notice.note.trim()}"` : "";
-  return `Continue HyLogger investigation (${refs}): choice=${notice.choice}${notePart}`;
+  return `Continue HyLogger investigation (${refs}): choice=${notice.choice} note=${JSON.stringify(notice.note)}`;
+}
+
+export function parseChatFollowUp(text: string): ParsedChatFollowUp | null {
+  const match = FOLLOW_UP_RE.exec(text);
+  if (!match) return null;
+  const [, runId, pageId, revRaw, successorId, decisionRaw, contRaw, choiceRaw, noteJson] = match;
+  if (!isId(runId) || !isId(pageId) || !isId(successorId)) {
+    return null;
+  }
+  const lockedRevision = Number(revRaw);
+  if (!Number.isSafeInteger(lockedRevision) || lockedRevision < 0) {
+    return null;
+  }
+  const decisionId = decisionRaw === "none" ? null : decisionRaw;
+  const continuationId = contRaw === "none" ? null : contRaw;
+  if (
+    (decisionId !== null && !isId(decisionId)) ||
+    (continuationId !== null && !isId(continuationId))
+  ) {
+    return null;
+  }
+  let parsedNote: unknown;
+  try {
+    parsedNote = JSON.parse(noteJson);
+  } catch {
+    return null;
+  }
+  if (typeof parsedNote !== "string" || parsedNote.length > 4000) {
+    return null;
+  }
+  return {
+    run_id: runId,
+    page_id: pageId,
+    locked_revision: lockedRevision,
+    successor_id: successorId,
+    decision_id: decisionId,
+    continuation_id: continuationId,
+    choice: choiceRaw as DecisionChoice,
+    note: parsedNote,
+  };
 }
 
 export function hasBackendContinuationProgressed(

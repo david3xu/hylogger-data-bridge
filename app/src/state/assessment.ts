@@ -1,26 +1,25 @@
 // Resolve canonical v1 model assessments separately from scientific evidence, actions, and decisions.
 import type { Assessment, BookSource, Page } from "./contracts";
 
-export type AssessmentStatus = "fixture" | "model" | "stale" | "unavailable";
+export type AssessmentStatus = "none" | "fixture" | "model" | "stale" | "unavailable";
 
 export type ResolvedAssessment = {
   status: AssessmentStatus;
   badgeLabel: string;
   isStale: boolean;
   declinedInView: boolean;
-  assessment: Assessment;
+  assessment: Assessment | null;
   referencedEvidenceIds: string[];
   actualAction: string;
 };
 
 const STATUS_BADGES: Record<AssessmentStatus, string> = {
+  none: "No assessment recorded",
   fixture: "Fixture advice (origin=fixture)",
   model: "Local decision model (origin=model)",
   stale: "Stale assessment",
   unavailable: "Assessment unavailable",
 };
-
-const FIXTURE_HASH = "77b6337144604a1234d30e55128e50649bc1f7517fa79a4d3b23ee764201044e";
 
 function describeActualAction(page: Page, bookSource: BookSource): string {
   if (page.action) {
@@ -51,104 +50,25 @@ function describeActualAction(page: Page, bookSource: BookSource): string {
   return "No tool or worker action recorded on this page yet";
 }
 
-function buildBoundaryFixture(page: Page, bookSource: BookSource): Assessment {
-  if (
-    bookSource === "live" ||
-    (page.number > 1 && page.evidence.length === 0) ||
-    page.outcome === "failed"
-  ) {
-    return {
-      contract_version: 1,
-      id: `assess-unavail-${page.id}`,
-      page_id: page.id,
-      state_revision: page.revision,
-      model_version: "fixture-v1",
-      origin: "fixture",
-      status: "unavailable",
-      request_hash: FIXTURE_HASH,
-      suggestions: [],
-      evidence_gaps: [],
-      uncertainty: null,
-      limitations: ["No local model is installed; manual or deterministic work remains possible."],
-      created_at: page.updated_at,
-    };
-  }
-
-  if (page.status === "draft" && page.revision >= 2) {
-    const firstEvidence = page.evidence.slice(0, 1).map((item) => item.id);
-    return {
-      contract_version: 1,
-      id: `assess-stale-${page.id}`,
-      page_id: page.id,
-      state_revision: 1,
-      model_version: "fixture-v1",
-      origin: "fixture",
-      status: "available",
-      request_hash: FIXTURE_HASH,
-      suggestions: [
-        {
-          candidate_id: "cand-overlap",
-          rank: 1,
-          rationale: "Fixture ordering for interface development; no model produced this.",
-          evidence_ids: firstEvidence,
-        },
-        {
-          candidate_id: "cand-qa",
-          rank: 2,
-          rationale: "Fixture ordering for interface development; no model produced this.",
-          evidence_ids: [],
-        },
-      ],
-      evidence_gaps: [`Evaluated at revision 1; page is now at revision ${page.revision}.`],
-      uncertainty: null,
-      limitations: [
-        "Labelled fixture: no trained model was consulted.",
-        "A ranking never authorises an action.",
-      ],
-      created_at: page.created_at,
-    };
-  }
-
-  const citedIds = page.evidence.slice(0, 1).map((item) => item.id);
-  return {
-    contract_version: 1,
-    id: `assess-${page.id}`,
-    page_id: page.id,
-    state_revision: page.revision,
-    model_version: "fixture-v1",
-    origin: "fixture",
-    status: "available",
-    request_hash: FIXTURE_HASH,
-    suggestions: [
-      {
-        candidate_id: "cand-overlap",
-        rank: 1,
-        rationale: "Fixture ordering for interface development; no model produced this.",
-        evidence_ids: citedIds,
-      },
-      {
-        candidate_id: "cand-qa",
-        rank: 2,
-        rationale: "Fixture ordering for interface development; no model produced this.",
-        evidence_ids: [],
-      },
-    ],
-    evidence_gaps: ["Fixture does not assess gaps."],
-    uncertainty: null,
-    limitations: [
-      "Labelled fixture: no trained model was consulted.",
-      "A ranking never authorises an action.",
-    ],
-    created_at: page.updated_at,
-  };
-}
-
 export function resolveAssessment(
   page: Page,
   declinedInView = false,
   bookSource: BookSource = "synthetic_demo",
 ): ResolvedAssessment {
-  const assessment: Assessment = page.assessment ?? buildBoundaryFixture(page, bookSource);
+  const actualAction = describeActualAction(page, bookSource);
+  const assessment: Assessment | null = page.assessment ?? null;
+
+  if (assessment === null) {
+    return {
+      status: "none",
+      badgeLabel: STATUS_BADGES.none,
+      isStale: false,
+      declinedInView,
+      assessment: null,
+      referencedEvidenceIds: [],
+      actualAction,
+    };
+  }
 
   const isStale = assessment.status === "available" && assessment.state_revision < page.revision;
 
@@ -166,6 +86,6 @@ export function resolveAssessment(
     declinedInView,
     assessment,
     referencedEvidenceIds,
-    actualAction: describeActualAction(page, bookSource),
+    actualAction,
   };
 }

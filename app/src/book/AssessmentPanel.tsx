@@ -18,6 +18,27 @@ export function AssessmentPanel({ resolved, pageRevision, onToggleDecline }: Ass
     actualAction,
   } = resolved;
 
+  if (assessment === null) {
+    return (
+      <section
+        className={`assessment-panel status-${status}`}
+        aria-label="Local decision-model advice"
+      >
+        <div className="section-heading">
+          <span className="eyebrow">Local decision-model advice · separate from evidence</span>
+          <div className="assessment-badges">
+            <span className="assessment-badge badge-none">{badgeLabel}</span>
+          </div>
+        </div>
+        <p className="small-detail">No assessment recorded.</p>
+        <div className="actual-action-box">
+          <span className="eyebrow">Actual action / runtime state (separate from advice)</span>
+          <p>{actualAction}</p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       className={`assessment-panel status-${status} ${declinedInView ? "is-declined" : ""}`}
@@ -45,9 +66,8 @@ export function AssessmentPanel({ resolved, pageRevision, onToggleDecline }: Ass
 
       {status === "unavailable" && (
         <output className="assessment-warning unavailable-notice">
-          <strong>Assessment unavailable:</strong> No local decision-model evaluation is available
-          for this state. Manual and deterministic investigation steps remain permitted without
-          model advice.
+          <strong>Assessment unavailable:</strong> The backend recorded an unavailable assessment
+          for this state.
         </output>
       )}
 
