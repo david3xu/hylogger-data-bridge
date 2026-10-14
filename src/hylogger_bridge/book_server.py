@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from hylogger_bridge.advice.select import Loader, add_option, startup
 from hylogger_bridge.book import BookConflict, BookStore
 from hylogger_bridge.work import OPERATIONS
 
@@ -212,13 +213,16 @@ class BookHandler(BaseHTTPRequestHandler):
             raise ValueError("Request fields do not match the endpoint contract")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None, load: Loader | None = None) -> None:
     parser = argparse.ArgumentParser(description="Local synthetic live-book demo")
     parser.add_argument("--port", type=int, default=8766)
     parser.add_argument("--db", type=Path, default=Path("outputs/live-book/demo.sqlite3"))
     parser.add_argument("--static-root", type=Path, default=Path("app/dist"))
-    args = parser.parse_args()
-    store = BookStore(args.db)
+    add_option(parser)
+    args = parser.parse_args(argv)
+    # Choose the provider first: a requested model that cannot start must not touch the book.
+    provider = startup(args.model, load)
+    store = BookStore(args.db, provider=provider)
     server = BookServer(args.port, store, args.static_root)
     store.recover_interrupted()
     print(f"Live book: http://127.0.0.1:{server.server_port} (synthetic demo)", flush=True)

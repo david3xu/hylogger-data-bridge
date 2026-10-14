@@ -1,10 +1,12 @@
 # Purpose: serve the worker tools over MCP stdio; stdout carries only JSON-RPC messages.
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, TextIO
 
+from hylogger_bridge.advice.select import Loader, add_option, startup
 from hylogger_bridge.book import BookConflict, BookStore
 from hylogger_bridge.mcp.tools import TOOLS
 from hylogger_bridge.work import OPERATIONS
@@ -95,12 +97,28 @@ def serve(store: BookStore, source: TextIO, sink: TextIO) -> None:
             sink.flush()
 
 
-def main() -> None:
+def claim_stdout() -> TextIO:
+    """Keep the real stdout for JSON-RPC alone; everything else, native writes included, to stderr.
+
+    Model frameworks print banners from Python and from native code while loading and running.
+    Descriptor 1 is pointed at stderr, and the original is kept under a private descriptor.
+    """
+    saved = os.dup(1)
+    os.dup2(2, 1)
+    sys.stdout = sys.stderr
+    return os.fdopen(saved, "w", encoding="utf-8")
+
+
+def main(argv: list[str] | None = None, load: Loader | None = None) -> None:
     parser = argparse.ArgumentParser(description="HyLogger worker tools over MCP stdio")
     parser.add_argument("--db", type=Path, default=Path("outputs/live-book/demo.sqlite3"))
-    args = parser.parse_args()
+    add_option(parser)
+    args = parser.parse_args(argv)
+    # Claim stdout before anything loads: model import and inference must not write to it.
+    sink = claim_stdout()
+    provider = startup(args.model, load)
     # The HTTP service owns startup recovery; a tool process must never interrupt its jobs.
-    serve(BookStore(args.db), sys.stdin, sys.stdout)
+    serve(BookStore(args.db, provider=provider), sys.stdin, sink)
 
 
 if __name__ == "__main__":
