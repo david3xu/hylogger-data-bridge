@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 
 export const EXACT_NOTE =
-  "   Exact human note with padding: check 214–220 m · δ¹⁸O ± 0.2‰ · \"quotes\" & 'single' · \t tab \n newline! 🪨   ";
+  "   [TEST DECISION — not expert validation] Exact test note with padding: check 214–220 m · δ¹⁸O ± 0.2‰ · \"quotes\" & 'single' · \t tab \n newline! 🪨   ";
 
 export function log(phase, message) {
   console.log(`[HTTP ACCEPTANCE] [${phase}] ${message}`);
@@ -310,7 +310,7 @@ export async function runAcceptance(targetUrl, options = {}) {
     `Page 1 ready with ${readyPage1.evidence.length} evidence items (rev ${readyRevision}).`,
   );
 
-  // Step 3: Commit exact human decision and verify atomic lock + successor creation
+  // Step 3: Commit exact test decision and verify atomic lock + successor creation
   const decisionReqId = `req-accept-${Date.now()}`;
   log("DECISION", `Committing decision: choice=modify, requestId=${decisionReqId}`);
   const decideRes = await request(

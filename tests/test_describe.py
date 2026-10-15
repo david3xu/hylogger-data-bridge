@@ -23,12 +23,16 @@ class DescribeTests(unittest.TestCase):
         self.reference = (0.0, 5.0)
         self.known = request.measured(self.hole, self.target, self.reference)
 
-    def test_metres_labelled_reference_target(self) -> None:
+        expected_labels = {
+            "inventory": "Interval inventory",
+            "qa": "Data quality (QA)",
+            "compare": "SWIR mineral-group comparison",
+        }
         for stage in ("inventory", "qa", "compare"):
             label, value = describe(
                 self.hole, self.target, self.reference, stage, self.known[stage]
             )
-            self.assertTrue(label.startswith("Scientific"))
+            self.assertEqual(label, expected_labels[stage])
             self.assertIn("Reference 0–5 m", value)
             self.assertIn("Target 5–10 m", value)
 
@@ -65,7 +69,7 @@ class DescribeTests(unittest.TestCase):
     def test_metric_definitions(self) -> None:
         # QA definitions
         _, qa_val = describe(self.hole, self.target, self.reference, "qa", self.known["qa"])
-        self.assertIn("clean spots only (TSG Final Mask)", qa_val)
+        self.assertIn("clean spots only; spots rejected by the TSG Final Mask", qa_val)
         self.assertIn("INVALID, ASPECTRAL, NOTAROK", qa_val)
 
         # Compare definitions
