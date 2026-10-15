@@ -10,7 +10,7 @@ from typing import Any, TextIO
 from hylogger_bridge.advice.select import Loader, add_option, startup
 from hylogger_bridge.book import BookConflict, BookStore
 from hylogger_bridge.cases.registry import CaseRegistry, ServerLauncher
-from hylogger_bridge.mcp.tools import TOOLS
+from hylogger_bridge.mcp.tools import EXPERT_TOOLS, TOOLS
 from hylogger_bridge.work import OPERATIONS
 
 VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
@@ -76,7 +76,7 @@ def call(target: CaseRegistry | BookStore, name: str, arguments: Any) -> dict[st
                 args.pop("case", None)
                 store = target
             return _content(OPERATIONS[name](store, args), False)
-        return _fault(None, -32602, f"Unknown tool: {name}")
+        return _content({"error": f"Unknown tool: {name}", "retryable": False}, True)
     except BookConflict as error:
         return _content({"error": str(error), "code": error.code, "retryable": False}, True)
     except ValueError as error:
@@ -84,7 +84,11 @@ def call(target: CaseRegistry | BookStore, name: str, arguments: Any) -> dict[st
         return _content({**body, "retryable": False}, True)
 
 
-def handle(target: CaseRegistry | BookStore, message: Any) -> dict[str, Any] | None:
+def handle(
+    target: CaseRegistry | BookStore,
+    message: Any,
+    tools_mode: str = "all",
+) -> dict[str, Any] | None:
     """Answer one JSON-RPC message; notifications and stray responses get no answer."""
     if not isinstance(message, dict) or message.get("jsonrpc") != "2.0":
         return _fault(None, -32600, "Not a JSON-RPC 2.0 request")
@@ -108,16 +112,23 @@ def handle(target: CaseRegistry | BookStore, message: Any) -> dict[str, Any] | N
     if method == "ping":
         return _reply(ident, {})
     if method == "tools/list":
-        return _reply(ident, {"tools": TOOLS})
+        exposed = EXPERT_TOOLS if tools_mode == "expert" else TOOLS
+        return _reply(ident, {"tools": exposed})
     if method == "tools/call":
         name = params.get("name")
-        if name not in ALL_OPERATIONS:
+        allowed = set(EXPERT_OPERATIONS) if tools_mode == "expert" else ALL_OPERATIONS
+        if name not in allowed:
             return _fault(ident, -32602, f"Unknown tool: {name}")
         return _reply(ident, call(target, name, params.get("arguments") or {}))
     return _fault(ident, -32601, f"Method not found: {method}")
 
 
-def serve(target: CaseRegistry | BookStore, source: TextIO, sink: TextIO) -> None:
+def serve(
+    target: CaseRegistry | BookStore,
+    source: TextIO,
+    sink: TextIO,
+    tools_mode: str = "all",
+) -> None:
     """One JSON message per line in, one per line out; nothing else is ever written to sink."""
     for line in source:
         if not line.strip():
@@ -129,7 +140,7 @@ def serve(target: CaseRegistry | BookStore, source: TextIO, sink: TextIO) -> Non
             reply = _fault(None, -32700, "Parse error")
         else:
             try:
-                reply = handle(target, message)
+                reply = handle(target, message, tools_mode=tools_mode)
             except Exception as error:  # keep serving; the cause goes to stderr, not stdout
                 print(f"internal error: {error!r}", file=sys.stderr)
                 ident = message.get("id") if isinstance(message, dict) else None
@@ -161,6 +172,12 @@ def main(
     parser.add_argument("--db", type=Path, default=Path("outputs/live-book/demo.sqlite3"))
     parser.add_argument("--cases", type=Path, default=Path("outputs/cases"))
     parser.add_argument("--data-root", type=Path, default=Path("data/raw/nvcl"))
+    parser.add_argument(
+        "--tools",
+        choices=["expert", "all"],
+        default="all",
+        help="tools exposed over MCP: expert only or all (default: all)",
+    )
     add_option(parser)
     args = parser.parse_args(argv)
     sink = claim_stdout()
@@ -173,7 +190,7 @@ def main(
         default_db=args.db,
         server_launcher=server_launcher,
     )
-    serve(registry, sys.stdin, sink)
+    serve(registry, sys.stdin, sink, tools_mode=args.tools)
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ from test_science import chips
 from hylogger_bridge.advice.provider import FixtureProvider
 from hylogger_bridge.cases.registry import CaseRegistry, case_slug, is_valid_case_id
 from hylogger_bridge.mcp.server import ALL_OPERATIONS, handle
-from hylogger_bridge.mcp.tools import TOOLS
+from hylogger_bridge.mcp.tools import EXPERT_TOOLS, TOOLS
 
 
 class McpCasesTests(BookCase):
@@ -286,3 +286,75 @@ class McpCasesTests(BookCase):
             data = json.loads(line)
             self.assertEqual(data.get("jsonrpc"), "2.0")
             self.assertIn("id", data)
+
+    def test_expert_mode_lists_only_expert_tools(self) -> None:
+        reply = handle(
+            self.registry,
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+            tools_mode="expert",
+        )
+        self.assertIsNotNone(reply)
+        assert reply is not None
+        tools = reply["result"]["tools"]
+        self.assertEqual(len(tools), 6)
+        names = [t["name"] for t in tools]
+        expected = [
+            "start_case",
+            "read_case",
+            "continue_case",
+            "open_book",
+            "find_packages",
+            "list_cases",
+        ]
+        self.assertEqual(names, expected)
+        self.assertEqual(tools, EXPERT_TOOLS)
+
+    def test_expert_mode_refuses_worker_tools(self) -> None:
+        for tool_name in ["submit_evidence", "submit_result", "claim_delivery"]:
+            reply = handle(
+                self.registry,
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {"name": tool_name, "arguments": {}},
+                },
+                tools_mode="expert",
+            )
+            self.assertIsNotNone(reply)
+            assert reply is not None
+            self.assertIn("error", reply)
+            self.assertEqual(reply["error"]["code"], -32602)
+            self.assertIn(f"Unknown tool: {tool_name}", reply["error"]["message"])
+
+    def test_cli_expert_tools_option(self) -> None:
+        cmd = [
+            sys.executable,
+            "-m",
+            "hylogger_bridge.mcp.server",
+            "--tools",
+            "expert",
+            "--cases",
+            str(self.cases_dir),
+            "--data-root",
+            str(self.data_root),
+        ]
+        messages = [
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {"name": "claim_delivery", "arguments": {}},
+            },
+        ]
+        input_data = "\n".join(json.dumps(m) for m in messages) + "\n"
+        proc = subprocess.run(cmd, input=input_data, capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 0)
+        lines = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+        self.assertEqual(len(lines), 2)
+        resp1 = json.loads(lines[0])
+        self.assertEqual(len(resp1["result"]["tools"]), 6)
+        resp2 = json.loads(lines[1])
+        self.assertEqual(resp2["error"]["code"], -32602)
+        self.assertIn("Unknown tool: claim_delivery", resp2["error"]["message"])

@@ -100,14 +100,23 @@ def get_or_start_server(cases_dir: Path, case_id: str, book_path: Path) -> str:
             s.bind(("127.0.0.1", 0))
             target_port = s.getsockname()[1]
 
+    repo_root = (
+        Path(os.environ["HYLOGGER_HOME"]).resolve()
+        if os.environ.get("HYLOGGER_HOME")
+        else Path(__file__).resolve().parents[3]
+    )
+    static_root = (repo_root / "app" / "dist").resolve()
+
     cmd = [
         sys.executable,
         "-m",
         "hylogger_bridge.book_server",
         "--db",
-        str(book_path),
+        str(book_path.resolve()),
         "--port",
         str(target_port),
+        "--static-root",
+        str(static_root),
     ]
     proc = subprocess.Popen(
         cmd,

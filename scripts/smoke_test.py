@@ -3,43 +3,32 @@ import json
 import os
 import signal
 import subprocess
-import sys
+import urllib.request
 from pathlib import Path
 from typing import Any
 
 
 def main() -> None:
-    cases_dir = Path("outputs/cases")
+    repo_root = Path(__file__).resolve().parents[1]
+    cases_dir = repo_root / "outputs" / "cases"
     cases_dir.mkdir(parents=True, exist_ok=True)
+
     # Clean up any previous test case file for SWMB007s
     case_slug = "swmb007s_chips-5_10-vs-0_5"
     (cases_dir / f"{case_slug}.sqlite3").unlink(missing_ok=True)
     (cases_dir / f"{case_slug}.server.json").unlink(missing_ok=True)
 
-    python_bin = "outputs/science-env/bin/python"
-    if not Path(python_bin).exists():
-        python_bin = sys.executable
+    launcher = (repo_root / "plugins" / "hylogger" / "bin" / "hylogger-mcp").resolve()
+    assert launcher.is_file() and os.access(launcher, os.X_OK), f"Missing launcher: {launcher}"
 
-    env = dict(os.environ)
-    env["PYTHONPATH"] = "src:."
-
-    cmd = [
-        python_bin,
-        "-m",
-        "hylogger_bridge.mcp.server",
-        "--cases",
-        "outputs/cases",
-        "--data-root",
-        "data/raw/nvcl",
-    ]
-
+    # Run the launcher from /tmp to verify working-directory independence
     proc = subprocess.Popen(
-        cmd,
+        [str(launcher)],
+        cwd="/tmp",
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        env=env,
     )
     stdin = proc.stdin
     stdout = proc.stdout
@@ -69,20 +58,24 @@ def main() -> None:
     init_res = ask(1, "initialize")
     assert "capabilities" in init_res["result"], f"Init failed: {init_res}"
 
-    # 2. tools/list
+    # 2. tools/list (expert mode exposes exactly 6 expert tools)
     list_res = ask(2, "tools/list")
     tools = [t["name"] for t in list_res["result"]["tools"]]
-    assert "start_case" in tools
-    assert "read_case" in tools
-    assert "continue_case" in tools
-    assert "open_book" in tools
-    assert "find_packages" in tools
-    assert "list_cases" in tools
-    results["tools/list"] = f"{len(tools)} tools declared ({', '.join(tools[:6])}...)"
+    expected_tools = [
+        "start_case",
+        "read_case",
+        "continue_case",
+        "open_book",
+        "find_packages",
+        "list_cases",
+    ]
+    assert tools == expected_tools, f"Expected exactly {expected_tools}, got {tools}"
+    results["tools/list"] = f"{len(tools)} expert tools declared: {', '.join(tools)}"
 
     # 3. find_packages
     err, pkgs = tool(3, "find_packages", {"hole": "SWMB007s"})
     assert not err
+    assert len(pkgs["packages"]) >= 1
     results["find_packages"] = (
         f"found {len(pkgs['packages'])} package(s): {pkgs['packages'][0]['package_id']}"
     )
@@ -119,7 +112,7 @@ def main() -> None:
     assert start2["reused"] is True
     results["start_case (reused)"] = f"case_id={case_id}, reused={start2['reused']}"
 
-    # 7. open_book twice
+    # 7. open_book twice, verify URL reuse and verify UI served with 200 + HTML index
     err, open1 = tool(7, "open_book", {"case_id": case_id})
     assert not err
     url1 = open1["url"]
@@ -128,13 +121,19 @@ def main() -> None:
     assert not err
     url2 = open2["url"]
     assert url1 == url2, f"Expected same URL, got {url1} vs {url2}"
-    results["open_book"] = f"URL={url1} (reused on second call)"
+
+    with urllib.request.urlopen(url1, timeout=5) as resp:
+        assert resp.status == 200, f"Expected status 200 from {url1}, got {resp.status}"
+        html = resp.read().decode("utf-8")
+        assert "<!DOCTYPE html>" in html or "<html" in html, "Expected HTML index document"
+    results["open_book"] = f"URL={url1} (reused, GET / returns 200 with HTML)"
 
     # 8. read_case
     err, read_res = tool(9, "read_case", {"case_id": case_id})
     assert not err
     assert read_res["human_decision_pending"] is False
     assert len(read_res["pages"]) == 1
+    assert read_res["pages"][0]["status"] == "ready"
     results["read_case"] = (
         f"pages={len(read_res['pages'])}, status={read_res['pages'][0]['status']}, "
         f"human_decision_pending={read_res['human_decision_pending']}"

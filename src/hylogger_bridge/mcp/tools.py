@@ -39,8 +39,7 @@ def _tool(
     return {"name": name, "description": description, "inputSchema": schema}
 
 
-TOOLS: list[dict[str, Any]] = [
-    # Expert tools
+EXPERT_TOOLS: list[dict[str, Any]] = [
     _tool(
         "start_case",
         (
@@ -89,7 +88,9 @@ TOOLS: list[dict[str, Any]] = [
         {},
         [],
     ),
-    # Worker tools (with optional case routing)
+]
+
+WORKER_TOOLS: list[dict[str, Any]] = [
     _tool("read_book", "Read the authoritative book snapshot.", {"case": CASE}, []),
     _tool(
         "claim_delivery",
@@ -152,3 +153,5 @@ TOOLS: list[dict[str, Any]] = [
         ["continuation_id"],
     ),
 ]
+
+TOOLS: list[dict[str, Any]] = EXPERT_TOOLS + WORKER_TOOLS
