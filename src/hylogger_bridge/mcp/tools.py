@@ -44,18 +44,43 @@ EXPERT_TOOLS: list[dict[str, Any]] = [
         "start_case",
         (
             "Start or reuse a case for a real HyLogger package inside the authorised data folder. "
-            "Returns case_id and page 1 evidence."
+            "Returns case_id and page 1 evidence. If session_id is provided, binds the case for "
+            "automatic decision return."
         ),
-        {"package_id": TEXT, "target": BOUNDS, "reference": BOUNDS},
+        {
+            "package_id": TEXT,
+            "target": BOUNDS,
+            "reference": BOUNDS,
+            "session_id": {
+                "type": "string",
+                "description": (
+                    "Optional conversation session UUID to bind for automatic decision return."
+                ),
+            },
+            "workspace": {
+                "type": "string",
+                "description": (
+                    "Optional path to the authorised workspace root containing HyLogger packages. "
+                    "Defaults to the server's configured data root."
+                ),
+            },
+        },
         ["package_id", "target", "reference"],
     ),
     _tool(
         "read_case",
         (
             "Read a case's pages, readable evidence, decision choice and note, and whether a human "
-            "decision is pending a worker."
+            "decision is pending a worker. Pass unbind=true to unbind session and stop automatic "
+            "return."
         ),
-        {"case_id": TEXT},
+        {
+            "case_id": TEXT,
+            "unbind": {
+                "type": "boolean",
+                "description": "Optional flag to unbind the session and stop automatic return.",
+            },
+        },
         ["case_id"],
     ),
     _tool(
@@ -64,7 +89,25 @@ EXPERT_TOOLS: list[dict[str, Any]] = [
             "Continue a case after an expert commits a decision in the browser book. "
             "Returns page 2 readable evidence, or asks the expert to decide if none is pending."
         ),
-        {"case_id": TEXT, "target": BOUNDS, "reference": BOUNDS},
+        {
+            "case_id": TEXT,
+            "target": BOUNDS,
+            "reference": BOUNDS,
+            "session_id": {
+                "type": "string",
+                "description": "Optional conversation session UUID to update case binding.",
+            },
+            "workspace": {
+                "type": "string",
+                "description": (
+                    "Optional path to the authorised workspace root to revalidate package access."
+                ),
+            },
+            "unbind": {
+                "type": "boolean",
+                "description": "Optional flag to unbind the session and stop automatic return.",
+            },
+        },
         ["case_id"],
     ),
     _tool(
@@ -79,13 +122,29 @@ EXPERT_TOOLS: list[dict[str, Any]] = [
     _tool(
         "find_packages",
         "Find supported packages inside the authorised data folder.",
-        {"hole": {"type": "string", "description": "Optional hole identifier to filter by."}},
+        {
+            "hole": {"type": "string", "description": "Optional hole identifier to filter by."},
+            "workspace": {
+                "type": "string",
+                "description": (
+                    "Optional path to the authorised workspace root to discover packages within. "
+                    "Defaults to the server's configured data root."
+                ),
+            },
+        },
         [],
     ),
     _tool(
         "list_cases",
         "List existing case investigations and their status so conversations can reuse them.",
-        {},
+        {
+            "workspace": {
+                "type": "string",
+                "description": (
+                    "Optional path to filter listed cases to those within the authorised workspace."
+                ),
+            },
+        },
         [],
     ),
 ]

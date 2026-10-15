@@ -190,6 +190,23 @@ class BookHandler(BaseHTTPRequestHandler):
                     body["note"],
                     body["request_id"],
                 )
+                try:
+                    from hylogger_bridge.cases.dispatch import (
+                        check_and_dispatch,
+                        load_session_binding,
+                    )
+
+                    cases_dir = store.path.parent
+                    case_id = store.path.stem
+                    binding = load_session_binding(cases_dir, case_id)
+                    if binding and binding.get("active"):
+
+                        def _auto_dispatch() -> None:
+                            check_and_dispatch(cases_dir, case_id, store)
+
+                        self.server.launch(_auto_dispatch)
+                except Exception:
+                    pass
             else:
                 self._fields(body, {"expected_revision", "evidence"}, {"claim"})
                 if not isinstance(body["evidence"], dict):

@@ -14,6 +14,7 @@ from hylogger_bridge.mcp.tools import EXPERT_TOOLS, TOOLS
 from hylogger_bridge.work import OPERATIONS
 
 VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
+WORKSPACE_AUTO: bool = True
 NOTE = (
     "Tools for expert evidence review and worker investigation on live books. "
     "Expert tools prepare, read, continue and open cases. "
@@ -25,15 +26,28 @@ ExpertOp = Callable[[CaseRegistry, dict[str, Any]], Any]
 
 EXPERT_OPERATIONS: dict[str, ExpertOp] = {
     "start_case": lambda reg, args: reg.start_case(
-        args["package_id"], args["target"], args["reference"]
+        args["package_id"],
+        args["target"],
+        args["reference"],
+        session_id=args.get("session_id"),
+        workspace=args.get("workspace"),
     ),
-    "read_case": lambda reg, args: reg.read_case(args["case_id"]),
+    "read_case": lambda reg, args: reg.read_case(
+        args["case_id"], unbind=bool(args.get("unbind", False))
+    ),
     "continue_case": lambda reg, args: reg.continue_case_tool(
-        args["case_id"], args.get("target"), args.get("reference")
+        args["case_id"],
+        args.get("target"),
+        args.get("reference"),
+        session_id=args.get("session_id"),
+        workspace=args.get("workspace"),
+        unbind=bool(args.get("unbind", False)),
     ),
     "open_book": lambda reg, args: reg.open_book_tool(args["case_id"]),
-    "find_packages": lambda reg, args: reg.find_packages_tool(args.get("hole")),
-    "list_cases": lambda reg, args: reg.list_cases_tool(),
+    "find_packages": lambda reg, args: reg.find_packages_tool(
+        args.get("hole"), workspace=args.get("workspace")
+    ),
+    "list_cases": lambda reg, args: reg.list_cases_tool(workspace=args.get("workspace")),
 }
 
 ALL_OPERATIONS = set(OPERATIONS) | set(EXPERT_OPERATIONS)
@@ -119,7 +133,14 @@ def handle(
         allowed = set(EXPERT_OPERATIONS) if tools_mode == "expert" else ALL_OPERATIONS
         if name not in allowed:
             return _fault(ident, -32602, f"Unknown tool: {name}")
-        return _reply(ident, call(target, name, params.get("arguments") or {}))
+        arguments = params.get("arguments") or {}
+        if isinstance(arguments, dict) and "workspace" not in arguments:
+            meta = params.get("_meta")
+            meta_dict: dict[str, Any] = meta if isinstance(meta, dict) else {}
+            host_ws = params.get("workspace") or meta_dict.get("workspace")
+            if host_ws:
+                arguments["workspace"] = host_ws
+        return _reply(ident, call(target, name, arguments))
     return _fault(ident, -32601, f"Method not found: {method}")
 
 
@@ -171,7 +192,17 @@ def main(
     parser = argparse.ArgumentParser(description="HyLogger worker and expert tools over MCP stdio")
     parser.add_argument("--db", type=Path, default=Path("outputs/live-book/demo.sqlite3"))
     parser.add_argument("--cases", type=Path, default=Path("outputs/cases"))
-    parser.add_argument("--data-root", type=Path, default=Path("data/raw/nvcl"))
+    parser.add_argument(
+        "--data-root",
+        type=Path,
+        default=None,
+        help="explicit data root (for developer reproduction); omitted in host workspace mode",
+    )
+    parser.add_argument(
+        "--workspace-auto",
+        action="store_true",
+        help="resolve authorised workspace dynamically per request/conversation",
+    )
     parser.add_argument(
         "--tools",
         choices=["expert", "all"],
@@ -180,11 +211,15 @@ def main(
     )
     add_option(parser)
     args = parser.parse_args(argv)
+    data_root = args.data_root
+    if data_root is None and not args.workspace_auto:
+        data_root = Path("data/raw/nvcl")
     sink = claim_stdout()
     provider = startup(args.model, load, python=args.model_python)
     registry = CaseRegistry(
         cases_dir=args.cases,
-        data_root=args.data_root,
+        data_root=data_root,
+        workspace_auto=args.workspace_auto,
         provider=provider,
         science=science,
         default_db=args.db,

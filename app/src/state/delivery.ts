@@ -200,7 +200,7 @@ export function resolveDelivery(
         : "Decision saved in SQLite and page locked",
       detail: isUnknownActor
         ? "Legacy record without human actor attribution; preserved as immutable history."
-        : "Decision is persisted locally. Automatic host dispatch is unavailable until a backend handoff operation is agreed; use explicit chat follow-up.",
+        : "Decision is persisted locally in SQLite. Use explicit chat follow-up or wait for automatic resumption if bound.",
       requestId: page.decision?.request_id,
       confirmedByBackend: true,
       retryableDecision: false,
@@ -250,7 +250,7 @@ export function resolveDelivery(
     detail:
       page.parent_id !== null
         ? isLive
-          ? "Parent decision was saved locally. Use explicit chat follow-up or wait for a worker write."
+          ? "Parent decision was committed. Use explicit chat follow-up or wait for automatic resumption if bound."
           : "Parent decision was saved locally. Start the synthetic case or use explicit chat follow-up."
         : page.progress ||
           (isLive
