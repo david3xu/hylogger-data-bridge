@@ -52,3 +52,5 @@ htmlcov/
 !/developer/docs/tasks.md
 !/developer/docs/github.md
 !/developer/docs/submission.md
+!/plugins/hylogger/README.md
+!/plugins/hylogger/skills/hylogger-review/SKILL.md

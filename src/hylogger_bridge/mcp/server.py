@@ -1,22 +1,42 @@
-# Purpose: serve the worker tools over MCP stdio; stdout carries only JSON-RPC messages.
+# Purpose: serve the expert and worker tools over MCP stdio; stdout carries only JSON-RPC messages.
 import argparse
 import json
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TextIO
 
 from hylogger_bridge.advice.select import Loader, add_option, startup
 from hylogger_bridge.book import BookConflict, BookStore
+from hylogger_bridge.cases.registry import CaseRegistry, ServerLauncher
 from hylogger_bridge.mcp.tools import TOOLS
 from hylogger_bridge.work import OPERATIONS
 
 VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
 NOTE = (
-    "Tools for a worker on the live investigation book. Claim a delivery, acknowledge it, "
-    "write evidence or a result with the attempt from your own Handoff, and report partial or "
-    "failed work honestly. No tool records a human decision or scientific approval."
+    "Tools for expert evidence review and worker investigation on live books. "
+    "Expert tools prepare, read, continue and open cases. "
+    "Worker tools claim deliveries, acknowledge them, and submit evidence. "
+    "No tool records a human decision or scientific approval."
 )
+
+ExpertOp = Callable[[CaseRegistry, dict[str, Any]], Any]
+
+EXPERT_OPERATIONS: dict[str, ExpertOp] = {
+    "start_case": lambda reg, args: reg.start_case(
+        args["package_id"], args["target"], args["reference"]
+    ),
+    "read_case": lambda reg, args: reg.read_case(args["case_id"]),
+    "continue_case": lambda reg, args: reg.continue_case_tool(
+        args["case_id"], args.get("target"), args.get("reference")
+    ),
+    "open_book": lambda reg, args: reg.open_book_tool(args["case_id"]),
+    "find_packages": lambda reg, args: reg.find_packages_tool(args.get("hole")),
+    "list_cases": lambda reg, args: reg.list_cases_tool(),
+}
+
+ALL_OPERATIONS = set(OPERATIONS) | set(EXPERT_OPERATIONS)
 
 
 def _reply(ident: Any, result: Any) -> dict[str, Any]:
@@ -31,10 +51,32 @@ def _content(value: Any, failed: bool) -> dict[str, Any]:
     return {"content": [{"type": "text", "text": json.dumps(value)}], "isError": failed}
 
 
-def call(store: BookStore, name: str, arguments: Any) -> dict[str, Any]:
+def call(target: CaseRegistry | BookStore, name: str, arguments: Any) -> dict[str, Any]:
     """Run one tool. A refusal is a tool result carrying the contract's Error, not a crash."""
     try:
-        return _content(OPERATIONS[name](store, arguments), False)
+        if name in EXPERT_OPERATIONS:
+            if isinstance(target, CaseRegistry):
+                reg = target
+            else:
+                reg = CaseRegistry(
+                    cases_dir=Path("outputs/cases"),
+                    data_root=Path("data/raw/nvcl"),
+                    provider=target.provider,
+                    science=target.science,
+                    default_db=target.path,
+                )
+            return _content(EXPERT_OPERATIONS[name](reg, arguments), False)
+        if name in OPERATIONS:
+            if isinstance(target, CaseRegistry):
+                args = dict(arguments) if isinstance(arguments, dict) else {}
+                case = args.pop("case", None)
+                store = target.get_store(case)
+            else:
+                args = dict(arguments) if isinstance(arguments, dict) else {}
+                args.pop("case", None)
+                store = target
+            return _content(OPERATIONS[name](store, args), False)
+        return _fault(None, -32602, f"Unknown tool: {name}")
     except BookConflict as error:
         return _content({"error": str(error), "code": error.code, "retryable": False}, True)
     except ValueError as error:
@@ -42,7 +84,7 @@ def call(store: BookStore, name: str, arguments: Any) -> dict[str, Any]:
         return _content({**body, "retryable": False}, True)
 
 
-def handle(store: BookStore, message: Any) -> dict[str, Any] | None:
+def handle(target: CaseRegistry | BookStore, message: Any) -> dict[str, Any] | None:
     """Answer one JSON-RPC message; notifications and stray responses get no answer."""
     if not isinstance(message, dict) or message.get("jsonrpc") != "2.0":
         return _fault(None, -32600, "Not a JSON-RPC 2.0 request")
@@ -69,13 +111,13 @@ def handle(store: BookStore, message: Any) -> dict[str, Any] | None:
         return _reply(ident, {"tools": TOOLS})
     if method == "tools/call":
         name = params.get("name")
-        if name not in OPERATIONS:
+        if name not in ALL_OPERATIONS:
             return _fault(ident, -32602, f"Unknown tool: {name}")
-        return _reply(ident, call(store, name, params.get("arguments") or {}))
+        return _reply(ident, call(target, name, params.get("arguments") or {}))
     return _fault(ident, -32601, f"Method not found: {method}")
 
 
-def serve(store: BookStore, source: TextIO, sink: TextIO) -> None:
+def serve(target: CaseRegistry | BookStore, source: TextIO, sink: TextIO) -> None:
     """One JSON message per line in, one per line out; nothing else is ever written to sink."""
     for line in source:
         if not line.strip():
@@ -87,7 +129,7 @@ def serve(store: BookStore, source: TextIO, sink: TextIO) -> None:
             reply = _fault(None, -32700, "Parse error")
         else:
             try:
-                reply = handle(store, message)
+                reply = handle(target, message)
             except Exception as error:  # keep serving; the cause goes to stderr, not stdout
                 print(f"internal error: {error!r}", file=sys.stderr)
                 ident = message.get("id") if isinstance(message, dict) else None
@@ -109,16 +151,29 @@ def claim_stdout() -> TextIO:
     return os.fdopen(saved, "w", encoding="utf-8")
 
 
-def main(argv: list[str] | None = None, load: Loader | None = None) -> None:
-    parser = argparse.ArgumentParser(description="HyLogger worker tools over MCP stdio")
+def main(
+    argv: list[str] | None = None,
+    load: Loader | None = None,
+    science: Any = None,
+    server_launcher: ServerLauncher | None = None,
+) -> None:
+    parser = argparse.ArgumentParser(description="HyLogger worker and expert tools over MCP stdio")
     parser.add_argument("--db", type=Path, default=Path("outputs/live-book/demo.sqlite3"))
+    parser.add_argument("--cases", type=Path, default=Path("outputs/cases"))
+    parser.add_argument("--data-root", type=Path, default=Path("data/raw/nvcl"))
     add_option(parser)
     args = parser.parse_args(argv)
-    # Claim stdout before anything loads: model import and inference must not write to it.
     sink = claim_stdout()
     provider = startup(args.model, load)
-    # The HTTP service owns startup recovery; a tool process must never interrupt its jobs.
-    serve(BookStore(args.db, provider=provider), sys.stdin, sink)
+    registry = CaseRegistry(
+        cases_dir=args.cases,
+        data_root=args.data_root,
+        provider=provider,
+        science=science,
+        default_db=args.db,
+        server_launcher=server_launcher,
+    )
+    serve(registry, sys.stdin, sink)
 
 
 if __name__ == "__main__":

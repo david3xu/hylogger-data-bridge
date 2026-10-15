@@ -53,6 +53,13 @@ No step needs a paid service or account. The model, when used, runs offline with
 
 Not yet available or verified: the scientific QA and interval comparison are not MCP tools (version one runs them through `continue`); no ChatGPT or Codex plugin is published; automatic selection of these tools during normal chat and automatic continuation after a browser decision have not been demonstrated. The intended next version is: install once, connect a supported data folder, chat normally, watch the book, decide, continue.
 
+### Codex plugin (preview)
+
+A preview plugin package for Codex desktop is provided in `plugins/hylogger/`:
+- **Demonstration:** Expert chats normally → Codex selects our tools → real evidence book opens → expert decides IN THE BROWSER → expert returns to chat and says they decided → Codex verifies the committed decision through a tool → continues. This is EXPLICIT chat continuation, not automatic browser-to-agent continuation.
+- **Tools:** `start_case`, `read_case`, `continue_case`, `open_book`, `find_packages`, `list_cases`.
+- **Status:** Tool operation is verified by smoke test; host acceptance in Codex desktop is UNVERIFIED. See [plugins/hylogger/README.md](plugins/hylogger/README.md) for local installation instructions.
+
 ## Limitations
 
 - **Model.** Qwen3.5-4B fine-tuned on 960 real-measurement records whose labels are teaching rules, not expert decisions. On 240 held-out records it answers `clarify` every time: 38.75%, exactly the majority baseline (untrained 17.5%). Treat its advice as an experimental, disclosed negative result. Details: [R1 real-data pilot](developer/docs/training.md#r1-real-data-pilot).

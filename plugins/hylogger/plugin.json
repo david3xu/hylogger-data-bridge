@@ -1,0 +1,7 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hylogger",
+  "version": "0.1.0",
+  "description": "Expert-in-the-loop HyLogger drill-hole evidence review and workflow continuation.",
+  "skills": ["skills/hylogger-review"]
+}

@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "hylogger": {
+      "command": "outputs/science-env/bin/python",
+      "args": [
+        "-m",
+        "hylogger_bridge.mcp.server",
+        "--cases",
+        "outputs/cases",
+        "--data-root",
+        "data/raw/nvcl"
+      ],
+      "env": {
+        "PYTHONPATH": "src:."
+      }
+    }
+  }
+}
