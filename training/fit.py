@@ -83,6 +83,7 @@ def run(config: Path, records: Path, output: Path) -> None:
         partitions[split] = items
     before = fingerprints(model)
     baseline = FastDecisionModel.evaluate(model, tokenizer, partitions["validation"])
+    baseline_test = FastDecisionModel.evaluate(model, tokenizer, partitions["test"])
     mac = platform.system() == "Darwin"
     trainer = DecisionTrainer(
         model=model,
@@ -155,6 +156,7 @@ def run(config: Path, records: Path, output: Path) -> None:
         "groups": {s: sorted({r["group"] for r in rows if r["split"] == s}) for s in partitions},
         "dependencies": dependencies,
         "before_validation": baseline,
+        "before_test": baseline_test,
         "after_test": metrics,
         "parameter_fingerprints_before": before,
         "parameter_fingerprints_after": after,
@@ -170,10 +172,13 @@ def run(config: Path, records: Path, output: Path) -> None:
         "python": sys.version,
         "peak_accelerator_bytes": peak_memory,
         "reference": reference,
-        "limitations": [
-            "Portability experiment; synthetic teaching labels are not expert truth.",
-            "No claim of geological usefulness or unseen-hole generalisation.",
-        ],
+        "limitations": settings.get(
+            "limitations",
+            [
+                "Portability experiment; synthetic teaching labels are not expert truth.",
+                "No claim of geological usefulness or unseen-hole generalisation.",
+            ],
+        ),
     }
     write(packaged, report)
     (output / "run.json").write_text(json.dumps(report, indent=2, default=str) + "\n")

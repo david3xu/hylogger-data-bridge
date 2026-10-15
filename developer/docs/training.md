@@ -239,3 +239,44 @@ For this prepared local checkout, run:
 The default request is the ignored synthetic demo request generated during preparation. `HYLOGGER_MODEL_DIR` and `HYLOGGER_MODEL_PYTHON` can select another verified bundle/environment. Framework diagnostics go to stderr; stdout is one validated Assessment JSON. This is a local developer demonstration, not a published installer or proof of automatic host-chat continuation.
 
 The demonstration's test cases reuse its teaching patterns. Its scores establish functional training and export behavior only. Real-data performance, expert usefulness, cross-hole generalisation and added value over the teaching rules remain unverified. Colab authentication/compute availability also remains unverified; the actual successful run used the owner's Mac.
+
+## R1 real-data pilot
+
+A bounded pilot on real organiser measurements. It shows that real evidence can be prepared, shown to a human and continued by an explicit worker. It does not show a useful model: the trained model predicts `clarify` for every held-out record.
+
+**Sources.** NVCL WA catalogue on NCI THREDDS, CC BY 4.0 ([licence](https://thredds.nci.org.au/thredds/fileServer/rs07/license/license_CCBY4.txt), DOI 10.25914/ctaf-6c13). Nineteen metre-chip hole packages are frozen in `training/real.json`; `python3 -m training.fetch` downloads them (about 170 MB, ignored by Git) and records URL, time, size and SHA-256 in `data/raw/nvcl/retrieval.jsonl`. TSG files are read with GSWA pytsg 1.0.0 pinned in `training/science.txt`. EGD001 is excluded: its HoleID class says EGD002 and its SWIR spectra equal EGD002's. LJM-D012 is excluded: diamond core sampled about every 7 mm. No assays or linked drilling records were downloaded, so no assay claim is made anywhere.
+
+**Splits.** Frozen before any record existed, by hole-name prefix (not verified projects): KWAC (13 holes) train, EGD002 validation, RCRC2202, RCRC2298, SWMB005d, SWMB007s and HYRC001 test. 960 records: 600 / 120 / 240. Every label is `teaching_rule` (rubric `teach-2`); there are no expert labels. Real measurements supply the features, not the labels.
+
+**Calculations.** Row quality (`valid_fraction`, interpreted fractions) is kept apart from depth coverage by the package's own sampling grid; tied dominant groups are reported as unknown, not as a change. Method `qa-compare-3`. A separate pandas recomputation matches all 960 records with no mismatch (`training/verify.py`).
+
+**Training.** Qwen3.5-4B 4-bit LoRA plus decision head, 240 steps, seed 3407, `training/mac_real.json`, model `qwen35-4b-109a5c50a485` (`outputs/model/real-r1`, ignored). Both adapter and head parameters changed.
+
+**Result (held-out test, 240 rows).** Trained 93/240 = 38.75%, all `clarify`: equal to always answering the training-majority label. Untrained 42/240 = 17.5%. Teaching rule 100% by construction; the rule without its numbers 61.25%; majority per stage and question kind 55.4%. Per action, the trained model gets all 93 `clarify` right and every `interval_compare`, `stop` and `qa_check` wrong. Changing the question on identical evidence (34 pairs) or the evidence under an identical question (44 controlled pairs) changed the trained model's answer in none. Offline reload of the saved bundle agrees with the in-memory run on all 240 rows (largest probability difference 0.0005). A diagnosis on training and validation rows only found the same constant answer, finite probabilities and no label-mapping mismatch; its cause is unproven. The test set had already been inspected, so nothing was tuned on it.
+
+**Next experiment (not run).** Same frozen records; one pre-declared change aimed at underfitting: gradient accumulation 8, a lower learning rate, at least two epochs and a class-balanced sampler; require the training loss to fall below the label-prior entropy (1.335 nats) before validation is read; select on validation only; open the test set once.
+
+### Real-data demonstration
+
+One held-out hole, SWMB007s: compare 5-10 m with 0-5 m (SWIR group share shift 1.0, a unique-lead change, full coverage). Environments: a science environment (pytsg) and the prepared model environment; replace `science-python` and `model-python` with their interpreters.
+
+```sh
+uv venv outputs/science-env --python 3.12
+uv pip install --python outputs/science-env/bin/python -r training/science.txt
+python3 -m training.fetch --only SWMB007s_chips.zip
+export PYTHONPATH=src:.
+B=outputs/live-book/real-swmb007s
+science-python -m training.live prepare --book $B.sqlite3 --request $B.request.json --package data/raw/nvcl/SWMB007s_chips/pkg --package-id SWMB007s_chips --target 5 10 --reference 0 5
+model-python -m training.live advise --request $B.request.json --model outputs/model/real-r1/model --advice $B.advice.json
+science-python -m training.live record --book $B.sqlite3 --request $B.request.json --advice $B.advice.json --out $B.first-page.json
+npm --prefix app ci && npm --prefix app run build
+uv run python -m hylogger_bridge.book_server --db $B.sqlite3
+```
+
+`prepare` starts a dedicated book whose source is `live` (the synthetic demo is untouched), attaches the package, persists trusted inventory and quality evidence and captures the model request. `advise` runs the saved model offline. `record` stores the model-origin advice and finishes the first page, so the browser offers the human review. After you decide, with a note, in the browser:
+
+```sh
+science-python -m training.live continue --book $B.sqlite3
+```
+
+`continue` is an explicit worker: it claims and acknowledges the delivery, attaches the package to the successor page, persists inventory, quality and comparison evidence and completes the page. The decision, its exact note and the locked page are never changed. Automatic host-chat continuation is not verified; the advice shown is weak and advisory.

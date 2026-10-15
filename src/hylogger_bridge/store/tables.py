@@ -66,4 +66,12 @@ def create(connection: sqlite3.Connection) -> None:
     connection.execute(
         "CREATE TABLE IF NOT EXISTS asks (page_id TEXT PRIMARY KEY, token TEXT NOT NULL)"
     )
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS scenes (page_id TEXT PRIMARY KEY, scene TEXT NOT NULL)"
+    )
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS measurements (page_id TEXT NOT NULL, "
+        "evidence_id TEXT NOT NULL, "
+        "fingerprint TEXT NOT NULL, features TEXT NOT NULL, PRIMARY KEY (page_id, evidence_id))"
+    )
     connection.execute(f"PRAGMA user_version = {VERSION}")

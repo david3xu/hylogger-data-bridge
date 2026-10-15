@@ -49,6 +49,10 @@ def decide(
     stamp = now()
     successor = new_page(page["number"] + 1, page_id)
     successor["summary"] = f"Previous workflow choice: {choice}. {_excerpt(note)}"
+    if book["source"] == "live":
+        # A real case never inherits the synthetic template's question or progress text.
+        successor["question"] = page["question"]
+        successor["progress"] = "Waiting for a worker to continue from your decision"
     decision = {
         "id": str(uuid.uuid4()),
         "page_id": page_id,

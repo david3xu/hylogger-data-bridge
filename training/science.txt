@@ -1,0 +1,6 @@
+# Optional science environment for real TSG packages (not part of the locked runtime environment).
+# Python 3.12+. Install into a separate virtual environment:
+#   uv venv outputs/science-env --python 3.12
+#   uv pip install --python outputs/science-env/bin/python -r training/science.txt
+# Resolved when R1 ran: numpy 2.5.4, pandas 3.0.6, scipy 1.18.1, simplejpeg 1.9.0, dhcomp 0.4.7.
+pytsg @ git+https://github.com/Geological-Survey-of-Western-Australia/pytsg@481f5faf6e1153791b849d4216a47f86f7db20ce

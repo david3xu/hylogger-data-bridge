@@ -7,7 +7,8 @@ from hylogger_bridge.conflict import BookConflict
 from hylogger_bridge.contracts.assess import check_advice
 from hylogger_bridge.contracts.check import validate
 from hylogger_bridge.pages.actions import REGISTERED
-from hylogger_bridge.store import state
+from hylogger_bridge.science import live
+from hylogger_bridge.store import measures, scenes, state
 
 
 def default_candidates() -> list[dict[str, Any]]:
@@ -17,9 +18,18 @@ def default_candidates() -> list[dict[str, Any]]:
 
 
 def request_for(
-    page: dict[str, Any], candidates: list[dict[str, Any]], instruction: str
+    page: dict[str, Any],
+    candidates: list[dict[str, Any]],
+    instruction: str,
+    known: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Observed evidence by reference. No numeric features exist yet, so none are invented."""
+    """Observed evidence by reference.
+
+    A generic page has no numbers, so none are invented. `known` holds the features of evidence
+    that a trusted measurement persisted, exactly as persisted; any other evidence gets none,
+    whatever its ID.
+    """
+    found = known or {}
     return {
         "contract_version": 1,
         "page_id": page["id"],
@@ -27,7 +37,12 @@ def request_for(
         "question": page["question"],
         "instruction": instruction,
         "evidence": [
-            {"evidence_id": e["id"], "kind": e["kind"], "state": e["state"], "features": {}}
+            {
+                "evidence_id": e["id"],
+                "kind": e["kind"],
+                "state": e["state"],
+                "features": found.get(e["id"], {}),
+            }
             for e in page["evidence"]
         ],
         "candidates": candidates,
@@ -38,7 +53,7 @@ def prepare(
     connection: sqlite3.Connection,
     page_id: str,
     expected_revision: int,
-    candidates: list[dict[str, Any]],
+    candidates: list[dict[str, Any]] | None,
     instruction: str,
 ) -> tuple[dict[str, Any], str]:
     """The validated request for a working page, and the token naming it as the latest ask.
@@ -46,9 +61,13 @@ def prepare(
     The whole request is checked against the contract before any candidate field is read, so a
     malformed element is an invalid request, not an internal error. Nothing is written until it
     is valid; then the page's latest-ask token is replaced, so an older ask can no longer record.
+    Scientific features come from persisted measurements only: no package is read here.
     """
     page = state.find(state.read(connection), page_id, expected_revision)
-    request = request_for(page, candidates, instruction)
+    scene = scenes.get(connection, page_id)
+    if candidates is None:
+        candidates = default_candidates() if scene is None else live.candidates(scene)
+    request = request_for(page, candidates, instruction, measures.trusted(connection, page))
     validate("AssessmentRequest", request)
     for item in request["candidates"]:
         if item["action_type"] not in REGISTERED:
@@ -77,7 +96,8 @@ def record(
     ).fetchone()
     if latest is None or latest[0] != token:
         raise BookConflict("A newer assessment was requested for this page", "stale_revision")
-    if request_for(page, request["candidates"], request["instruction"]) != request:
+    known = measures.trusted(connection, page)
+    if request_for(page, request["candidates"], request["instruction"], known) != request:
         raise BookConflict("The page changed while the advice was computed", "stale_revision")
     # Advice is advisory metadata: it is recorded without counting a page revision, and it
     # goes stale on its own when the evidence moves past state_revision.
