@@ -21,8 +21,13 @@ Expert chats normally → Codex selects our tools → real evidence book opens �
 4. If target or reference depth intervals are missing, ask the expert before calling tools.
 
 ### 2. Case Initialization & Evidence Review
+
+Before calling `start_case`, obtain the CURRENT conversation UUID using its own shell/execution tool: `printf '%s\n' "$CODEX_THREAD_ID" "$CODEX_SESSION_ID"`. These values must identify this calling conversation; never inspect the shared MCP server's environment, borrow another chat's ID, guess a UUID, or infer it from the data folder. Pass the verified UUID as `session_id`. This is required for automatic mode: an omitted ID is a tool error before scientific work or case creation. Retry that error with the verified ID; do not silently stop with a disconnected book.
+
+If neither variable nor trusted host context provides the current UUID, explain the limitation and use `manual_return=true` explicitly, omitting `session_id`. Never claim automatic return in that mode. Reusing a case still requires checking that `session_binding.session_id` matches this conversation. Call `start_case` again with the same package/bounds and verified ID to establish the binding before directing the expert to decide; it reuses the book without changing historical decisions.
+
 1. Call `start_case` with `package_id`, `target` [top, bottom], `reference` [top, bottom], `session_id` (the current Codex conversation UUID), and `workspace` (the authorised workspace path). Passing `session_id` binds the case for automatic decision return. Case IDs are isolated by workspace, preventing collisions across projects.
-2. Call `open_book` with the `case_id` to get the local URL for the evidence book.
+2. Call `open_book` with the `case_id`. Verify `automatic_return` and `session_binding.session_id` before promising automatic continuation. Use the host browser-opening tool to open the returned URL in the right-side panel; returning a link alone is not opening it.
 3. Explain the initial evidence (Page 1) in plain words:
    - Summarise the interval inventory and data quality (QA) numbers, explicitly mentioning valid spot counts (n/N) and exclusions.
    - State the scientific limits clearly: TSG interpretations only; no assay or assay-overlap results are used or claimed.

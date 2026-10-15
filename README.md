@@ -4,7 +4,7 @@ Review drill-hole evidence from a conversation, with the results in a live inves
 
 HyLogger Data Bridge helps geologists check data quality and compare depth intervals using local HyLogger/TSG packages. Scientific tools calculate the evidence, a local fine-tuned model offers advisory suggestions, and the expert records the next step in the book. Each decision preserves its evidence and exact note.
 
-**[Download for macOS · Apple Silicon](https://github.com/david3xu/hylogger-data-bridge/releases/download/v0.1.2-preview.1/hylogger-macos-arm64.zip)** · [Release notes](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.2-preview.1) · [Installation help](developer/docs/install.md)
+**[Download for macOS · Apple Silicon](https://github.com/david3xu/hylogger-data-bridge/releases/download/v0.1.3-preview.1/hylogger-macos-arm64.zip)** · [Release notes](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.3-preview.1) · [Installation help](developer/docs/install.md)
 
 ## Install
 

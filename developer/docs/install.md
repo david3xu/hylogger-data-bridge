@@ -2,7 +2,7 @@
 
 Updated: 2026-10-15
 
-**[Download the Apple Silicon installer](https://github.com/david3xu/hylogger-data-bridge/releases/download/v0.1.2-preview.1/hylogger-macos-arm64.zip)** · [Release notes and checksums](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.2-preview.1)
+**[Download the Apple Silicon installer](https://github.com/david3xu/hylogger-data-bridge/releases/download/v0.1.3-preview.1/hylogger-macos-arm64.zip)** · [Release notes and checksums](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.3-preview.1)
 
 ## Requirements
 
@@ -122,7 +122,7 @@ Default locations:
 | --- | --- |
 | Codex tools do not appear | Open a new **local** chat after setup. The current chat may retain its previous tool list. The installed review skill also provides the agent a same-registry command fallback. |
 | No package found | Check that the connected workspace contains the unpacked TSG package and companion files. Give the hole name; ask the agent to list supported packages. |
-| “Decision committed; pending delivery” | Check the separate chat-return status. An active chat turn must finish before a queued notification can run. If no return occurs, tell the same conversation that you committed the decision. |
+| “Decision committed; pending delivery” | Check chat-return status. If it says **Chat is not connected**, ask the same agent to bind the existing case using its verified current conversation UUID; the pending decision stays saved. An active turn must finish before a queued notification can run. Runtime 0.1.3 refuses silent unbound expert starts; explicit manual mode requires follow-up. |
 | Model cannot load | Read the installer/runtime error and retry setup with the verified bundle. A model error is not replaced with fabricated fixture advice. |
 | `uv: Permission denied` after extraction | Extract the original ZIP with Finder or macOS Archive Utility; some generic extraction libraries discard executable permissions. |
 | macOS blocks `uv` / no Open Anyway entry | Follow [macOS blocks uv](#macos-blocks-uv): the message is under **Security**, not the app-permissions list. |

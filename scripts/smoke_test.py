@@ -61,7 +61,12 @@ def run(repo: Path, cases: Path) -> dict[str, Any]:
         found = tool("find_packages", {"hole": "SWMB007s"})
         assert found["packages"]
         assert tool("list_cases", {})["cases"] == []
-        args = {"package_id": "SWMB007s_chips", "target": [5.0, 10.0], "reference": [0.0, 5.0]}
+        args = {
+            "package_id": "SWMB007s_chips",
+            "target": [5.0, 10.0],
+            "reference": [0.0, 5.0],
+            "manual_return": True,
+        }
         first = tool("start_case", args)
         assert first["status"] == "ready" and first["advice_origin"] == "fixture"
         assert tool("start_case", args)["reused"] is True
