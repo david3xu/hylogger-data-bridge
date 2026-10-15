@@ -6,9 +6,9 @@ from hylogger_bridge.science import features
 from hylogger_bridge.science.hole import Hole
 
 LABELS = {
-    "inventory": "Scientific inventory",
-    "qa": "Scientific qa",
-    "compare": "Scientific compare",
+    "inventory": "Interval inventory",
+    "qa": "Data quality (QA)",
+    "compare": "SWIR mineral-group comparison",
 }
 
 
@@ -92,9 +92,8 @@ def describe(
         ref_valid, ref_cov, ref_swir = _interval_qa(hole, *reference)
         tgt_valid, tgt_cov, tgt_swir = _interval_qa(hole, *target)
         method_sentence = (
-            "Method: clean spots only (TSG Final Mask); "
-            "unmasked spots and non-interpretations "
-            "(INVALID, ASPECTRAL, NOTAROK, empty) are excluded."
+            "Method: clean spots only; spots rejected by the TSG Final Mask and "
+            "SWIR non-interpretations (INVALID, ASPECTRAL, NOTAROK, empty) are excluded."
         )
         value = (
             f"Reference {reference[0]:g}–{reference[1]:g} m: "
