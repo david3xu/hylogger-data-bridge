@@ -61,14 +61,13 @@ if [[ ! -d "$model_folder" ]]; then
   mv "$temporary_model" "$model_folder"
   trap - EXIT
 fi
-setup_options=()
-# Register the supported Codex host by default; isolated smoke tests may opt out.
-if [[ "${HYLOGGER_SKIP_HOST:-0}" == 1 ]]; then
-  setup_options+=(--no-host)
-fi
 echo "Checking the installed local model before connecting it to your chat host."
 "$runtime/bin/hylogger" check-model --model "$model_folder" --model-python "$runtime/bin/python"
-"$runtime/bin/hylogger" setup --model "$model_folder" --model-python "$runtime/bin/python" "${setup_options[@]}"
+if [[ "${HYLOGGER_SKIP_HOST:-0}" == 1 ]]; then
+  "$runtime/bin/hylogger" setup --model "$model_folder" --model-python "$runtime/bin/python" --no-host
+else
+  "$runtime/bin/hylogger" setup --model "$model_folder" --model-python "$runtime/bin/python"
+fi
 launcher="$install_home/hylogger"
 if [[ -f "$launcher" ]] && ! /usr/bin/grep -q 'HyLogger managed launcher' "$launcher"; then
   echo "Existing unrelated launcher was preserved: $launcher"; exit 1

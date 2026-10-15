@@ -89,3 +89,14 @@ Observe evidence appear without reload. Submit a real UI choice and see a linked
 - [MDN SSE](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events): EventSource, IDs, reconnection and keepalive comments.
 - [Codex browser](https://learn.chatgpt.com/docs/browser): viewing local development routes in the desktop browser.
 - [Book design](design.md#live-book): templates, locked history and decision authority.
+
+
+## Installed expert cases and return
+
+Installed CLI and expert MCP share one configured cases registry. Each case has a durable original-workspace context. `find_packages` and `start_case` require the trusted connected workspace in host mode; data is discovered only inside it. `read_case` returns full decision records, continuations, workspace and dispatch observations. `continue_case` accepts optional `continuation_id` and `decision_id`; an exact completed notification returns `already_completed`, a stale/mismatched notification is refused, and an explicitly different workspace is refused. These guards prevent a delayed notification from executing a newer decision.
+
+`hylogger case read --case ID`, `case open --case ID` and `case continue --case ID --continuation CID --decision DID` expose the same application operations to agents whose existing chat has not refreshed MCP discovery. No expert command records a human decision. The browser is the decision entry point.
+
+The book server owns a lightweight return watcher that survives an MCP-client disconnect. It queues new committed work to the verified bound Codex conversation. Repeated identical binding does not reset the retry budget. Reservations persist before external dispatch; uncertain sends are not silently resent. `GET /api/return` exposes observed return/worker state separately from the immutable book. Browser heartbeat polling only reads that state; it does not invoke a model. Queue acceptance is distinct from receiving-agent execution and completed scientific work.
+
+Default installed setup registers the local plugin and explicit MCP server with managed interpreter and profile environment; it never selects a global scientific-data folder. Existing local HyLogger marketplace sources are migrated with rollback, preserving unrelated plugins/configuration. Runtime model errors fail visibly without fixture fallback. Codex and ChatGPT/Work acceptance remain separate.

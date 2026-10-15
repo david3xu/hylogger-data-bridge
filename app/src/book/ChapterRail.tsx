@@ -90,7 +90,14 @@ export function ChapterRail({
             </p>
           </>
         )}
-        <small className="host-tag" title={hostCapability.detail}>
+        <small
+          className="host-tag"
+          title={
+            hostCapability.automaticDispatchAvailable
+              ? hostCapability.detail
+              : "See observed chat return status on the current page"
+          }
+        >
           {hostCapability.automaticDispatchAvailable
             ? `Host bridge: ${hostCapability.hostName}`
             : "Local book · chat connection shown on page"}

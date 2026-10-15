@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 from hylogger_bridge.install import host_config
+from hylogger_bridge.install.marketplace import replace_source, restore_source
 from hylogger_bridge.install.paths import config_path, data_home
 
 
@@ -50,17 +51,30 @@ def register(root: Path, codex: Path) -> None:
     ]
     settings = host_config.config_path()
     previous = settings.read_bytes() if settings.exists() else None
+    replaced: str | None = None
     try:
-        for arguments in arguments_list:
+        for index, arguments in enumerate(arguments_list):
             result = subprocess.run(
-                [str(codex), *arguments], capture_output=True, text=True, timeout=60, check=False
+                [str(codex), *arguments],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+                cwd=root,
             )
+            if index == 0 and result.returncode and "different source" in result.stderr:
+                replaced = replace_source(root, codex)
+                continue
             if result.returncode:
                 raise ValueError(f"Codex plugin setup failed: {result.stderr.strip()[-1000:]}")
         host_config.timeouts()
     except BaseException:
-        if previous is None:
-            settings.unlink(missing_ok=True)
-        else:
-            settings.write_bytes(previous)
+        try:
+            if replaced is not None:
+                restore_source(root, codex, replaced)
+        finally:
+            if previous is None:
+                settings.unlink(missing_ok=True)
+            else:
+                settings.write_bytes(previous)
         raise

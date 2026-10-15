@@ -172,3 +172,69 @@ def test_installer_passes_resolved_host_path_to_the_adapter(
     )
     mcp([])
     assert seen == [str(codex)]
+
+
+@pytest.mark.parametrize("fail_mcp", [False, True])
+def test_host_upgrade_moves_only_own_marketplace_and_rolls_back(
+    tmp_path: Path, monkeypatch: Any, fail_mcp: bool
+) -> None:
+    import subprocess
+
+    isolate(tmp_path, monkeypatch)
+    host_home = tmp_path / "host"
+    host_home.mkdir()
+    monkeypatch.setenv("CODEX_HOME", str(host_home))
+    settings = host_home / "config.toml"
+    original = '[mcp_servers.hylogger]\ncommand = "old"\n[preferences]\nkeep = true\n'
+    settings.write_text(original)
+    setup(install_host=False)
+    previous = tmp_path / "old plugin source"
+    previous.mkdir()
+    active = str(previous)
+    calls: list[list[str]] = []
+
+    def run(arguments: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        nonlocal active
+        assert kwargs["cwd"] == data_home()
+        args = arguments[1:]
+        calls.append(args)
+        error, output = "", ""
+        if args[:3] == ["plugin", "marketplace", "list"]:
+            output = json.dumps(
+                {
+                    "marketplaces": [
+                        {
+                            "name": "unrelated",
+                            "marketplaceSource": {"sourceType": "local", "source": "/leave-alone"},
+                        },
+                        {
+                            "name": "hylogger-local",
+                            "marketplaceSource": {"sourceType": "local", "source": active},
+                        },
+                    ]
+                }
+            )
+        elif args[:3] == ["plugin", "marketplace", "remove"]:
+            assert args[3] == "hylogger-local"
+            active = ""
+        elif args[:3] == ["plugin", "marketplace", "add"]:
+            if active and active != args[3]:
+                error = "marketplace already added from a different source"
+            else:
+                active = args[3]
+        elif args[:2] == ["mcp", "add"] and fail_mcp:
+            settings.write_text("partial change")
+            error = "simulated MCP failure"
+        return subprocess.CompletedProcess(arguments, int(bool(error)), output, error)
+
+    monkeypatch.setattr("hylogger_bridge.install.host.subprocess.run", run)
+    if fail_mcp:
+        with pytest.raises(ValueError, match="simulated MCP failure"):
+            host.register(data_home(), Path("/fake/codex"))
+        assert active == str(previous)
+        assert settings.read_text() == original
+    else:
+        host.register(data_home(), Path("/fake/codex"))
+        assert active == str(data_home())
+        assert "tool_timeout_sec = 240.0" in settings.read_text()
+    assert all("unrelated" not in call for call in calls)

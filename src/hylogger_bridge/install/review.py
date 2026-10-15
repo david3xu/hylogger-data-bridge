@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from hylogger_bridge.advice.select import startup
+from hylogger_bridge.cases.dispatch import load_session_binding
 from hylogger_bridge.cases.registry import CaseRegistry
 from hylogger_bridge.install.paths import data_home, read_config
 
@@ -49,7 +50,12 @@ def review(
         case_id = result["case_id"]
     result.update(registry.open_book_tool(case_id))
     result["workspace"] = str(root)
-    result["continuation"] = "Explicit command required after the expert decides in the book"
+    binding = load_session_binding(cases, case_id)
+    result["continuation"] = (
+        "Bound Codex conversation will be notified after the expert decides in the book"
+        if binding
+        else "Explicit follow-up required after the expert decides in the book"
+    )
     if browser:
         result["browser_opened"] = webbrowser.open(result["url"])
     return result

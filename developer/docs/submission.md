@@ -3,6 +3,14 @@
 Updated: 2026-10-15
 Audit baseline: remote main `75bcb4f` plus the `codex/plugin-ready` repair branch. Implementation checks and remaining gates, not release approval.
 
+## Installed product closeout (15 October 2026)
+
+The owner assigned Codex sole implementation and authorised main integration and an updated public preview. The default installed runtime now loads the real organiser-data-derived model, stages plugin 0.1.4, registers the expert MCP server and supports any explicitly authorised connected workspace. Source data is never bundled. The original owner book was preserved byte-for-byte. Full checks passed 336 Python and 45 frontend tests, runtime/training typing, docs and installed-wheel verification.
+
+Actual candidate acceptance prepared a fresh nested SWMB007s package, rendered real QA (5/5 valid in each interval), recorded a clearly labelled browser test choice with exact Unicode/whitespace, and queued one notification to this same conversation. Installed MCP independently listed all six expert tools and read that same durable decision. The receiving turn must still process the queued notification after the active turn yields; a receipt alone is not completed automatic-return acceptance. Do not describe a test decision as expert geological validation.
+
+ChatGPT/Work, physical fresh-machine certification, signing/notarization and useful model accuracy remain unverified or deferred. The release is an Apple Silicon Codex preview. Historical slice audits below retain their original evidence and dates; use this closeout and [canonical current evidence](../../CLAUDE.md#integrated-codex-product) for present status.
+
 ## Owner decision and delivery boundary
 
 ### Technical ownership handover

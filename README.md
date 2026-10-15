@@ -63,34 +63,17 @@ No step needs a paid service or account. The model, when used, runs offline with
 
 ## Connecting an AI tool
 
-For the local Codex preview, after the real-data installation above:
+The installed preview registers expert MCP tools and the review skill through Codex's supported local commands. Open a new local conversation after installation if its tools have not refreshed. Tools discover data only in the authorised workspace supplied by the chat, including nested package folders; a connected folder is not automatically uploaded. See the [plugin guide](plugins/hylogger/README.md) for installation, return binding and the developer route.
 
-```sh
-python3 scripts/setup_plugin.py --data-root data/raw/nvcl
-codex plugin marketplace add .
-codex plugin add hylogger@hylogger-local
-```
+Expert tools: `find_packages`, `list_cases`, `start_case`, `read_case`, `open_book`, `continue_case`. They prepare evidence and consume committed browser decisions. None records a human decision. A lightweight watcher notifies the bound Codex conversation for new work; the receiving agent verifies the exact decision and continuation before acting. The local book reports queue and work states separately. Browser display heartbeats do not invoke an LLM.
 
-Start a **new local Codex chat**, then ask: “Review hole SWMB007s: check quality and compare 5–10 m with 0–5 m.” The preview discovers packages inside the configured folder and opens a browser evidence book. After committing your decision in the book, return to chat and say you have decided. It verifies the stored decision before continuing. Setup stores runtime locations in your private user configuration; books default to your user data directory, outside the checkout. See the [plugin guide](plugins/hylogger/README.md).
-
-This is explicit continuation, not automatic browser-to-agent wakeup. Default advice is visibly labelled as a fixture; real calculations still use your selected HyLogger package. ChatGPT Work and a one-command packaged end-user release remain unverified.
-
-`uv run hylogger-mcp --db <book>` starts a stdio MCP adapter that exposes the book's worker operations: read the book, claim, acknowledge or fail a delivery, submit evidence or a result, request advice and read delivery attempts. See the [API](developer/docs/api.md).
-
-The local preview exposes scientific preparation and decision-directed continuation through expert MCP tools. Actual normal-chat selection is a separate host acceptance check; a direct tool smoke does not prove it. No public plugin listing, ChatGPT Work compatibility or automatic browser-triggered continuation is claimed. The intended product is: install once, connect a supported folder, chat normally, watch the book, decide, continue.
-
-### Codex plugin (preview)
-
-A preview plugin package for Codex desktop is provided in `plugins/hylogger/`:
-- **Demonstration:** Expert chats normally → Codex selects our tools → real evidence book opens → expert decides IN THE BROWSER → expert returns to chat and says they decided → Codex verifies the committed decision through a tool → continues. This is EXPLICIT chat continuation, not automatic browser-to-agent continuation.
-- **Tools:** `start_case`, `read_case`, `continue_case`, `open_book`, `find_packages`, `list_cases`.
-- **Status:** Tool operation is verified by smoke test; host acceptance in Codex desktop is UNVERIFIED. See [plugins/hylogger/README.md](plugins/hylogger/README.md) for local installation instructions.
+For developer reproduction, `python3 scripts/setup_plugin.py --data-root data/raw/nvcl` retains the source-checkout route. The worker MCP (`uv run hylogger-mcp --db <book>`) is a separate technical interface. See the [API](developer/docs/api.md); neither a worker smoke test nor a queue receipt alone establishes a completed chat round trip.
 
 ## Limitations
 
 - **Model.** Qwen3.5-4B fine-tuned on 960 real-measurement records whose labels are teaching rules, not expert decisions. On 240 held-out records it answers `clarify` every time: 38.75%, exactly the majority baseline (untrained 17.5%). Treat its advice as an experimental, disclosed negative result. Details: [R1 real-data pilot](developer/docs/training.md#r1-real-data-pilot).
 - **Science.** Mineral groups are TSG's own SWIR interpretations of clean spots, not fresh identification from spectra. Only QA and interval comparison are implemented for the real case; no assay overlap is calculated or claimed.
-- **Workflow.** The worker that continues after your decision is an explicit command, not an automatic chat agent. Modified intervals are passed by an operator; notes are never parsed.
+- **Workflow.** Bound Codex cases support automatic return; unbound cases use explicit follow-up. Modified intervals must be validated explicitly; notes are never executed as instructions.
 - **Validation.** No expert geological validation has been recorded. Decisions made while testing are labelled `[TEST DECISION — not expert validation]`.
 
 ## Data
