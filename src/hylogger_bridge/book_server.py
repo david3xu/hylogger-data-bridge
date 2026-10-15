@@ -221,7 +221,7 @@ def main(argv: list[str] | None = None, load: Loader | None = None) -> None:
     add_option(parser)
     args = parser.parse_args(argv)
     # Choose the provider first: a requested model that cannot start must not touch the book.
-    provider = startup(args.model, load)
+    provider = startup(args.model, load, python=args.model_python)
     store = BookStore(args.db, provider=provider)
     server = BookServer(args.port, store, args.static_root)
     store.recover_interrupted()

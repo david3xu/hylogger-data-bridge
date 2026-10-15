@@ -9,7 +9,7 @@ All slices serve the [resource-evaluation evidence-review MVP](design.md#mvp-sco
 
 ## Ownership and branches
 
-Current handover: Claude Desktop now owns technical coordination, review and integration with AGY CLI and Gemini app assistance; Codex takes the first-time user perspective. The [handover](submission.md#technical-ownership-handover) supersedes the historical Codex review/integration assignments in this document while preserving concurrent branch/path boundaries.
+Current handover: the owner has returned technical coordination, architecture and independent review to Codex. Implementation collaborators receive self-contained briefs and return handoffs through the owner's manual copy/paste relay. A brief or PR comment is not automatic dispatch. The [current handover and release audit](submission.md#technical-ownership-handover) supersede historical role assignments while preserving concurrent branch/path boundaries.
 
 | Owner | Branch | Initial scope |
 | --- | --- | --- |

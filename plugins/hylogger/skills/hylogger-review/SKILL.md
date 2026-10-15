@@ -25,7 +25,8 @@ Expert chats normally → Codex selects our tools → real evidence book opens �
 3. Explain the initial evidence (Page 1) in plain words:
    - Summarise the interval inventory and data quality (QA) numbers, explicitly mentioning valid spot counts (n/N) and exclusions.
    - State the scientific limits clearly: TSG interpretations only; no assay or assay-overlap results are used or claimed.
-   - Note that model advice is experimental, advisory only, and is never a decision or authorisation.
+   - Report the exact advice origin and version. Fixture advice means no trained model was consulted. Model advice is experimental and weak, never a decision or authorisation. Keep stale advice labelled stale.
+   - Explain the proposed next step that accept/modify/reject refer to. If the note contradicts the choice or replacement bounds are ambiguous, ask for clarification before calculating; never silently override the expert's words.
 4. Direct the expert to the browser:
    - Provide the evidence book URL returned by `open_book`.
    - Ask the expert to review the evidence in the browser book, make their decision (accept, modify, or reject), enter their note, and tell you in chat once they have committed it.

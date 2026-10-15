@@ -206,7 +206,9 @@ def demo(args: argparse.Namespace, science: Any = None) -> dict[str, Any]:
     print("\nThe first page is ready for your review.")
     print(f"  Serve the book:  uv run python -m hylogger_bridge.book_server --db {args.book}")
     print("  Open http://127.0.0.1:8766, read the evidence, choose and write a note.")
-    print(f"  Then continue:   python -m training.live continue --book {args.book}")
+    print("  In a second terminal, cd to this checkout, then:")
+    print("  export PYTHONPATH=src:.")
+    print(f"  outputs/science-env/bin/python -m training.live continue --book {args.book}")
     return summary
 
 

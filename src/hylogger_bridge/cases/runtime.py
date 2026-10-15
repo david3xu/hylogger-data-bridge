@@ -173,7 +173,8 @@ def start_case(
         store.attach_scene(page["id"], page["revision"], package, package_id, target, reference)
     )
     for stage in ("inventory", "qa"):
-        page = working(store.measure(page["id"], page["revision"], stage))
+        if stage not in {e["id"] for e in page["evidence"]}:
+            page = working(store.measure(page["id"], page["revision"], stage))
     return finish_first(store, instruction)
 
 
@@ -378,7 +379,7 @@ def continue_case(
                         page = working(store.measure(page["id"], page["revision"], stage, claim))
                 numbers = {e["id"]: e["value"] for e in page["evidence"]}
                 note = handoff.get("note", "").strip()
-                note_desc = f" from note '{note}'" if note else ""
+                note_desc = f"; original review note: '{note}'" if note else ""
                 operator_evidence = {
                     "id": "operator_bounds",
                     "label": "Operator-supplied bounds",
@@ -387,7 +388,7 @@ def continue_case(
                         f"reference {reference_pair[0]:g}–{reference_pair[1]:g} m "
                         f"operator-supplied{note_desc}."
                     )[:1000],
-                    "source": "Operator bounds from expert note",
+                    "source": "Operator-supplied bounds; expert confirmation is not asserted",
                     "kind": "observation",
                     "origin": "actual",
                     "state": "complete",

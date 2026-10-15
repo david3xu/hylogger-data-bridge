@@ -15,6 +15,12 @@ class StartupError(Exception):
 
 def add_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
+        "--model-python",
+        type=Path,
+        default=None,
+        help="optional separate interpreter for local model inference (requires --model)",
+    )
+    parser.add_argument(
         "--model",
         type=Path,
         default=None,
@@ -59,9 +65,20 @@ def describe(provider: Provider) -> str:
     return type(provider).__name__
 
 
-def startup(model: Path | None, load: Loader | None = None) -> Provider:
+def startup(model: Path | None, load: Loader | None = None, python: Path | None = None) -> Provider:
     """What both launchers call: select, announce on stderr, or exit with the reason."""
     try:
+        if python is not None:
+            if model is None:
+                raise StartupError("--model-python requires --model")
+            from hylogger_bridge.advice.process import ProcessProvider
+
+            interpreter = python
+
+            def separate(folder: Path) -> Provider:
+                return ProcessProvider(folder, interpreter)
+
+            load = separate
         provider = select(model, load)
     except StartupError as error:
         raise SystemExit(f"error: {error}") from error

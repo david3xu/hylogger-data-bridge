@@ -15,8 +15,8 @@ npm --prefix app ci && npm --prefix app run build
 
 # Science environment (GSWA pytsg, pinned) and the real package
 uv venv outputs/science-env --python 3.12
-uv pip install --python outputs/science-env/bin/python -r training/science.txt
-python3 -m training.fetch --only SWMB007s_chips.zip
+uv pip install --python outputs/science-env/bin/python -r training/science.txt -e .
+uv run python -m training.fetch --only SWMB007s_chips.zip
 
 # One step: a fresh book for SWMB007s, comparing 5-10 m (target) with 0-5 m (reference)
 export PYTHONPATH=src:.
@@ -49,9 +49,21 @@ No step needs a paid service or account. The model, when used, runs offline with
 
 ## Connecting an AI tool
 
+For the local Codex preview, after the real-data installation above:
+
+```sh
+python3 scripts/setup_plugin.py --data-root data/raw/nvcl
+codex plugin marketplace add .
+codex plugin add hylogger@hylogger-local
+```
+
+Start a **new local Codex chat**, then ask: “Review hole SWMB007s: check quality and compare 5–10 m with 0–5 m.” The preview discovers packages inside the configured folder and opens a browser evidence book. After committing your decision in the book, return to chat and say you have decided. It verifies the stored decision before continuing. Setup stores runtime locations in your private user configuration; books default to your user data directory, outside the checkout. See the [plugin guide](plugins/hylogger/README.md).
+
+This is explicit continuation, not automatic browser-to-agent wakeup. Default advice is visibly labelled as a fixture; real calculations still use your selected HyLogger package. ChatGPT Work and a one-command packaged end-user release remain unverified.
+
 `uv run hylogger-mcp --db <book>` starts a stdio MCP adapter that exposes the book's worker operations: read the book, claim, acknowledge or fail a delivery, submit evidence or a result, request advice and read delivery attempts. See the [API](developer/docs/api.md).
 
-Not yet available or verified: the scientific QA and interval comparison are not MCP tools (version one runs them through `continue`); no ChatGPT or Codex plugin is published; automatic selection of these tools during normal chat and automatic continuation after a browser decision have not been demonstrated. The intended next version is: install once, connect a supported data folder, chat normally, watch the book, decide, continue.
+The local preview exposes scientific preparation and decision-directed continuation through expert MCP tools. Actual normal-chat selection is a separate host acceptance check; a direct tool smoke does not prove it. No public plugin listing, ChatGPT Work compatibility or automatic browser-triggered continuation is claimed. The intended product is: install once, connect a supported folder, chat normally, watch the book, decide, continue.
 
 ### Codex plugin (preview)
 

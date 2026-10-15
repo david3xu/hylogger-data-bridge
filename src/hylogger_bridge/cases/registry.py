@@ -1,20 +1,17 @@
 # Purpose: case registry and expert operations for authoritative multi-case routing.
+import fcntl
 import json
-import os
-import re
-import socket
 import sqlite3
-import subprocess
-import sys
 import threading
-import time
-import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from hylogger_bridge.advice.provider import Provider
 from hylogger_bridge.book import BookStore
+from hylogger_bridge.cases.identity import case_slug as case_slug
+from hylogger_bridge.cases.identity import interval, resolve_package
+from hylogger_bridge.cases.identity import is_valid_case_id as is_valid_case_id
 from hylogger_bridge.cases.runtime import (
     continue_case,
     create_initial_page,
@@ -22,116 +19,11 @@ from hylogger_bridge.cases.runtime import (
 from hylogger_bridge.cases.runtime import (
     start_case as runtime_start_case,
 )
+from hylogger_bridge.cases.servers import get_or_start_server
 from hylogger_bridge.science.package import name_of
+from hylogger_bridge.store import scenes
 
 ServerLauncher = Callable[[Path, str, Path], str]
-
-
-def is_valid_case_id(case_id: str) -> bool:
-    return bool(re.match(r"^[a-zA-Z0-9_-]+$", case_id)) and not case_id.startswith("-")
-
-
-def case_slug(
-    package_id: str,
-    target: tuple[float, float] | list[float],
-    reference: tuple[float, float] | list[float],
-) -> str:
-    pkg = re.sub(r"[^a-zA-Z0-9_-]", "_", package_id.strip()).lower()
-    t0, t1 = float(target[0]), float(target[1])
-    r0, r1 = float(reference[0]), float(reference[1])
-    return f"{pkg}-{t0:g}_{t1:g}-vs-{r0:g}_{r1:g}"
-
-
-def resolve_package(data_root: Path, package_id: str) -> Path:
-    if not package_id or not isinstance(package_id, str):
-        raise ValueError("package_id must be a non-empty string")
-    clean_id = package_id.strip()
-    if ".." in clean_id or "/" in clean_id or "\\" in clean_id:
-        raise ValueError(f"Invalid package_id: {package_id!r}")
-    candidate = (data_root / clean_id).resolve()
-    data_root_resolved = data_root.resolve()
-    if not candidate.is_relative_to(data_root_resolved):
-        raise ValueError(f"Package path {candidate} escapes data root {data_root}")
-    if not candidate.is_dir():
-        raise ValueError(f"Package {package_id} not found in {data_root}")
-    pkg_sub = candidate / "pkg"
-    if pkg_sub.is_dir():
-        return pkg_sub
-    return candidate
-
-
-def is_port_in_use(port: int) -> bool:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(("127.0.0.1", port)) == 0
-
-
-def check_book_server_alive(pid: int, port: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-    try:
-        req = urllib.request.Request(f"http://127.0.0.1:{port}/api/book", method="GET")
-        with urllib.request.urlopen(req, timeout=0.5) as resp:
-            return bool(resp.status == 200)
-    except Exception:
-        return False
-
-
-def get_or_start_server(cases_dir: Path, case_id: str, book_path: Path) -> str:
-    server_file = cases_dir / f"{case_id}.server.json"
-    if server_file.is_file():
-        try:
-            info = json.loads(server_file.read_text())
-            pid = int(info["pid"])
-            port = int(info["port"])
-            if check_book_server_alive(pid, port):
-                return f"http://127.0.0.1:{port}"
-        except Exception:
-            pass
-        try:
-            server_file.unlink(missing_ok=True)
-        except OSError:
-            pass
-
-    target_port = 8766
-    if is_port_in_use(target_port):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(("127.0.0.1", 0))
-            target_port = s.getsockname()[1]
-
-    repo_root = (
-        Path(os.environ["HYLOGGER_HOME"]).resolve()
-        if os.environ.get("HYLOGGER_HOME")
-        else Path(__file__).resolve().parents[3]
-    )
-    static_root = (repo_root / "app" / "dist").resolve()
-
-    cmd = [
-        sys.executable,
-        "-m",
-        "hylogger_bridge.book_server",
-        "--db",
-        str(book_path.resolve()),
-        "--port",
-        str(target_port),
-        "--static-root",
-        str(static_root),
-    ]
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    deadline = time.time() + 3.0
-    while time.time() < deadline:
-        if check_book_server_alive(proc.pid, target_port):
-            break
-        time.sleep(0.05)
-
-    server_file.write_text(json.dumps({"pid": proc.pid, "port": target_port}) + "\n")
-    return f"http://127.0.0.1:{target_port}"
 
 
 class CaseRegistry:
@@ -186,40 +78,37 @@ class CaseRegistry:
         target: tuple[float, float] | list[float],
         reference: tuple[float, float] | list[float],
     ) -> dict[str, Any]:
-        if len(target) != 2 or len(reference) != 2:
-            raise ValueError("target and reference must each have 2 elements [top, bottom]")
-        t = (float(target[0]), float(target[1]))
-        r = (float(reference[0]), float(reference[1]))
-        if t[0] >= t[1] or r[0] >= r[1]:
-            raise ValueError("Interval bounds must be finite and increasing")
-
+        t, r = interval(target), interval(reference)
         case_id = case_slug(package_id, t, r)
+        # Old public case IDs remain usable; only reuse when stored scientific criteria match.
+        legacy = f"{package_id.strip().lower()}-{t[0]:g}_{t[1]:g}-vs-{r[0]:g}_{r[1]:g}"
+        if is_valid_case_id(legacy) and (self.cases_dir / f"{legacy}.sqlite3").exists():
+            old = self.get_store(legacy)
+            if self._matches(old, package_id, t, r):
+                case_id = legacy
         book_path = self.cases_dir / f"{case_id}.sqlite3"
-
-        with self._lock:
+        with self._lock, (self.cases_dir / f"{case_id}.init.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
             if book_path.exists():
-                # Reusing existing case without restart or overwrite
-                if case_id not in self._stores:
-                    self._stores[case_id] = BookStore(
-                        book_path, provider=self.provider, science=self.science
-                    )
-                store = self._stores[case_id]
+                store = self._stores.get(case_id)
+                if store is None:
+                    store = BookStore(book_path, provider=self.provider, science=self.science)
+                    self._stores[case_id] = store
                 snapshot = store.snapshot()
                 page1 = snapshot["pages"][0]
-                advice = page1.get("assessment") or {}
-                readable = [
-                    {"id": e["id"], "label": e.get("label", e["id"]), "value": e["value"]}
-                    for e in page1.get("evidence", [])
-                ]
-                return {
-                    "case_id": case_id,
-                    "reused": True,
-                    "page": page1["id"],
-                    "status": page1["status"],
-                    "advice_origin": advice.get("origin"),
-                    "model_version": advice.get("model_version"),
-                    "readable_evidence": readable,
-                }
+                if not self._matches(store, package_id, t, r):
+                    with sqlite3.connect(store.path) as conn:
+                        attached = scenes.get(conn, page1["id"])
+                    if attached is not None:
+                        raise ValueError("stored case scene does not match the requested criteria")
+                    expected = create_initial_page(package_id, t, r)["page"]["question"]
+                    if page1["question"] != expected:
+                        raise ValueError("stored case does not match the requested criteria")
+                if page1["status"] == "draft":
+                    pkg_folder = resolve_package(self.data_root, package_id)
+                    runtime_start_case(store, pkg_folder, package_id, t, r)
+                    page1 = store.snapshot()["pages"][0]
+                return self._started(case_id, page1, True)
 
             pkg_folder = resolve_package(self.data_root, package_id)
             initial_page = create_initial_page(package_id, t, r)
@@ -229,22 +118,32 @@ class CaseRegistry:
             self._stores[case_id] = store
 
             runtime_start_case(store, pkg_folder, package_id, t, r)
-            snapshot = store.snapshot()
-            page1 = snapshot["pages"][0]
-            advice = page1.get("assessment") or {}
-            readable = [
-                {"id": e["id"], "label": e.get("label", e["id"]), "value": e["value"]}
-                for e in page1.get("evidence", [])
-            ]
-            return {
-                "case_id": case_id,
-                "reused": False,
-                "page": page1["id"],
-                "status": page1["status"],
-                "advice_origin": advice.get("origin"),
-                "model_version": advice.get("model_version"),
-                "readable_evidence": readable,
-            }
+            return self._started(case_id, store.snapshot()["pages"][0], False)
+
+    @staticmethod
+    def _matches(store: BookStore, package_id: str, target: Any, reference: Any) -> bool:
+        page = store.snapshot()["pages"][0]
+        with sqlite3.connect(store.path) as conn:
+            scene = scenes.get(conn, page["id"])
+        return scene is not None and (
+            scene["package_id"] == package_id.strip()
+            and tuple(scene["target"]) == tuple(target)
+            and tuple(scene["reference"]) == tuple(reference)
+        )
+
+    @staticmethod
+    def _started(case_id: str, page: dict[str, Any], reused: bool) -> dict[str, Any]:
+        advice = page.get("assessment") or {}
+        return {
+            "case_id": case_id,
+            "reused": reused,
+            "page": page["id"],
+            "status": page["status"],
+            "advice_origin": advice.get("origin"),
+            "model_version": advice.get("model_version"),
+            "assessment": page.get("assessment"),
+            "readable_evidence": page.get("evidence", []),
+        }
 
     def read_case(self, case_id: str) -> dict[str, Any]:
         store = self.get_store(case_id)
@@ -268,14 +167,16 @@ class CaseRegistry:
                 {
                     "id": p["id"],
                     "number": p["number"],
+                    "revision": p["revision"],
+                    "question": p["question"],
+                    "summary": p["summary"],
                     "title": p.get("title"),
                     "status": p["status"],
                     "outcome": p.get("outcome"),
-                    "readable_evidence": [
-                        {"id": e["id"], "label": e.get("label", e["id"]), "value": e["value"]}
-                        for e in p.get("evidence", [])
-                    ],
+                    "readable_evidence": [dict(e) for e in p.get("evidence", [])],
                     "decision": decision,
+                    "assessment": p.get("assessment"),
+                    "action": p.get("action"),
                 }
             )
 
@@ -308,13 +209,17 @@ class CaseRegistry:
                 ),
             }
 
+        with sqlite3.connect(store.path) as conn:
+            stored = conn.execute("SELECT scene FROM scenes").fetchall()
+        for (encoded,) in stored:
+            scene = json.loads(encoded)
+            expected = resolve_package(self.data_root, scene["package_id"])
+            if Path(scene["folder"]).resolve() != expected:
+                raise ValueError("case scene is outside the currently authorised package folder")
         done = continue_case(store, target=target, reference=reference, on_no_pending="raise_error")
         snapshot = store.snapshot()
         successor = next(p for p in snapshot["pages"] if p["id"] == done["page"])
-        readable = [
-            {"id": e["id"], "label": e.get("label", e["id"]), "value": e["value"]}
-            for e in successor.get("evidence", [])
-        ]
+        readable = [dict(e) for e in successor.get("evidence", [])]
         result_dict = {
             "case_id": case_id,
             "status": "continued",
@@ -344,8 +249,10 @@ class CaseRegistry:
             for p in sorted(self.data_root.iterdir()):
                 if not p.is_dir():
                     continue
-                pkg_sub = p / "pkg"
-                pkg_dir = pkg_sub if pkg_sub.is_dir() else p
+                try:
+                    pkg_dir = resolve_package(self.data_root, p.name)
+                except ValueError:
+                    continue
                 if any(pkg_dir.glob("*_tsg.tsg")):
                     hole_id = name_of(p.name)
                     if hole:

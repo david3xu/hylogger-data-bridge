@@ -181,7 +181,7 @@ def main(
     add_option(parser)
     args = parser.parse_args(argv)
     sink = claim_stdout()
-    provider = startup(args.model, load)
+    provider = startup(args.model, load, python=args.model_python)
     registry = CaseRegistry(
         cases_dir=args.cases,
         data_root=args.data_root,
