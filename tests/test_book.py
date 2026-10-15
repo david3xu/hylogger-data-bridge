@@ -70,7 +70,12 @@ def test_worker_evidence_persists_and_emits_a_recoverable_event(store: BookStore
     draft = current(before)
     item = evidence()
     after = store.add_evidence(page_id(draft), revision(draft), item)
-    assert item in cast(list[dict[str, object]], current(after)["evidence"])
+    stored = cast(list[dict[str, object]], current(after)["evidence"])
+    kept = [entry for entry in stored if entry["id"] == item["id"]]
+    assert len(kept) == 1
+    # The stored item keeps every submitted field and adds the contract's provenance fields.
+    assert {key: kept[0][key] for key in item} == item
+    assert (kept[0]["origin"], kept[0]["state"]) == ("unspecified", "complete")
     assert revision(current(after)) > revision(draft)
     changes = store.events_after(cast(int, before["sequence"]))
     assert any(event["type"] == "evidence_added" for event in changes)
@@ -126,7 +131,13 @@ def test_decision_locks_evidence_and_creates_exactly_one_linked_draft(
     assert all(page["scientific_review"] == "unreviewed" for page in pages(result))
 
     frozen = deepcopy(locked)
-    updated = store.add_evidence(page_id(successor), revision(successor), evidence("new-page"))
+    # The successor follows a delivery, so even incremental evidence needs the current claim.
+    handoff = store.claim_delivery("test-worker")
+    assert handoff is not None
+    store.acknowledge_delivery(handoff["continuation_id"], handoff["attempt"])
+    claim = {"continuation_id": handoff["continuation_id"], "attempt": handoff["attempt"]}
+    item = evidence("new-page")
+    updated = store.add_evidence(page_id(successor), revision(successor), item, claim)
     assert next(page for page in pages(updated) if page["id"] == locked["id"]) == frozen
 
 

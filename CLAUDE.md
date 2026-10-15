@@ -10,7 +10,7 @@ Read [design](developer/docs/design.md), [API](developer/docs/api.md), [tasks](d
 
 Keep implementation within the [MVP scope](developer/docs/design.md#mvp-scope-resource-evaluation-evidence-review): expert evidence review supporting resource evaluation, demonstrated through one bounded drill-hole investigation. The broader Data Adoption examples are not additional feature commitments. Check proposed work against that workflow and its value criteria before expanding scope. The local fine-tuned advisory model remains a core requirement.
 
-The owner authorised the synthetic selector and book demo, followed by public GitHub repository preparation and separate implementation branches. Codex now handles architecture, decisions and review; Gemini handles frontend and Claude backend when the owner gives them the task briefs. No implementation session has been dispatched by this documentation.
+The owner authorised the synthetic selector and book demo, followed by public GitHub repository preparation and separate implementation branches. Codex now handles architecture, decisions and review; Gemini handles frontend and Claude backend when the owner gives them the task briefs. Backend work (contracts, book lifecycle, worker delivery, HTTP/MCP adapters, advice-provider selection) is delivered on its own branches and awaits Git integration with main; frontend remains with Gemini.
 
 The owner selected Qwen3.5-4B on 2026-10-15 and authorised Codex to implement the bounded model feasibility experiment. Organiser-data preparation and geological validation remain separate work. Do not assign model work to frontend/backend implementers. Reserve the versioned assessment contract and use visibly labelled fixtures during parallel development. Model advice is not execution permission or geological judgement.
 
@@ -18,7 +18,7 @@ The [training record](developer/docs/training.md) captures the proposed data-to-
 
 The [pytsg integration boundary](developer/docs/design.md#tsg-ingestion-with-pytsg) places TSG reading behind a validated scientific adapter shared by offline preparation and live tools. [S1](developer/docs/tasks.md#s1--inspect-and-adapt-one-tsg-package) records the first real-package inspection/comparison task; it remains unassigned and does not expand the current application briefs.
 
-Current code provides a synthetic logistic classifier, a staged synthetic book, SQLite history, HTTP evidence writes and SSE updates. No real scientific adapter, MCP adapter, automatic human-to-chat bridge or one-command product installer exists on this branch. The model experiment adds a local assessment adapter; the successful local synthetic training/reload evidence is recorded below. Do not imply that a localhost browser event invokes a model or proves ChatGPT compatibility.
+Current code provides a synthetic logistic classifier, a staged synthetic book, SQLite history, attempt-fenced worker deliveries (claims, acknowledgements, bounded retries, results), `/api/work/*` HTTP routes, a stdio MCP adapter (`hylogger-mcp`), SSE updates and a replaceable advice provider: labelled fixture advice by default, or the local fine-tuned model when a launcher is given `--model <folder>`. No real scientific adapter, automatic human-to-chat bridge or one-command product installer exists on this branch. Explicit worker calls (the HTTP routes, MCP tools, `hylogger-walkthrough`) prove transport and lifecycle mechanics; they do not show that a chat agent continues by itself. Do not imply that a localhost browser event invokes a model or proves ChatGPT compatibility.
 
 Keep one responsibility at directory, module, component and function level. Use short informative names; add modules only for implemented behaviour. Preserve current books, CLI behaviour and import compatibility through bounded migrations. Shared schema changes need coordinated review; separate branches require separate worktrees/clones.
 
@@ -35,7 +35,18 @@ uv build --offline --out-dir outputs/dist
 
 In a restricted workspace, set `UV_CACHE_DIR=cache/uv`. See [README](README.md) for training and demo launch commands. For UI development run the Python service, then `npm --prefix app run dev`; Vite proxies `/api`. Only one service may own a book database. Use `--db outputs/live-book/another.sqlite3 --port 8767` for another case.
 
-Verified locally on this branch on 2026-10-15: formatting/lint, strict mypy for runtime and developer training code, 88 Python tests, documentation links, 12 frontend tests, TypeScript and production build passed. The installed-wheel probe loads the schema and advisory provider outside the checkout without training libraries. Heavy Qwen training/reload is separate evidence below; unit tests do not establish it. Hosted CI is reported by actual GitHub runs, separately from these local checks.
+Advice provider selection: both launchers share `--model <folder>`. Without it they use labelled fixture advice and say so on stderr. With it they load the verified local bundle through `LocalProvider` and fail with a clear error, never substituting fixture advice, if the folder, its hashes or the model runtime is missing or invalid. Run the model launchers in the prepared model environment; ordinary CI loads no weights.
+
+```sh
+uv run python -m hylogger_bridge.book_server
+uv run hylogger-mcp --db outputs/live-book/demo.sqlite3
+PYTHONPATH=src cache/model-env/bin/python -m hylogger_bridge.book_server --model outputs/model/demo/model
+PYTHONPATH=src cache/model-env/bin/python -m hylogger_bridge.mcp.server --db outputs/live-book/demo.sqlite3 --model outputs/model/demo/model
+```
+
+The MCP launcher reserves stdout for JSON-RPC and sends framework and native output, including during model loading and inference, to stderr. [API](developer/docs/api.md#worker-lifecycle) lists the worker routes and tools.
+
+Verified on this branch at `1d700ac`: the independent audit passed 188 Python tests, formatting/lint, strict runtime typing (59 files), developer-training typing (7 files) and documentation links, and both hosted runs passed ([push](https://github.com/david3xu/hylogger-data-bridge/actions/runs/38649216618), [pull request](https://github.com/david3xu/hylogger-data-bridge/actions/runs/38649221528)). Later heads are reported by their own hosted runs, not by this sentence. The frontend check (12 tests, TypeScript, production build) runs in the same script. The installed-wheel probe loads the schema and advisory provider outside the checkout without training libraries. Startup-selection tests use stubs and placeholder files and load no weights. Actual-checkpoint evidence is separate: the audit launched both entry points with `--model` on the existing `qwen35-4b-21a115245b4d` bundle offline, and one explicit `request_assessment` call through each returned model-origin advice (about 8 seconds including load). Those are synthetic mechanics checks, not an evaluation, a real-data result or automatic chat continuation. Heavy Qwen training/reload is separate evidence below; unit tests do not establish it.
 
 The actual Codex browser demo previously verified live evidence, locked history, a labelled automated test decision, worker HTTP evidence, and reload persistence. These are synthetic transport/lifecycle checks, not expert approval or automatic chat continuation.
 

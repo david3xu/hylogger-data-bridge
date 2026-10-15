@@ -2,7 +2,7 @@
 
 An expert-in-the-loop investigation toolkit for reviewing unfamiliar drill holes. AI coordinates the investigation, scientific tools calculate evidence, and geologists supply geological judgement.
 
-**Current prototype:** a live investigation book and a small trained action selector using synthetic examples. A separate fine-tuned Qwen3.5-4B demonstration supplies a verified offline local assessment interface; measured evidence is in the training guide. Real HyLogger analysis and automatic decision delivery back to chat remain unfinished. The staged book runner does not consult the selector.
+**Current prototype:** a live investigation book and a small trained action selector using synthetic examples. A separate fine-tuned Qwen3.5-4B demonstration supplies a verified offline local assessment interface; measured evidence is in the training guide. Explicit worker tools (HTTP routes and a stdio MCP adapter) can claim a committed decision's delivery, acknowledge it and submit evidence or a result; they are explicit calls, not an automatic bridge. Real HyLogger analysis and automatic decision delivery back to chat remain unfinished. The staged book runner does not consult the selector.
 
 ## Run the demo
 
@@ -16,6 +16,8 @@ uv run --locked --offline python -m hylogger_bridge.book_server
 ```
 
 Open `http://127.0.0.1:8766` beside your chat. Start the synthetic example, watch evidence arrive, then submit a choice and note. That page locks and a linked working page opens. Browse history or return to the latest page. SQLite preserves the book under ignored `outputs/live-book/`; keepalives do not invoke AI.
+
+Advice is labelled fixture advice unless a launcher is given `--model <folder>` (the local fine-tuned bundle, in the prepared model environment; see [project instructions](CLAUDE.md#commands)). Worker tools: `uv run hylogger-mcp --db outputs/live-book/demo.sqlite3` and `uv run hylogger-walkthrough` (a synthetic tool-driven walkthrough).
 
 ## Try the baseline selector
 
@@ -37,7 +39,7 @@ The local provider returns ranked candidate follow-ups through the shared assess
 
 - [Design](developer/docs/design.md): expert authority, local model, book and package boundaries.
 - [Model training](developer/docs/training.md): grounded examples, supervision, selected experiment, operating commands, supervision and evaluation.
-- [API](developer/docs/api.md): implemented demo routes and event contract.
+- [API](developer/docs/api.md): implemented demo routes, worker lifecycle routes and MCP tools, and the event contract.
 - [Tasks](developer/docs/tasks.md): frontend/backend branches and acceptance gates.
 - [Contributing and CI](developer/docs/github.md): branches, checks and publication rules.
 - [Development instructions](CLAUDE.md) and [data handling](data/README.md).

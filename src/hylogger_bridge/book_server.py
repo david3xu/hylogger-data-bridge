@@ -3,13 +3,21 @@ import argparse
 import json
 import mimetypes
 import re
+import sqlite3
 import threading
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from hylogger_bridge.advice.select import Loader, add_option, startup
 from hylogger_bridge.book import BookConflict, BookStore
+from hylogger_bridge.work import OPERATIONS
+
+
+def _start(job: Callable[[], None]) -> None:
+    threading.Thread(target=job, daemon=True).start()
 
 
 class BookServer(ThreadingHTTPServer):
@@ -18,6 +26,9 @@ class BookServer(ThreadingHTTPServer):
     def __init__(self, port: int, store: BookStore, static_root: Path) -> None:
         self.store = store
         self.static_root = static_root.resolve()
+        # How background jobs start; a test may hold a job to prove it is fenced by its own run.
+        self.launch: Callable[[Callable[[], None]], None] = _start
+        self.demo_delay = 0.7
         super().__init__(("127.0.0.1", port), BookHandler)
 
 
@@ -103,11 +114,16 @@ class BookHandler(BaseHTTPRequestHandler):
             self.wfile.write(b"retry: 1000\n: connected\n\n")
             self.wfile.flush()
             while True:
-                with self.server.store.changed:
-                    events = self.server.store.events_after(cursor)
-                    if not events:
-                        self.server.store.changed.wait(timeout=15)
-                        events = self.server.store.events_after(cursor)
+                store = self.server.store
+                events = store.events_after(cursor)
+                # In-process commits wake this at once; commits by another process (a worker
+                # tool) are found by re-reading the log each second.
+                for _ in range(15):
+                    if events:
+                        break
+                    with store.changed:
+                        store.changed.wait(timeout=1)
+                    events = store.events_after(cursor)
                 if not events:
                     # A keepalive maintains the connection; it never changes application state.
                     self.wfile.write(b": keepalive\n\n")
@@ -117,7 +133,8 @@ class BookHandler(BaseHTTPRequestHandler):
                     frame = f"id: {cursor}\nevent: book_updated\ndata: {json.dumps(payload)}\n\n"
                     self.wfile.write(frame.encode())
                 self.wfile.flush()
-        except (BrokenPipeError, ConnectionResetError, TimeoutError):
+        except (BrokenPipeError, ConnectionResetError, TimeoutError, sqlite3.OperationalError):
+            # A vanished client or database ends this stream; the client reconnects and refetches.
             return
         finally:
             self.close_connection = True
@@ -144,18 +161,26 @@ class BookHandler(BaseHTTPRequestHandler):
                 self._fields(body, {"page_id", "expected_revision"})
                 if not isinstance(body["page_id"], str):
                     raise ValueError("page_id must be text")
-                store.start_demo(body["page_id"], body["expected_revision"])
-                threading.Thread(
-                    target=store.run_demo, args=(body["page_id"],), daemon=True
-                ).start()
+                # The exact run is captured now; a late callback must never look one up by page.
+                run = store.begin_demo(body["page_id"], body["expected_revision"])
+                delay = self.server.demo_delay
+                self.server.launch(lambda: store.run_demo(run.page_id, delay, run))
                 self._json(202, {"started": True})
+                return
+            work_route = re.fullmatch(r"/api/work/([a-z_]+)", path)
+            if work_route is not None:
+                operation = OPERATIONS.get(work_route.group(1))
+                if operation is None:
+                    self._json(404, {"error": "Unknown operation", "code": "not_found"})
+                    return
+                self._json(200, operation(store, body))
                 return
             matched = re.fullmatch(r"/api/pages/([a-zA-Z0-9-]+)/(decision|evidence)", path)
             if matched is None:
                 self._json(404, {"error": "Unknown endpoint"})
                 return
-            page_id, operation = matched.groups()
-            if operation == "decision":
+            page_id, operation_name = matched.groups()
+            if operation_name == "decision":
                 self._fields(body, {"choice", "note", "expected_revision", "request_id"})
                 result = store.decide(
                     page_id,
@@ -165,30 +190,39 @@ class BookHandler(BaseHTTPRequestHandler):
                     body["request_id"],
                 )
             else:
-                self._fields(body, {"expected_revision", "evidence"})
+                self._fields(body, {"expected_revision", "evidence"}, {"claim"})
                 if not isinstance(body["evidence"], dict):
                     raise ValueError("evidence must be an object")
-                result = store.add_evidence(page_id, body["expected_revision"], body["evidence"])
+                result = store.add_evidence(
+                    page_id, body["expected_revision"], body["evidence"], body.get("claim")
+                )
             self._json(200, result)
         except BookConflict as error:
-            self._json(409, {"error": str(error)})
+            status = 404 if error.code == "not_found" else 409
+            self._json(status, {"error": str(error), "code": error.code, "retryable": False})
         except (ValueError, UnicodeError, TimeoutError) as error:
             message = "Invalid JSON" if isinstance(error, json.JSONDecodeError) else str(error)
-            self._json(400, {"error": message})
+            body = {"error": message or "Invalid request", "code": "invalid_request"}
+            self._json(400, {**body, "retryable": False})
 
     @staticmethod
-    def _fields(body: dict[str, Any], required: set[str]) -> None:
-        if set(body) != required:
+    def _fields(
+        body: dict[str, Any], required: set[str], optional: frozenset[str] | set[str] = frozenset()
+    ) -> None:
+        if not required <= set(body) <= required | optional:
             raise ValueError("Request fields do not match the endpoint contract")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None, load: Loader | None = None) -> None:
     parser = argparse.ArgumentParser(description="Local synthetic live-book demo")
     parser.add_argument("--port", type=int, default=8766)
     parser.add_argument("--db", type=Path, default=Path("outputs/live-book/demo.sqlite3"))
     parser.add_argument("--static-root", type=Path, default=Path("app/dist"))
-    args = parser.parse_args()
-    store = BookStore(args.db)
+    add_option(parser)
+    args = parser.parse_args(argv)
+    # Choose the provider first: a requested model that cannot start must not touch the book.
+    provider = startup(args.model, load)
+    store = BookStore(args.db, provider=provider)
     server = BookServer(args.port, store, args.static_root)
     store.recover_interrupted()
     print(f"Live book: http://127.0.0.1:{server.server_port} (synthetic demo)", flush=True)
