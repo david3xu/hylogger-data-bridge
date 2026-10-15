@@ -29,20 +29,21 @@ Based on the official packaging documentation at https://developers.openai.com/p
 
 ## Prerequisites
 
-Before loading the plugin in Codex desktop, prepare the local repository components:
-1. **Repository root checkout**: Ensure repository files and subdirectories are present.
-2. **Science virtual environment**:
-   ```sh
-   uv sync --locked
-   ```
-   Ensures `outputs/science-env/bin/python` is built and available.
-3. **Built frontend assets**:
-   ```sh
-   npm --prefix app run build
-   ```
-   Ensures `app/dist/index.html` and bundled assets are compiled.
-4. **Authorised drill-hole dataset**:
-   Verify `data/raw/nvcl` contains supported drill-hole packages (e.g. `data/raw/nvcl/SWMB007s_chips`).
+Before loading the plugin in Codex desktop, run the repository [Real-data quickstart](../../README.md#real-data-quickstart) install block to prepare all runtime assets:
+
+```sh
+uv sync --locked
+npm --prefix app ci && npm --prefix app run build
+uv venv outputs/science-env --python 3.12
+uv pip install --python outputs/science-env/bin/python -r training/science.txt
+python3 -m training.fetch --only SWMB007s_chips.zip
+```
+
+This completes the required prerequisites:
+1. **Base Python environment**: `uv sync --locked`.
+2. **Built frontend assets**: `npm --prefix app ci && npm --prefix app run build` generates `app/dist/index.html`.
+3. **Science virtual environment**: `outputs/science-env/bin/python` with pinned `pytsg` installed via `training/science.txt`.
+4. **Authorised drill-hole dataset**: Public package `SWMB007s_chips` fetched into `data/raw/nvcl`.
 
 ## Local Installation in Codex Desktop
 
@@ -75,12 +76,12 @@ Following the official guidance section **"Install a local plugin manually"** (*
 
 ### Option B: Local MCP Server Configuration
 
-You can also point Codex desktop directly at the launcher via `.mcp.json` / `mcp.json`:
+You can also point Codex desktop directly at the launcher via `.mcp.json` / `mcp.json` using the plugin-root-relative path:
 ```json
 {
   "mcpServers": {
     "hylogger": {
-      "command": "plugins/hylogger/bin/hylogger-mcp"
+      "command": "./bin/hylogger-mcp"
     }
   }
 }
