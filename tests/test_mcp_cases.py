@@ -59,6 +59,8 @@ class McpCasesTests(BookCase):
         return handle(self.registry, message)
 
     def tool(self, name: str, arguments: dict[str, Any]) -> tuple[bool, Any]:
+        if name == "start_case" and "session_id" not in arguments:
+            arguments = {**arguments, "manual_return": True}
         reply = self.ask("tools/call", {"name": name, "arguments": arguments})
         result = reply["result"]
         return result["isError"], json.loads(result["content"][0]["text"])

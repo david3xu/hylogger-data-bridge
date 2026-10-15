@@ -44,8 +44,10 @@ EXPERT_TOOLS: list[dict[str, Any]] = [
         "start_case",
         (
             "Start or reuse a case for a real HyLogger package inside the authorised data folder. "
-            "Returns case_id and page 1 evidence. If session_id is provided, binds the case for "
-            "automatic decision return."
+            "Returns case_id and page 1 evidence. REQUIRED for automatic return: pass the current "
+            "conversation UUID as session_id, obtained from its shell CODEX_THREAD_ID or "
+            "CODEX_SESSION_ID. Missing identity is refused before creating a case. "
+            "Use manual_return=true only for explicit manual follow-up."
         ),
         {
             "package_id": TEXT,
@@ -54,7 +56,14 @@ EXPERT_TOOLS: list[dict[str, Any]] = [
             "session_id": {
                 "type": "string",
                 "description": (
-                    "Optional conversation session UUID to bind for automatic decision return."
+                    "Current conversation UUID. Required unless manual_return=true. Read it in the "
+                    "calling chat shell; never guess or reuse a shared server process ID."
+                ),
+            },
+            "manual_return": {
+                "type": "boolean",
+                "description": (
+                    "Explicit manual follow-up instead of automatic return; omit session_id."
                 ),
             },
             "workspace": {

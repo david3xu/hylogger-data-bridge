@@ -559,6 +559,7 @@ class DispatchTests(BookCase):
                     "name": "start_case",
                     "arguments": {
                         "package_id": "mcp_hole",
+                        "manual_return": True,
                         "target": [10.0, 20.0],
                         "reference": [30.0, 40.0],
                         "workspace": str(ws),

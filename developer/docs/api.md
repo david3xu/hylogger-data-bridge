@@ -100,3 +100,10 @@ Installed CLI and expert MCP share one configured cases registry. Each case has 
 The book server owns a lightweight return watcher that survives an MCP-client disconnect. It queues new committed work to the verified bound Codex conversation. Repeated identical binding does not reset the retry budget. Reservations persist before external dispatch; uncertain sends are not silently resent. `GET /api/return` exposes observed return/worker state separately from the immutable book. Browser heartbeat polling only reads that state; it does not invoke a model. Queue acceptance is distinct from receiving-agent execution and completed scientific work.
 
 Default installed setup registers the local plugin and explicit MCP server with managed interpreter and profile environment; it never selects a global scientific-data folder. Existing local HyLogger marketplace sources are migrated with rollback, preserving unrelated plugins/configuration. Runtime model errors fail visibly without fixture fallback. Codex and ChatGPT/Work acceptance remain separate.
+
+
+### Automatic return precondition
+
+From runtime 0.1.3/plugin 0.1.5, expert MCP `start_case` refuses missing or malformed `session_id` before science or book creation. The agent obtains the current UUID through its own execution tool (`CODEX_THREAD_ID` or `CODEX_SESSION_ID`), never from the shared MCP process environment. `manual_return=true` explicitly selects manual follow-up and cannot be combined with `session_id`. This applies to expert MCP calls; standalone CLI/core preparation remains usable without a chat.
+
+`start_case` and `open_book` expose `return_mode`, `automatic_return`, `session_binding` and a `return_message`. A configured destination is not proof of delivered notification or completed work. Reuse with the verified conversation ID repairs an unbound existing book without changing decisions/history. The book watcher delivers its pending notification. Native host authentication is unchanged; claims and bindings remain local workflow controls, not authentication.

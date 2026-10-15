@@ -10,6 +10,7 @@ from typing import Any, TextIO
 from hylogger_bridge.advice.select import Loader, add_option, startup
 from hylogger_bridge.book import BookConflict, BookStore
 from hylogger_bridge.cases.registry import CaseRegistry, ServerLauncher
+from hylogger_bridge.mcp.start import execute as start_expert_case
 from hylogger_bridge.mcp.tools import EXPERT_TOOLS, TOOLS
 from hylogger_bridge.work import OPERATIONS
 
@@ -19,19 +20,15 @@ NOTE = (
     "Tools for expert evidence review and worker investigation on live books. "
     "Expert tools prepare, read, continue and open cases. "
     "Worker tools claim deliveries, acknowledge them, and submit evidence. "
-    "No tool records a human decision or scientific approval."
+    "No tool records a human decision or scientific approval. "
+    "start_case requires the calling conversation UUID for automatic return, or an explicit "
+    "manual_return=true. Verify the returned connection before promising automatic continuation."
 )
 
 ExpertOp = Callable[[CaseRegistry, dict[str, Any]], Any]
 
 EXPERT_OPERATIONS: dict[str, ExpertOp] = {
-    "start_case": lambda reg, args: reg.start_case(
-        args["package_id"],
-        args["target"],
-        args["reference"],
-        session_id=args.get("session_id"),
-        workspace=args.get("workspace"),
-    ),
+    "start_case": start_expert_case,
     "read_case": lambda reg, args: reg.read_case(
         args["case_id"], unbind=bool(args.get("unbind", False))
     ),

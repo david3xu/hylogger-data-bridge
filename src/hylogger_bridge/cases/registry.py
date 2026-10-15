@@ -10,6 +10,7 @@ from typing import Any
 
 from hylogger_bridge.advice.provider import Provider
 from hylogger_bridge.book import BookStore
+from hylogger_bridge.cases.connection import describe as connection_info
 from hylogger_bridge.cases.context import save_workspace, workspace_of
 from hylogger_bridge.cases.dispatch import (
     CommandRunner,
@@ -235,7 +236,6 @@ class CaseRegistry:
         workspace: Path | None = None,
     ) -> dict[str, Any]:
         advice = page.get("assessment") or {}
-        binding = load_session_binding(self.cases_dir, case_id)
         res = {
             "case_id": case_id,
             "reused": reused,
@@ -246,8 +246,7 @@ class CaseRegistry:
             "assessment": page.get("assessment"),
             "readable_evidence": page.get("evidence", []),
         }
-        if binding:
-            res["session_binding"] = binding
+        res.update(connection_info(self.cases_dir, case_id))
         if workspace:
             res["workspace"] = str(workspace)
         return res
@@ -380,7 +379,7 @@ class CaseRegistry:
             url = self.server_launcher(self.cases_dir, case_id, book_path)
         else:
             url = get_or_start_server(self.cases_dir, case_id, book_path)
-        return {"case_id": case_id, "url": url}
+        return {"case_id": case_id, "url": url, **connection_info(self.cases_dir, case_id)}
 
     def find_packages_tool(
         self, hole: str | None = None, workspace: str | Path | None = None

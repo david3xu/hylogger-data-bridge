@@ -12,7 +12,7 @@ Open a new local Codex conversation after installation if tools have not refresh
 
 Ask: “Review SWMB007s: check quality and compare 5–10 m with 0–5 m.” The agent obtains the trusted workspace and its actual conversation ID, discovers supported packages there, and asks for missing or ambiguous bounds. No data is bundled or searched outside that authorised workspace.
 
-1. `start_case` prepares inventory, QA and separately labelled advice; `open_book` returns the local book URL.
+1. `start_case` requires the verified calling conversation UUID, prepares inventory/QA/advice and returns its binding. An omitted identity is refused before case creation; explicit `manual_return=true` is the fallback. `open_book` returns the URL and return mode for the agent to verify, then open beside chat.
 2. The expert reviews evidence and commits accept, modify or reject with the exact note in the browser.
 3. A lightweight watcher queues a notification to the bound Codex conversation. The book distinguishes notification receipt from completed scientific work.
 4. The agent calls `read_case`, matches page/decision/continuation IDs, then calls `continue_case`. The successor contains the result; history stays locked. Duplicate or delayed notifications cannot execute later work accidentally.
