@@ -25,15 +25,25 @@ ExpertOp = Callable[[CaseRegistry, dict[str, Any]], Any]
 
 EXPERT_OPERATIONS: dict[str, ExpertOp] = {
     "start_case": lambda reg, args: reg.start_case(
-        args["package_id"], args["target"], args["reference"]
+        args["package_id"],
+        args["target"],
+        args["reference"],
+        session_id=args.get("session_id"),
+        workspace=args.get("workspace"),
     ),
     "read_case": lambda reg, args: reg.read_case(args["case_id"]),
     "continue_case": lambda reg, args: reg.continue_case_tool(
-        args["case_id"], args.get("target"), args.get("reference")
+        args["case_id"],
+        args.get("target"),
+        args.get("reference"),
+        session_id=args.get("session_id"),
+        workspace=args.get("workspace"),
     ),
     "open_book": lambda reg, args: reg.open_book_tool(args["case_id"]),
-    "find_packages": lambda reg, args: reg.find_packages_tool(args.get("hole")),
-    "list_cases": lambda reg, args: reg.list_cases_tool(),
+    "find_packages": lambda reg, args: reg.find_packages_tool(
+        args.get("hole"), workspace=args.get("workspace")
+    ),
+    "list_cases": lambda reg, args: reg.list_cases_tool(workspace=args.get("workspace")),
 }
 
 ALL_OPERATIONS = set(OPERATIONS) | set(EXPERT_OPERATIONS)
