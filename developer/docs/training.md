@@ -276,7 +276,20 @@ uv run python -m hylogger_bridge.book_server --db $B.sqlite3
 `prepare` starts a dedicated book whose source is `live` (the synthetic demo is untouched), attaches the package, persists trusted inventory and quality evidence and captures the model request. `advise` runs the saved model offline. `record` stores the model-origin advice and finishes the first page, so the browser offers the human review. After you decide, with a note, in the browser:
 
 ```sh
+# For accept (or modify without bounds, requesting clarification):
 science-python -m training.live continue --book $B.sqlite3
+
+# For modify with operator-supplied interval bounds (metres):
+science-python -m training.live continue --book $B.sqlite3 --target 10 15 --reference 5 10
 ```
 
-`continue` is an explicit worker: it claims and acknowledges the delivery, attaches the package to the successor page, persists inventory, quality and comparison evidence and completes the page. The decision, its exact note and the locked page are never changed. Automatic host-chat continuation is not verified; the advice shown is weak and advisory.
+`continue` is an explicit worker that inspects the human expert's workflow choice and note:
+- **`accept`**: Claims delivery, attaches the planned package scene to the successor page, persists trusted inventory, quality and comparison evidence, and completes the page.
+- **`reject`**: No scientific calculation is performed. Finishes the successor page with outcome `complete` and action `stop`, truthfully recording the expert's decision to stop without calculating.
+- **`modify`**:
+  - With explicit `--target A B --reference C D` bounds (in metres): Validates the intervals against the hole's available depth range (refusing invalid bounds with zero state change) and calculates the interval comparison for those exact operator-supplied intervals, recording in the successor that bounds were derived from the expert note.
+  - Without bounds: No scientific calculation is performed. Finishes the successor page with outcome `complete` and action `clarify`, requesting operator clarification.
+- **`recovery`**: After a clarification-needed successor page becomes ready, the human expert can record a new decision on it, and a subsequent `continue` acts on that new decision (walking ancestor pages to recover the attached package scene).
+
+The human decision, its exact note and the locked parent page are never changed. Automatic host-chat continuation is not verified; the advice shown is weak and advisory.
+

@@ -46,14 +46,66 @@ def working(snapshot: dict[str, Any]) -> dict[str, Any]:
     return page
 
 
-def scene_of(book: Path, page_id: str) -> dict[str, Any]:
+def scene_of(book: Path, page_id: str | None) -> dict[str, Any]:
     from hylogger_bridge.store import scenes
 
     with sqlite3.connect(book) as connection:
-        scene = scenes.get(connection, page_id)
-    assert scene is not None
-    found: dict[str, Any] = scene
-    return found
+        if page_id is not None:
+            scene = scenes.get(connection, page_id)
+            if scene is not None:
+                found: dict[str, Any] = scene
+                return found
+            # Walk up ancestor pages using the book's pages array
+            row = connection.execute("SELECT data FROM book WHERE id=1").fetchone()
+            if row is not None:
+                book_data = json.loads(row[0])
+                pages_by_id = {p["id"]: p for p in book_data.get("pages", [])}
+                curr: str | None = page_id
+                while curr is not None and curr in pages_by_id:
+                    s = scenes.get(connection, curr)
+                    if s is not None:
+                        found_s: dict[str, Any] = s
+                        return found_s
+                    curr = pages_by_id[curr].get("parent_id")
+        # Fallback to any scene stored in the book
+        row_scene = connection.execute("SELECT scene FROM scenes LIMIT 1").fetchone()
+        if row_scene is not None:
+            fallback: dict[str, Any] = json.loads(row_scene[0])
+            return fallback
+    raise ValueError(f"No scientific scene found for page {page_id} or its ancestors")
+
+
+def hole_depth_range(hole: Any) -> tuple[float, float]:
+    from hylogger_bridge.science import features
+
+    grid = features.lattice(hole)
+    if grid is not None:
+        origin, step = grid
+        low = max(0.0, origin - step / 2.0)
+        high = max(hole.depth) + step / 2.0
+    else:
+        low = max(0.0, min(hole.depth))
+        high = max(hole.depth)
+    return low, high
+
+
+def validate_bounds(hole: Any, target: tuple[float, float], reference: tuple[float, float]) -> None:
+    from hylogger_bridge.science import features
+
+    for name, (top, bottom) in (("target", target), ("reference", reference)):
+        features.bounds(top, bottom)
+        if top < 0 or bottom < 0:
+            raise ValueError(f"{name} bounds must be non-negative, got ({top}, {bottom})")
+    low, high = hole_depth_range(hole)
+    for name, (top, bottom) in (("target", target), ("reference", reference)):
+        if top < low or bottom > high:
+            raise ValueError(
+                f"{name} interval [{top}, {bottom}) is outside hole depth range [{low}, {high})"
+            )
+        if len(features.spots(hole, top, bottom)) == 0:
+            raise ValueError(
+                f"{name} interval [{top}, {bottom}) contains no measured spots in hole"
+            )
 
 
 def result(page: dict[str, Any], claim: dict[str, Any] | None, **fields: Any) -> dict[str, Any]:
@@ -176,47 +228,215 @@ def record(args: argparse.Namespace) -> None:
     print(json.dumps(summary, indent=2))
 
 
-def continue_case(store: Any) -> dict[str, Any]:
-    """After a human decision: claim, acknowledge, calculate the comparison, complete."""
+def continue_case(
+    store: Any,
+    target: tuple[float, float] | list[float] | None = None,
+    reference: tuple[float, float] | list[float] | None = None,
+) -> dict[str, Any]:
+    """After a human decision: claim, acknowledge, and continue according to choice.
+
+    - accept: run the planned comparison.
+    - reject: no calculation; finish with complete outcome stating expert stopped.
+    - modify with bounds: validate bounds against depth range; calculate comparison.
+    - modify without bounds: no calculation; finish stating clarification is needed.
+    - any other choice: refuse with clear error and zero state change.
+    """
     from hylogger_bridge.science.request import STAGES
 
+    # 1. Check pending continuation before claiming; refuse invalid inputs with no state change
+    snapshot = store.snapshot()
+    pending = [c for c in snapshot.get("continuations", []) if c.get("state") == "pending"]
+    if not pending:
+        store.expire_deliveries()
+        snapshot = store.snapshot()
+        pending = [c for c in snapshot.get("continuations", []) if c.get("state") == "pending"]
+
+    if not pending:
+        sys.exit("No human decision is waiting for a worker.")
+
+    step = pending[0]
+    parent_page = next((p for p in snapshot["pages"] if p["id"] == step["page_id"]), None)
+    if parent_page is None or "decision" not in parent_page or parent_page["decision"] is None:
+        sys.exit("No human decision is waiting for a worker.")
+
+    decision = parent_page["decision"]
+    choice = decision.get("choice")
+
+    # Guard against unknown choice with zero state change
+    if choice not in ("accept", "modify", "reject"):
+        raise ValueError(f"Refusing unrecognised human choice: {choice!r}")
+
+    # For modify: validate bounds if provided, or require both if one is provided
+    target_pair: tuple[float, float] | None = None
+    reference_pair: tuple[float, float] | None = None
+    if choice == "modify":
+        if (target is not None) != (reference is not None):
+            raise ValueError("Both --target and --reference bounds must be provided together.")
+        if target is not None and reference is not None:
+            target_pair = (float(target[0]), float(target[1]))
+            reference_pair = (float(reference[0]), float(reference[1]))
+            working_page = working(snapshot)
+            parent_id = working_page.get("parent_id")
+            scene = scene_of(store.path, parent_id)
+            hole = store.science(scene["folder"], scene["package_id"])
+            validate_bounds(hole, target_pair, reference_pair)
+
+    # 2. Claim delivery and acknowledge
     handoff = store.claim_delivery(WORKER["name"])
     if handoff is None:
         sys.exit("No human decision is waiting for a worker.")
     store.acknowledge_delivery(handoff["continuation_id"], handoff["attempt"])
     claim = {"continuation_id": handoff["continuation_id"], "attempt": handoff["attempt"]}
     page = working(store.snapshot())
-    scene = scene_of(store.path, page["parent_id"])
-    page = working(
-        store.attach_scene(
-            page["id"],
-            page["revision"],
-            Path(scene["folder"]),
-            scene["package_id"],
-            tuple(scene["target"]),
-            tuple(scene["reference"]),
+
+    # 3. Act based on choice
+    if choice == "accept":
+        scene = scene_of(store.path, page["parent_id"])
+        page = working(
+            store.attach_scene(
+                page["id"],
+                page["revision"],
+                Path(scene["folder"]),
+                scene["package_id"],
+                tuple(scene["target"]),
+                tuple(scene["reference"]),
+            )
         )
-    )
-    for stage in STAGES:
-        page = working(store.measure(page["id"], page["revision"], stage, claim))
-    numbers = {e["id"]: e["value"] for e in page["evidence"]}
-    done = store.submit_result(
-        result(
-            page,
-            claim,
-            summary=f"Interval comparison calculated from the package. {numbers['compare']}"[:1000],
-            evidence=[limits_evidence()],
-            action={"type": "interval_compare", "assessment_id": None},
+        for stage in STAGES:
+            page = working(store.measure(page["id"], page["revision"], stage, claim))
+        numbers = {e["id"]: e["value"] for e in page["evidence"]}
+        done = store.submit_result(
+            result(
+                page,
+                claim,
+                summary=f"Interval comparison calculated from the package. {numbers['compare']}"[
+                    :1000
+                ],
+                evidence=[limits_evidence()],
+                action={"type": "interval_compare", "assessment_id": None},
+            )
         )
-    )
-    shown = next(p for p in done["pages"] if p["id"] == page["id"])
-    return {"page": shown["id"], "status": shown["status"], "compare": numbers["compare"]}
+        shown = next(p for p in done["pages"] if p["id"] == page["id"])
+        return {"page": shown["id"], "status": shown["status"], "compare": numbers["compare"]}
+
+    elif choice == "reject":
+        note = handoff.get("note", "").strip()
+        explanation = f"Expert stopped: {note}" if note else "Expert stopped the workflow."
+        stop_evidence = {
+            "id": "expert_stop",
+            "label": "Expert stop",
+            "value": f"{explanation}. No calculations were performed."[:1000],
+            "source": "Expert workflow instruction",
+            "kind": "observation",
+            "origin": "actual",
+            "state": "complete",
+        }
+        done = store.submit_result(
+            result(
+                page,
+                claim,
+                summary=f"{explanation} Nothing was calculated."[:1000],
+                evidence=[stop_evidence, limits_evidence()],
+                action={"type": "stop", "assessment_id": None},
+            )
+        )
+        shown = next(p for p in done["pages"] if p["id"] == page["id"])
+        return {"page": shown["id"], "status": shown["status"], "stopped": True}
+
+    elif choice == "modify":
+        if target_pair is not None and reference_pair is not None:
+            scene = scene_of(store.path, page["parent_id"])
+            page = working(
+                store.attach_scene(
+                    page["id"],
+                    page["revision"],
+                    Path(scene["folder"]),
+                    scene["package_id"],
+                    target_pair,
+                    reference_pair,
+                )
+            )
+            for stage in STAGES:
+                page = working(store.measure(page["id"], page["revision"], stage, claim))
+            numbers = {e["id"]: e["value"] for e in page["evidence"]}
+            note = handoff.get("note", "").strip()
+            note_desc = f" from note '{note}'" if note else ""
+            operator_evidence = {
+                "id": "operator_bounds",
+                "label": "Operator-supplied bounds",
+                "value": (
+                    f"Target {target_pair[0]:g}–{target_pair[1]:g} m against "
+                    f"reference {reference_pair[0]:g}–{reference_pair[1]:g} m "
+                    f"operator-supplied{note_desc}."
+                )[:1000],
+                "source": "Operator bounds from expert note",
+                "kind": "observation",
+                "origin": "actual",
+                "state": "complete",
+            }
+            done = store.submit_result(
+                result(
+                    page,
+                    claim,
+                    summary=(
+                        f"Interval comparison calculated with operator-supplied bounds "
+                        f"target {target_pair[0]:g}–{target_pair[1]:g} m, "
+                        f"reference {reference_pair[0]:g}–{reference_pair[1]:g} m{note_desc}. "
+                        f"{numbers['compare']}"
+                    )[:1000],
+                    evidence=[operator_evidence, limits_evidence()],
+                    action={"type": "interval_compare", "assessment_id": None},
+                )
+            )
+            shown = next(p for p in done["pages"] if p["id"] == page["id"])
+            return {"page": shown["id"], "status": shown["status"], "compare": numbers["compare"]}
+        else:
+            note = handoff.get("note", "").strip()
+            note_desc = f": '{note}'" if note else "."
+            clarify_evidence = {
+                "id": "clarify_needed",
+                "label": "Clarification needed",
+                "value": (
+                    f"Expert requested interval modification{note_desc} "
+                    "Explicit target and reference bounds must be supplied "
+                    "by operator to calculate comparison."
+                )[:1000],
+                "source": "Operator input required",
+                "kind": "observation",
+                "origin": "actual",
+                "state": "complete",
+            }
+            done = store.submit_result(
+                result(
+                    page,
+                    claim,
+                    summary=(
+                        f"Clarification needed for interval modification{note_desc} "
+                        "No calculation performed; specify target and reference bounds to continue."
+                    )[:1000],
+                    evidence=[clarify_evidence, limits_evidence()],
+                    action={"type": "clarify", "assessment_id": None},
+                )
+            )
+            shown = next(p for p in done["pages"] if p["id"] == page["id"])
+            return {"page": shown["id"], "status": shown["status"], "clarification_needed": True}
+
+    raise ValueError(f"Refusing unrecognised human choice: {choice!r}")
 
 
 def follow(args: argparse.Namespace) -> None:
     from hylogger_bridge.book import BookStore
 
-    print(json.dumps(continue_case(BookStore(args.book)), indent=2))
+    print(
+        json.dumps(
+            continue_case(
+                BookStore(args.book),
+                target=args.target,
+                reference=args.reference,
+            ),
+            indent=2,
+        )
+    )
 
 
 def main() -> None:
@@ -235,6 +455,9 @@ def main() -> None:
             step.add_argument("--package-id", required=True)
             step.add_argument("--target", type=float, nargs=2, required=True)
             step.add_argument("--reference", type=float, nargs=2, required=True)
+        if name == "continue":
+            step.add_argument("--target", type=float, nargs=2, default=None)
+            step.add_argument("--reference", type=float, nargs=2, default=None)
         if name == "advise":
             step.add_argument("--model", type=Path, required=True)
         if name in ("advise", "record"):
