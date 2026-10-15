@@ -42,16 +42,18 @@ class CaseRegistry:
     def __init__(
         self,
         cases_dir: Path,
-        data_root: Path,
-        provider: Provider,
+        data_root: Path | None = None,
+        provider: Provider | None = None,
         science: Any = None,
         default_db: Path | None = None,
         server_launcher: ServerLauncher | None = None,
         cmd_runner: CommandRunner = subprocess.run,
         watcher_interval: float = 1.0,
+        workspace_auto: bool = False,
     ) -> None:
         self.cases_dir = cases_dir.resolve()
-        self.data_root = data_root.resolve()
+        self.data_root = data_root.resolve() if data_root is not None else None
+        self.workspace_auto = workspace_auto or (self.data_root is None)
         self.provider = provider
         self.science = science
         self.default_db = default_db.resolve() if default_db else None
@@ -129,7 +131,12 @@ class CaseRegistry:
                     f"Authorised workspace does not exist or is not a directory: {workspace}"
                 )
             return p
-        return self.data_root
+        if self.data_root is not None:
+            return self.data_root
+        raise ValueError(
+            "No authorised workspace provided. Pass 'workspace' with the path to the "
+            "folder connected to the conversation."
+        )
 
     def start_case(
         self,
@@ -141,7 +148,7 @@ class CaseRegistry:
     ) -> dict[str, Any]:
         data_root = self.resolve_workspace(workspace)
         t, r = interval(target), interval(reference)
-        if workspace is not None and data_root != self.data_root:
+        if self.workspace_auto or (workspace is not None and data_root != self.data_root):
             case_id = case_slug(package_id, t, r, workspace=data_root)
         else:
             case_id = case_slug(package_id, t, r)

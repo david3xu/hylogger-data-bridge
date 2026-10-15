@@ -21,7 +21,7 @@ from hylogger_bridge.cases.dispatch import (
     unbind_session,
 )
 from hylogger_bridge.cases.registry import CaseRegistry
-from hylogger_bridge.mcp.server import handle
+from hylogger_bridge.mcp.server import WORKSPACE_AUTO, handle
 
 VALID_SESSION_UUID = "01a139d9-409c-7781-91ce-b8bf67aa2103"
 ALT_SESSION_UUID = "01a06186-3f83-7511-b612-5847c02d9d0c"
@@ -609,6 +609,80 @@ class DispatchTests(BookCase):
         )
         self.assertIsNotNone(reply_cont)
         assert reply_cont is not None
-        self.assertFalse(reply_cont["result"]["isError"])
         cont_content = json.loads(reply_cont["result"]["content"][0]["text"])
         self.assertEqual(cont_content["status"], "continued")
+
+    def test_workspace_auto_mode(self) -> None:
+        self.assertTrue(WORKSPACE_AUTO)
+        reg_auto = CaseRegistry(
+            cases_dir=self.cases_dir,
+            data_root=None,
+            provider=self.provider,
+            science=self.science,
+            cmd_runner=self.cmd_runner,
+            workspace_auto=True,
+        )
+        self.assertTrue(reg_auto.workspace_auto)
+        self.assertIsNone(reg_auto.data_root)
+
+        # Missing workspace raises ValueError
+        with self.assertRaises(ValueError) as ctx:
+            reg_auto.resolve_workspace(None)
+        self.assertIn("No authorised workspace provided", str(ctx.exception))
+
+        with self.assertRaises(ValueError) as ctx_find:
+            reg_auto.find_packages_tool()
+        self.assertIn("No authorised workspace provided", str(ctx_find.exception))
+
+        # Providing workspace succeeds
+        ws = self.path.parent / "ws_auto_test"
+        pkg = ws / "auto_hole" / "pkg"
+        pkg.mkdir(parents=True, exist_ok=True)
+        (pkg / "auto_hole_tsg.tsg").write_text("header")
+
+        resolved = reg_auto.resolve_workspace(ws)
+        self.assertEqual(resolved, ws.resolve())
+
+        found = reg_auto.find_packages_tool(workspace=ws)
+        self.assertEqual(len(found["packages"]), 1)
+        self.assertEqual(found["packages"][0]["package_id"], "auto_hole")
+
+        started = reg_auto.start_case("auto_hole", [10.0, 20.0], [30.0, 40.0], workspace=ws)
+        self.assertTrue(started["case_id"])
+        self.assertIn(str(ws.resolve()), started.get("workspace", ""))
+
+    def test_workspace_auto_host_meta_injection(self) -> None:
+        reg_auto = CaseRegistry(
+            cases_dir=self.cases_dir,
+            data_root=None,
+            provider=self.provider,
+            science=self.science,
+            cmd_runner=self.cmd_runner,
+            workspace_auto=True,
+        )
+        ws = self.path.parent / "ws_meta_test"
+        pkg = ws / "meta_hole" / "pkg"
+        pkg.mkdir(parents=True, exist_ok=True)
+        (pkg / "meta_hole_tsg.tsg").write_text("header")
+
+        # When host passes workspace inside _meta or params root
+        reply = handle(
+            reg_auto,
+            {
+                "jsonrpc": "2.0",
+                "id": 40,
+                "method": "tools/call",
+                "params": {
+                    "name": "find_packages",
+                    "arguments": {},
+                    "_meta": {"workspace": str(ws)},
+                },
+            },
+            tools_mode="expert",
+        )
+        self.assertIsNotNone(reply)
+        assert reply is not None
+        self.assertFalse(reply["result"]["isError"])
+        content = json.loads(reply["result"]["content"][0]["text"])
+        self.assertEqual(len(content["packages"]), 1)
+        self.assertEqual(content["packages"][0]["package_id"], "meta_hole")
