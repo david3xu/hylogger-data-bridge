@@ -6,7 +6,7 @@ from support import NOTE, BookCase, working
 from test_science import chips
 
 from hylogger_bridge.advice.provider import FixtureProvider
-from hylogger_bridge.book import BookStore
+from hylogger_bridge.book import BookConflict, BookStore
 from hylogger_bridge.pages.live import start
 from training import live
 
@@ -85,7 +85,11 @@ class LiveCaseTests(BookCase):
         live.finish_first(self.live, "")
         page = working(self.live.snapshot())
         self.live.decide(
-            page["id"], page["revision"], "accept", "Looks good, proceed", "dec-accept"
+            page["id"],
+            page["revision"],
+            "accept",
+            "[TEST DECISION — not expert validation] Looks good, proceed",
+            "dec-accept",
         )
         done = live.continue_case(self.live)
         self.assertEqual(done["status"], "ready")
@@ -104,7 +108,11 @@ class LiveCaseTests(BookCase):
         live.finish_first(self.live, "")
         page = working(self.live.snapshot())
         self.live.decide(
-            page["id"], page["revision"], "reject", "Stop; do not compare.", "decision-reject"
+            page["id"],
+            page["revision"],
+            "reject",
+            "[TEST DECISION — not expert validation] Stop; do not compare.",
+            "decision-reject",
         )
         done = live.continue_case(self.live)
         self.assertEqual(done["status"], "ready")
@@ -136,7 +144,7 @@ class LiveCaseTests(BookCase):
             page["id"],
             page["revision"],
             "modify",
-            "Compare 6–8 m against 2–4 m instead.",
+            "[TEST DECISION — not expert validation] Compare 6–8 m against 2–4 m instead.",
             "decision-mod-valid",
         )
         done = live.continue_case(self.live, target=(6.0, 8.0), reference=(2.0, 4.0))
@@ -170,7 +178,7 @@ class LiveCaseTests(BookCase):
             page["id"],
             page["revision"],
             "modify",
-            "Compare 10–15 m against 5–10 m instead.",
+            "[TEST DECISION — not expert validation] Compare 10–15 m against 5–10 m instead.",
             "decision-mod-inv",
         )
         before = self.live.snapshot()
@@ -206,7 +214,7 @@ class LiveCaseTests(BookCase):
             page["id"],
             page["revision"],
             "modify",
-            "Compare different depths.",
+            "[TEST DECISION — not expert validation] Compare different depths.",
             "decision-mod-nobounds",
         )
         done = live.continue_case(self.live)
@@ -228,7 +236,11 @@ class LiveCaseTests(BookCase):
         live.finish_first(self.live, "")
         page1 = working(self.live.snapshot())
         self.live.decide(
-            page1["id"], page1["revision"], "modify", "Need adjustment.", "decision-recov-1"
+            page1["id"],
+            page1["revision"],
+            "modify",
+            "[TEST DECISION — not expert validation] Need adjustment.",
+            "decision-recov-1",
         )
         done1 = live.continue_case(self.live)
         self.assertEqual(done1["status"], "ready")
@@ -238,7 +250,11 @@ class LiveCaseTests(BookCase):
 
         # Expert reviews ready Page 2 and records a new decision on it
         self.live.decide(
-            page2["id"], page2["revision"], "modify", "Use 6-8 m and 2-4 m.", "decision-recov-2"
+            page2["id"],
+            page2["revision"],
+            "modify",
+            "[TEST DECISION — not expert validation] Use 6-8 m and 2-4 m.",
+            "decision-recov-2",
         )
         done2 = live.continue_case(self.live, target=(6.0, 8.0), reference=(2.0, 4.0))
         self.assertEqual(done2["status"], "ready")
@@ -286,7 +302,10 @@ class LiveCaseTests(BookCase):
         self.prepare()
         live.finish_first(self.live, "")
         page = working(self.live.snapshot())
-        exact_note = "Detailed expert review note with special chars: 10–15 m & 5–10 m. Ref: #123."
+        exact_note = (
+            "[TEST DECISION — not expert validation] Detailed expert review note with "
+            "special chars: 10–15 m & 5–10 m. Ref: #123."
+        )
         snapshot = self.live.decide(
             page["id"], page["revision"], "accept", exact_note, "decision-exact"
         )
@@ -322,6 +341,187 @@ class LiveCaseTests(BookCase):
         self.assertIn("Refusing unrecognised human choice", str(ctx.exception))
         after = self.live.snapshot()
         self.assertEqual(before, after)
+
+    def test_scene_of_raises_when_no_scene_and_changes_no_state(self) -> None:
+        fresh_book = self.path.with_name("noscene.sqlite3")
+        fresh_store = BookStore(fresh_book, provider=FixtureProvider(), start=self.first)
+        before = fresh_store.snapshot()
+        page = working(before)
+        with self.assertRaises(ValueError) as ctx:
+            live.scene_of(fresh_book, page["id"])
+        self.assertIn("No scientific scene found", str(ctx.exception))
+        self.assertEqual(fresh_store.snapshot(), before)
+
+    def test_forced_mismatch_never_acts_on_the_wrong_decision(self) -> None:
+        self.prepare()
+        live.finish_first(self.live, "")
+        page = working(self.live.snapshot())
+        self.live.decide(
+            page["id"],
+            page["revision"],
+            "accept",
+            "[TEST DECISION — not expert validation] proceed",
+            "decision-correct",
+        )
+        orig_claim = self.live.claim_delivery
+
+        def claim_with_mismatch(
+            worker: str, seconds: float = 60.0, at: Any = None
+        ) -> dict[str, Any] | None:
+            claimed = orig_claim(worker, seconds, at)
+            if claimed is not None:
+                claimed = dict(claimed)
+                # Tamper decision_id to simulate mismatching decision
+                claimed["decision_id"] = "decision-tampered-wrong"
+            return claimed
+
+        self.live.claim_delivery = claim_with_mismatch  # type: ignore[method-assign]
+        with self.assertRaises(ValueError) as ctx:
+            live.continue_case(self.live)
+        self.assertIn("Delivery mismatch", str(ctx.exception))
+
+        snap = self.live.snapshot()
+        cont = snap["continuations"][0]
+        self.assertNotEqual(cont["state"], "completed")
+        self.assertEqual(cont["last_error"]["code"], "delivery_failed")
+        self.assertTrue(cont["last_error"]["retryable"])
+        succ = next(p for p in snap["pages"] if p["id"] == cont["successor_id"])
+        self.assertEqual(succ["status"], "draft")
+        self.assertEqual(succ["evidence"], [])
+
+    def test_retry_after_failed_stage_skips_existing_evidence_and_completes_once(self) -> None:
+        self.prepare()
+        live.finish_first(self.live, "")
+        page = working(self.live.snapshot())
+        self.live.decide(
+            page["id"],
+            page["revision"],
+            "accept",
+            "[TEST DECISION — not expert validation] proceed",
+            "decision-retry",
+        )
+
+        orig_measure = self.live.measure
+
+        def failing_measure(
+            page_id: str,
+            rev: int,
+            stage: str,
+            claim: dict[str, Any] | None = None,
+            at: Any = None,
+        ) -> dict[str, Any]:
+            if stage == "qa":
+                raise RuntimeError("simulated crash during stage qa")
+            return orig_measure(page_id, rev, stage, claim, at)
+
+        # Attempt 1 fails during "qa" stage after "inventory" was already stored
+        self.live.measure = failing_measure  # type: ignore[assignment]
+        with self.assertRaises(RuntimeError) as ctx:
+            live.continue_case(self.live)
+        self.assertIn("simulated crash during stage qa", str(ctx.exception))
+
+        snap1 = self.live.snapshot()
+        cont1 = snap1["continuations"][0]
+        self.assertNotEqual(cont1["state"], "completed")
+        self.assertEqual(cont1["last_error"]["code"], "worker_failed")
+        self.assertTrue(cont1["last_error"]["retryable"])
+
+        # Attempt 2 retries with working measure
+        self.live.measure = orig_measure  # type: ignore[method-assign]
+        done = live.continue_case(self.live)
+        self.assertEqual(done["status"], "ready")
+        self.assertIn("compare", done)
+
+        snap2 = self.live.snapshot()
+        cont2 = snap2["continuations"][0]
+        self.assertEqual(cont2["state"], "completed")
+        self.assertEqual(cont2["attempts"], 2)
+
+        succ = working(snap2)
+        self.assertEqual(succ["outcome"], "complete")
+        evidence_ids = [e["id"] for e in succ["evidence"]]
+        self.assertEqual(evidence_ids[:3], ["inventory", "qa", "compare"])
+        import json
+        import sqlite3
+
+        with sqlite3.connect(self.book) as conn:
+            row = conn.execute("SELECT payload FROM results ORDER BY rowid DESC LIMIT 1").fetchone()
+            self.assertIsNotNone(row)
+            payload = json.loads(row[0])
+            self.assertEqual(payload["request_id"], f"r1-cont-{cont2['id']}")
+
+    def test_limits_evidence_formatting_and_provenance(self) -> None:
+        # 1. Fixture advice
+        fixture_page = {"assessment": {"origin": "fixture"}}
+        ev_fixture = live.limits_evidence(fixture_page)
+        self.assertIn(live.SCIENTIFIC_LIMITS, ev_fixture["value"])
+        self.assertIn(
+            "Advice shown comes from a labelled fixture; no trained model was consulted.",
+            ev_fixture["value"],
+        )
+
+        # 2. Model advice
+        model_page = {"assessment": {"origin": "model"}}
+        ev_model = live.limits_evidence(model_page)
+        self.assertIn(live.SCIENTIFIC_LIMITS, ev_model["value"])
+        self.assertIn(
+            "The advice shown comes from an experimental local model",
+            ev_model["value"],
+        )
+
+        # 3. No advice requested (e.g. stop, clarify, or accept continuation)
+        stop_page = {"assessment": None}
+        ev_stop = live.limits_evidence(stop_page)
+        self.assertIn(live.SCIENTIFIC_LIMITS, ev_stop["value"])
+        self.assertIn("No model advice was requested for this step.", ev_stop["value"])
+
+        ev_none = live.limits_evidence(None)
+        self.assertIn("No model advice was requested for this step.", ev_none["value"])
+
+    def test_attach_scene_fencing_with_claim(self) -> None:
+        self.prepare()
+        live.finish_first(self.live, "")
+        page = working(self.live.snapshot())
+        self.live.decide(
+            page["id"],
+            page["revision"],
+            "accept",
+            "[TEST DECISION — not expert validation] proceed",
+            "decision-attach-fence",
+        )
+        handoff = self.live.claim_delivery(live.WORKER["name"])
+        self.assertIsNotNone(handoff)
+        assert handoff is not None
+        self.live.acknowledge_delivery(handoff["continuation_id"], handoff["attempt"])
+
+        snap = self.live.snapshot()
+        succ = next(p for p in snap["pages"] if p["id"] == handoff["successor_id"])
+        claim = {"continuation_id": handoff["continuation_id"], "attempt": handoff["attempt"]}
+
+        # Calling attach_scene without claim on successor page must raise BookConflict
+        with self.assertRaises(BookConflict):
+            self.live.attach_scene(
+                succ["id"],
+                succ["revision"],
+                Path("pkg"),
+                "FIX001_chips",
+                (5.0, 10.0),
+                (0.0, 5.0),
+                claim=None,
+            )
+
+        # Calling attach_scene with valid claim succeeds
+        updated = self.live.attach_scene(
+            succ["id"],
+            succ["revision"],
+            Path("pkg"),
+            "FIX001_chips",
+            (5.0, 10.0),
+            (0.0, 5.0),
+            claim=claim,
+        )
+        succ_after = working(updated)
+        self.assertEqual(succ_after["id"], succ["id"])
 
 
 if __name__ == "__main__":

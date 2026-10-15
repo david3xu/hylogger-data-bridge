@@ -8,11 +8,11 @@ from pathlib import Path
 from typing import Any
 
 WORKER = {"kind": "agent", "name": "r1-science-worker"}
-LIMITS = (
-    "No assay or assay-overlap result is used or claimed. The advice shown comes from an "
-    "experimental local model that predicts 'clarify' for nearly every case; its next-action "
-    "labels were teaching rules, not expert judgement. Real measurements, weak model."
+SCIENTIFIC_LIMITS = (
+    "No assay or assay-overlap result is used or claimed; "
+    "measurements are TSG interpretations only."
 )
+LIMITS = SCIENTIFIC_LIMITS
 
 
 class Captured(Exception):
@@ -67,11 +67,6 @@ def scene_of(book: Path, page_id: str | None) -> dict[str, Any]:
                         found_s: dict[str, Any] = s
                         return found_s
                     curr = pages_by_id[curr].get("parent_id")
-        # Fallback to any scene stored in the book
-        row_scene = connection.execute("SELECT scene FROM scenes LIMIT 1").fetchone()
-        if row_scene is not None:
-            fallback: dict[str, Any] = json.loads(row_scene[0])
-            return fallback
     raise ValueError(f"No scientific scene found for page {page_id} or its ancestors")
 
 
@@ -109,10 +104,15 @@ def validate_bounds(hole: Any, target: tuple[float, float], reference: tuple[flo
 
 
 def result(page: dict[str, Any], claim: dict[str, Any] | None, **fields: Any) -> dict[str, Any]:
-    """A worker result in the shared contract; the first page has no delivery to claim."""
+    """A worker result in the shared contract; stable request_id per continuation."""
+    req_id = (
+        f"r1-cont-{claim['continuation_id']}"
+        if claim is not None and "continuation_id" in claim
+        else f"r1-{page['number']}-{page['id'][:8]}"
+    )
     return {
         "contract_version": 1,
-        "request_id": f"r1-{page['number']}-{page['id'][:8]}",
+        "request_id": req_id,
         "page_id": page["id"],
         "expected_revision": page["revision"],
         "claim": claim,
@@ -123,11 +123,30 @@ def result(page: dict[str, Any], claim: dict[str, Any] | None, **fields: Any) ->
     }
 
 
-def limits_evidence() -> dict[str, Any]:
+def limits_evidence(page: dict[str, Any] | None = None) -> dict[str, Any]:
+    assessment = page.get("assessment") if page is not None else None
+    if assessment is not None:
+        origin = assessment.get("origin")
+        if origin == "model":
+            advice_note = (
+                "The advice shown comes from an experimental local model that predicts 'clarify' "
+                "for nearly every case; its next-action labels were teaching rules, "
+                "not expert judgement."
+            )
+        elif origin == "fixture":
+            advice_note = (
+                "Advice shown comes from a labelled fixture; no trained model was consulted."
+            )
+        else:
+            advice_note = f"Advice shown comes from {origin}."
+    else:
+        advice_note = "No model advice was requested for this step."
+
+    value = f"{SCIENTIFIC_LIMITS} {advice_note}"
     return {
         "id": "limits",
         "label": "Limits of this case",
-        "value": LIMITS,
+        "value": value[:1000],
         "source": "R1 handoff; see developer/docs/training.md",
         "kind": "limitation",
         "origin": "actual",
@@ -201,7 +220,7 @@ def finish_first(store: Any, instruction: str) -> dict[str, Any]:
             page,
             None,
             summary=f"Coverage and quality calculated from the package. {numbers['qa']}"[:1000],
-            evidence=[limits_evidence()],
+            evidence=[limits_evidence(page)],
             action={"type": "qa_check", "assessment_id": advice["id"]},
         )
     )
@@ -255,173 +274,244 @@ def continue_case(
         sys.exit("No human decision is waiting for a worker.")
 
     step = pending[0]
+    expected_continuation_id = step["id"]
     parent_page = next((p for p in snapshot["pages"] if p["id"] == step["page_id"]), None)
     if parent_page is None or "decision" not in parent_page or parent_page["decision"] is None:
         sys.exit("No human decision is waiting for a worker.")
 
-    decision = parent_page["decision"]
-    choice = decision.get("choice")
+    expected_decision = parent_page["decision"]
+    expected_decision_id = expected_decision.get("id")
+    expected_choice = expected_decision.get("choice")
 
     # Guard against unknown choice with zero state change
-    if choice not in ("accept", "modify", "reject"):
-        raise ValueError(f"Refusing unrecognised human choice: {choice!r}")
+    if expected_choice not in ("accept", "modify", "reject"):
+        raise ValueError(f"Refusing unrecognised human choice: {expected_choice!r}")
 
     # For modify: validate bounds if provided, or require both if one is provided
     target_pair: tuple[float, float] | None = None
     reference_pair: tuple[float, float] | None = None
-    if choice == "modify":
+    if expected_choice == "modify":
         if (target is not None) != (reference is not None):
             raise ValueError("Both --target and --reference bounds must be provided together.")
         if target is not None and reference is not None:
             target_pair = (float(target[0]), float(target[1]))
             reference_pair = (float(reference[0]), float(reference[1]))
-            working_page = working(snapshot)
-            parent_id = working_page.get("parent_id")
-            scene = scene_of(store.path, parent_id)
+            scene = scene_of(store.path, step["page_id"])
             hole = store.science(scene["folder"], scene["package_id"])
             validate_bounds(hole, target_pair, reference_pair)
 
-    # 2. Claim delivery and acknowledge
+    # 2. Claim delivery
     handoff = store.claim_delivery(WORKER["name"])
     if handoff is None:
         sys.exit("No human decision is waiting for a worker.")
-    store.acknowledge_delivery(handoff["continuation_id"], handoff["attempt"])
-    claim = {"continuation_id": handoff["continuation_id"], "attempt": handoff["attempt"]}
-    page = working(store.snapshot())
 
-    # 3. Act based on choice
-    if choice == "accept":
-        scene = scene_of(store.path, page["parent_id"])
-        page = working(
-            store.attach_scene(
-                page["id"],
-                page["revision"],
-                Path(scene["folder"]),
-                scene["package_id"],
-                tuple(scene["target"]),
-                tuple(scene["reference"]),
-            )
-        )
-        for stage in STAGES:
-            page = working(store.measure(page["id"], page["revision"], stage, claim))
-        numbers = {e["id"]: e["value"] for e in page["evidence"]}
-        done = store.submit_result(
-            result(
-                page,
-                claim,
-                summary=f"Interval comparison calculated from the package. {numbers['compare']}"[
-                    :1000
-                ],
-                evidence=[limits_evidence()],
-                action={"type": "interval_compare", "assessment_id": None},
-            )
-        )
-        shown = next(p for p in done["pages"] if p["id"] == page["id"])
-        return {"page": shown["id"], "status": shown["status"], "compare": numbers["compare"]}
-
-    elif choice == "reject":
-        note = handoff.get("note", "").strip()
-        explanation = f"Expert stopped: {note}" if note else "Expert stopped the workflow."
-        stop_evidence = {
-            "id": "expert_stop",
-            "label": "Expert stop",
-            "value": f"{explanation}. No calculations were performed."[:1000],
-            "source": "Expert workflow instruction",
-            "kind": "observation",
-            "origin": "actual",
-            "state": "complete",
+    # F2: verify handoff matches pre-checked continuation and decision
+    if (
+        handoff.get("continuation_id") != expected_continuation_id
+        or handoff.get("decision_id") != expected_decision_id
+        or handoff.get("choice") != expected_choice
+    ):
+        mismatch_error = {
+            "error": (
+                f"Delivery mismatch: expected continuation {expected_continuation_id} "
+                f"and decision {expected_decision_id}, claimed {handoff.get('continuation_id')} "
+                f"and decision {handoff.get('decision_id')}"
+            ),
+            "code": "delivery_failed",
+            "retryable": True,
         }
-        done = store.submit_result(
-            result(
-                page,
-                claim,
-                summary=f"{explanation} Nothing was calculated."[:1000],
-                evidence=[stop_evidence, limits_evidence()],
-                action={"type": "stop", "assessment_id": None},
-            )
-        )
-        shown = next(p for p in done["pages"] if p["id"] == page["id"])
-        return {"page": shown["id"], "status": shown["status"], "stopped": True}
+        store.fail_delivery(handoff["continuation_id"], handoff["attempt"], mismatch_error)
+        raise ValueError(mismatch_error["error"])
 
-    elif choice == "modify":
-        if target_pair is not None and reference_pair is not None:
-            scene = scene_of(store.path, page["parent_id"])
+    # R2: any exception after claim -> fail_delivery (retryable) so lease is not stuck
+    try:
+        store.acknowledge_delivery(handoff["continuation_id"], handoff["attempt"])
+        claim = {"continuation_id": handoff["continuation_id"], "attempt": handoff["attempt"]}
+
+        # Select successor by handoff["successor_id"] and scene lineage from handoff["page_id"]
+        snapshot = store.snapshot()
+        page = next(p for p in snapshot["pages"] if p["id"] == handoff["successor_id"])
+        choice = handoff["choice"]
+
+        # 3. Act based on choice
+        if choice == "accept":
+            scene = scene_of(store.path, handoff["page_id"])
             page = working(
                 store.attach_scene(
                     page["id"],
                     page["revision"],
                     Path(scene["folder"]),
                     scene["package_id"],
-                    target_pair,
-                    reference_pair,
+                    tuple(scene["target"]),
+                    tuple(scene["reference"]),
+                    claim=claim,
                 )
             )
+            # R2: skip stages already on the successor
+            existing_evidence_ids = {e["id"] for e in page["evidence"]}
             for stage in STAGES:
-                page = working(store.measure(page["id"], page["revision"], stage, claim))
+                if stage not in existing_evidence_ids:
+                    page = working(store.measure(page["id"], page["revision"], stage, claim))
             numbers = {e["id"]: e["value"] for e in page["evidence"]}
-            note = handoff.get("note", "").strip()
-            note_desc = f" from note '{note}'" if note else ""
-            operator_evidence = {
-                "id": "operator_bounds",
-                "label": "Operator-supplied bounds",
-                "value": (
-                    f"Target {target_pair[0]:g}–{target_pair[1]:g} m against "
-                    f"reference {reference_pair[0]:g}–{reference_pair[1]:g} m "
-                    f"operator-supplied{note_desc}."
-                )[:1000],
-                "source": "Operator bounds from expert note",
-                "kind": "observation",
-                "origin": "actual",
-                "state": "complete",
-            }
+            fresh_evidence = []
+            if "limits" not in {e["id"] for e in page["evidence"]}:
+                fresh_evidence.append(limits_evidence(page))
             done = store.submit_result(
                 result(
                     page,
                     claim,
                     summary=(
-                        f"Interval comparison calculated with operator-supplied bounds "
-                        f"target {target_pair[0]:g}–{target_pair[1]:g} m, "
-                        f"reference {reference_pair[0]:g}–{reference_pair[1]:g} m{note_desc}. "
-                        f"{numbers['compare']}"
+                        f"Interval comparison calculated from the package. {numbers['compare']}"
                     )[:1000],
-                    evidence=[operator_evidence, limits_evidence()],
+                    evidence=fresh_evidence,
                     action={"type": "interval_compare", "assessment_id": None},
                 )
             )
             shown = next(p for p in done["pages"] if p["id"] == page["id"])
             return {"page": shown["id"], "status": shown["status"], "compare": numbers["compare"]}
-        else:
+
+        elif choice == "reject":
             note = handoff.get("note", "").strip()
-            note_desc = f": '{note}'" if note else "."
-            clarify_evidence = {
-                "id": "clarify_needed",
-                "label": "Clarification needed",
-                "value": (
-                    f"Expert requested interval modification{note_desc} "
-                    "Explicit target and reference bounds must be supplied "
-                    "by operator to calculate comparison."
-                )[:1000],
-                "source": "Operator input required",
+            explanation = f"Expert stopped: {note}" if note else "Expert stopped the workflow."
+            stop_evidence = {
+                "id": "expert_stop",
+                "label": "Expert stop",
+                "value": f"{explanation}. No calculations were performed."[:1000],
+                "source": "Expert workflow instruction",
                 "kind": "observation",
                 "origin": "actual",
                 "state": "complete",
             }
+            existing_evidence_ids = {e["id"] for e in page["evidence"]}
+            fresh_evidence = []
+            if "expert_stop" not in existing_evidence_ids:
+                fresh_evidence.append(stop_evidence)
+            if "limits" not in existing_evidence_ids:
+                fresh_evidence.append(limits_evidence(page))
             done = store.submit_result(
                 result(
                     page,
                     claim,
-                    summary=(
-                        f"Clarification needed for interval modification{note_desc} "
-                        "No calculation performed; specify target and reference bounds to continue."
-                    )[:1000],
-                    evidence=[clarify_evidence, limits_evidence()],
-                    action={"type": "clarify", "assessment_id": None},
+                    summary=f"{explanation} Nothing was calculated."[:1000],
+                    evidence=fresh_evidence,
+                    action={"type": "stop", "assessment_id": None},
                 )
             )
             shown = next(p for p in done["pages"] if p["id"] == page["id"])
-            return {"page": shown["id"], "status": shown["status"], "clarification_needed": True}
+            return {"page": shown["id"], "status": shown["status"], "stopped": True}
 
-    raise ValueError(f"Refusing unrecognised human choice: {choice!r}")
+        elif choice == "modify":
+            if target_pair is not None and reference_pair is not None:
+                scene = scene_of(store.path, handoff["page_id"])
+                page = working(
+                    store.attach_scene(
+                        page["id"],
+                        page["revision"],
+                        Path(scene["folder"]),
+                        scene["package_id"],
+                        target_pair,
+                        reference_pair,
+                        claim=claim,
+                    )
+                )
+                existing_evidence_ids = {e["id"] for e in page["evidence"]}
+                for stage in STAGES:
+                    if stage not in existing_evidence_ids:
+                        page = working(store.measure(page["id"], page["revision"], stage, claim))
+                numbers = {e["id"]: e["value"] for e in page["evidence"]}
+                note = handoff.get("note", "").strip()
+                note_desc = f" from note '{note}'" if note else ""
+                operator_evidence = {
+                    "id": "operator_bounds",
+                    "label": "Operator-supplied bounds",
+                    "value": (
+                        f"Target {target_pair[0]:g}–{target_pair[1]:g} m against "
+                        f"reference {reference_pair[0]:g}–{reference_pair[1]:g} m "
+                        f"operator-supplied{note_desc}."
+                    )[:1000],
+                    "source": "Operator bounds from expert note",
+                    "kind": "observation",
+                    "origin": "actual",
+                    "state": "complete",
+                }
+                existing_evidence_ids = {e["id"] for e in page["evidence"]}
+                fresh_evidence = []
+                if "operator_bounds" not in existing_evidence_ids:
+                    fresh_evidence.append(operator_evidence)
+                if "limits" not in existing_evidence_ids:
+                    fresh_evidence.append(limits_evidence(page))
+                done = store.submit_result(
+                    result(
+                        page,
+                        claim,
+                        summary=(
+                            f"Interval comparison calculated with operator-supplied bounds "
+                            f"target {target_pair[0]:g}–{target_pair[1]:g} m, "
+                            f"reference {reference_pair[0]:g}–{reference_pair[1]:g} m{note_desc}. "
+                            f"{numbers['compare']}"
+                        )[:1000],
+                        evidence=fresh_evidence,
+                        action={"type": "interval_compare", "assessment_id": None},
+                    )
+                )
+                shown = next(p for p in done["pages"] if p["id"] == page["id"])
+                return {
+                    "page": shown["id"],
+                    "status": shown["status"],
+                    "compare": numbers["compare"],
+                }
+            else:
+                note = handoff.get("note", "").strip()
+                note_desc = f": '{note}'" if note else "."
+                clarify_evidence = {
+                    "id": "clarify_needed",
+                    "label": "Clarification needed",
+                    "value": (
+                        f"Expert requested interval modification{note_desc} "
+                        "Explicit target and reference bounds must be supplied "
+                        "by operator to calculate comparison."
+                    )[:1000],
+                    "source": "Operator input required",
+                    "kind": "observation",
+                    "origin": "actual",
+                    "state": "complete",
+                }
+                existing_evidence_ids = {e["id"] for e in page["evidence"]}
+                fresh_evidence = []
+                if "clarify_needed" not in existing_evidence_ids:
+                    fresh_evidence.append(clarify_evidence)
+                if "limits" not in existing_evidence_ids:
+                    fresh_evidence.append(limits_evidence(page))
+                done = store.submit_result(
+                    result(
+                        page,
+                        claim,
+                        summary=(
+                            f"Clarification needed for interval modification{note_desc} "
+                            "No calculation performed; "
+                            "specify target and reference bounds to continue."
+                        )[:1000],
+                        evidence=fresh_evidence,
+                        action={"type": "clarify", "assessment_id": None},
+                    )
+                )
+                shown = next(p for p in done["pages"] if p["id"] == page["id"])
+                return {
+                    "page": shown["id"],
+                    "status": shown["status"],
+                    "clarification_needed": True,
+                }
+
+        raise ValueError(f"Refusing unrecognised human choice: {choice!r}")
+
+    except Exception as exc:
+        worker_error = {
+            "error": f"Worker attempt failed: {exc}",
+            "code": "worker_failed",
+            "retryable": True,
+        }
+        store.fail_delivery(handoff["continuation_id"], handoff["attempt"], worker_error)
+        raise
 
 
 def follow(args: argparse.Namespace) -> None:

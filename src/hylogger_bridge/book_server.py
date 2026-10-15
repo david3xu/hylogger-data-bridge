@@ -225,7 +225,8 @@ def main(argv: list[str] | None = None, load: Loader | None = None) -> None:
     store = BookStore(args.db, provider=provider)
     server = BookServer(args.port, store, args.static_root)
     store.recover_interrupted()
-    print(f"Live book: http://127.0.0.1:{server.server_port} (synthetic demo)", flush=True)
+    source = store.snapshot()["source"]
+    print(f"Live book: http://127.0.0.1:{server.server_port} ({source})", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
