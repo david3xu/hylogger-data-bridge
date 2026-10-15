@@ -273,7 +273,16 @@ npm --prefix app ci && npm --prefix app run build
 uv run python -m hylogger_bridge.book_server --db $B.sqlite3
 ```
 
-`prepare` starts a dedicated book whose source is `live` (the synthetic demo is untouched), attaches the package, persists trusted inventory and quality evidence and captures the model request. `advise` runs the saved model offline. `record` stores the model-origin advice and finishes the first page, so the browser offers the human review. After you decide, with a note, in the browser:
+`prepare` starts a dedicated book whose source is `live` (the synthetic demo is untouched), attaches the package, persists trusted inventory and quality evidence and captures the model request. `advise` runs the saved model offline. `record` stores the model-origin advice and finishes the first page, so the browser offers the human review. Without the model bundle, `record --fixture` (instead of `--advice`) finishes the same first page with labelled fixture advice; the QA numbers are still calculated from the real package.
+
+One step does the same for a fresh book, using the SWMB007s package and intervals above by default. It refuses an existing book. Without `--model` the advice is labelled fixture; with `--model` and the model environment's interpreter the saved model runs offline:
+
+```sh
+science-python -m training.live demo --book outputs/live-book/real-swmb007s-v2.sqlite3
+science-python -m training.live demo --book outputs/live-book/real-swmb007s-v2.sqlite3 --model outputs/model/real-r1/model --model-python model-python
+```
+
+After you decide, with a note, in the browser:
 
 ```sh
 # For accept (or modify without bounds, requesting clarification):
