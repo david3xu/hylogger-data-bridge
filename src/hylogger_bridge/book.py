@@ -3,162 +3,89 @@ import json
 import sqlite3
 import threading
 import time
-import uuid
-from collections.abc import Iterator
-from contextlib import contextmanager
-from datetime import UTC, datetime
+from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from hylogger_bridge.advice.provider import FixtureProvider, Provider
+from hylogger_bridge.clock import moment, now, stamp
+from hylogger_bridge.conflict import BookConflict
+from hylogger_bridge.contracts.check import validate
+from hylogger_bridge.events import ack, runner
+from hylogger_bridge.events import claim as leases
+from hylogger_bridge.events.fence import fence
+from hylogger_bridge.pages import assess as advice_ops
+from hylogger_bridge.pages.decide import decide as commit_decision
+from hylogger_bridge.pages.finish import finish, merged
+from hylogger_bridge.pages.make import new_page
+from hylogger_bridge.science import live
+from hylogger_bridge.science.request import KINDS, STAGES
+from hylogger_bridge.store import cont, legacy, measures, scenes, state, tables, tries
+from hylogger_bridge.store.conn import transaction
 
-class BookConflict(ValueError):
-    """A stale request or immutable page prevents a requested mutation."""
+__all__ = ["BookConflict", "BookStore", "new_page", "now"]
 
-
-def now() -> str:
-    return datetime.now(UTC).isoformat()
-
-
-def new_page(number: int, parent_id: str | None = None) -> dict[str, Any]:
-    timestamp = now()
-    return {
-        "id": str(uuid.uuid4()),
-        "number": number,
-        "parent_id": parent_id,
-        "template": "investigation" if number == 1 else "candidate_evidence",
-        "template_version": 1,
-        "title": "An unfamiliar drill hole" if number == 1 else "Follow-up investigation",
-        "question": "Show spectral-change intervals that overlap assay records.",
-        "status": "draft",
-        "revision": 0,
-        "summary": "A synthetic case for exploring the live investigation book.",
-        "progress": "Ready to start the synthetic example",
-        "evidence": [],
-        "decision": None,
-        "created_at": timestamp,
-        "updated_at": timestamp,
-        "scientific_review": "unreviewed",
-        "demo_running": False,
-    }
+EVIDENCE_FIELDS = {"id", "label", "value", "source", "kind"}
+EVIDENCE_OPTIONAL = {"origin", "state"}
 
 
 class BookStore:
-    def __init__(self, path: Path) -> None:
+    def __init__(
+        self,
+        path: Path,
+        provider: Provider | None = None,
+        science: live.Loader | None = None,
+        start: dict[str, Any] | None = None,
+    ) -> None:
         self.path = path
+        self.provider: Provider = provider or FixtureProvider()
+        # Reads a TSG package for pages attached to one; pytsg loads only when one is attached.
+        self.science: live.Loader = science or live.default_loader
         self.changed = threading.Condition()
+        self._runs: dict[str, runner.Run] = {}
         path.parent.mkdir(parents=True, exist_ok=True)
-        with self._transaction() as connection:
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS book (id INTEGER PRIMARY KEY, data TEXT)"
-            )
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS events (sequence INTEGER PRIMARY KEY AUTOINCREMENT, "
-                "data TEXT NOT NULL)"
-            )
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS requests (id TEXT PRIMARY KEY, payload TEXT NOT NULL)"
-            )
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS jobs (page_id TEXT PRIMARY KEY, status TEXT NOT NULL)"
-            )
-            if connection.execute("SELECT id FROM book WHERE id=1").fetchone() is None:
-                page = new_page(1)
+        legacy.upgrade(path)
+        with transaction(path, self.changed) as connection:
+            tables.create(connection)
+            existing = connection.execute("SELECT data FROM book WHERE id=1").fetchone()
+            if existing is not None and start is not None:
+                if json.loads(existing[0])["run_id"] != start["run_id"]:
+                    raise ValueError("this database already holds a different case")
+            if existing is None:
+                page = start["page"] if start else new_page(1)
                 book = {
-                    "run_id": "demo",
-                    "source": "synthetic_demo",
+                    "run_id": start["run_id"] if start else "demo",
+                    "source": start["source"] if start else "synthetic_demo",
                     "current_page_id": page["id"],
                     "pages": [page],
                 }
                 connection.execute("INSERT INTO book VALUES (1, ?)", (json.dumps(book),))
-                self._write(connection, book, "page_created", page["id"], "Synthetic case created")
-
-    @contextmanager
-    def _transaction(self) -> Iterator[sqlite3.Connection]:
-        connection = sqlite3.connect(self.path, timeout=10)
-        try:
-            connection.execute("BEGIN IMMEDIATE")
-            yield connection
-            connection.commit()
-            if connection.total_changes:
-                with self.changed:
-                    self.changed.notify_all()
-        except BaseException:
-            connection.rollback()
-            raise
-        finally:
-            connection.close()
-
-    @staticmethod
-    def _book(connection: sqlite3.Connection) -> dict[str, Any]:
-        row = connection.execute("SELECT data FROM book WHERE id=1").fetchone()
-        if row is None:
-            raise ValueError("book is not initialised")
-        value: dict[str, Any] = json.loads(row[0])
-        return value
-
-    @staticmethod
-    def _page(book: dict[str, Any], page_id: str, revision: int) -> dict[str, Any]:
-        if type(revision) is not int or revision < 0:
-            raise ValueError("expected_revision must be a nonnegative integer")
-        for page in book["pages"]:
-            if page["id"] == page_id:
-                if page["status"] == "locked" or page["revision"] != revision:
-                    raise BookConflict("Page changed or is locked; refresh before continuing")
-                return dict(page)
-        raise ValueError("unknown page")
-
-    @staticmethod
-    def _replace(book: dict[str, Any], page: dict[str, Any]) -> None:
-        page["revision"] += 1
-        page["updated_at"] = now()
-        book["pages"] = [page if item["id"] == page["id"] else item for item in book["pages"]]
-
-    @staticmethod
-    def _write(
-        connection: sqlite3.Connection,
-        book: dict[str, Any],
-        event_type: str,
-        page_id: str,
-        detail: str,
-    ) -> None:
-        connection.execute("UPDATE book SET data=? WHERE id=1", (json.dumps(book),))
-        event = {"type": event_type, "page_id": page_id, "at": now(), "detail": detail}
-        connection.execute("INSERT INTO events(data) VALUES (?)", (json.dumps(event),))
-
-    @staticmethod
-    def _events(connection: sqlite3.Connection, after: int) -> list[dict[str, Any]]:
-        return [
-            {"sequence": row[0], **json.loads(row[1])}
-            for row in connection.execute(
-                "SELECT sequence,data FROM events WHERE sequence>? ORDER BY sequence", (after,)
-            )
-        ]
-
-    def _snapshot(self, connection: sqlite3.Connection) -> dict[str, Any]:
-        book = self._book(connection)
-        for page in book["pages"]:
-            page.setdefault("demo_running", False)
-        sequence = connection.execute("SELECT COALESCE(MAX(sequence),0) FROM events").fetchone()[0]
-        return {
-            **book,
-            "sequence": sequence,
-            "events": self._events(connection, max(0, sequence - 20)),
-        }
+                made = "Real case created" if start else "Synthetic case created"
+                state.save(connection, book, "page_created", page["id"], made)
+            state.seal(connection)
 
     def snapshot(self) -> dict[str, Any]:
-        with self._transaction() as connection:
-            return self._snapshot(connection)
+        with transaction(self.path, self.changed) as connection:
+            return state.snapshot(connection)
 
     def events_after(self, sequence: int) -> list[dict[str, Any]]:
         if type(sequence) is not int or sequence < 0:
             raise ValueError("event cursor must be a nonnegative integer")
-        with self._transaction() as connection:
-            return self._events(connection, sequence)
+        with transaction(self.path, self.changed) as connection:
+            return state.events(connection, sequence)
 
-    def recover_interrupted(self) -> None:
-        """Called once on service startup; opening another reader never cancels a job."""
-        with self._transaction() as connection:
-            book = self._book(connection)
+    def recover_interrupted(self, at: datetime | None = None) -> None:
+        """Called once on service startup; opening another reader never cancels a job.
+
+        Nothing the synthetic runner held survives a restart, and any lease that lapsed while the
+        service was down is returned for retry.
+        """
+        moment_at = at or moment()
+        with transaction(self.path, self.changed) as connection:
+            leases.release_runner(connection, moment_at)
+            leases.expire(connection, moment_at)
+            book = state.read(connection)
             interrupted = connection.execute(
                 "SELECT page_id FROM jobs WHERE status='running'"
             ).fetchall()
@@ -167,16 +94,28 @@ class BookStore:
                 if page["status"] == "draft":
                     page["demo_running"] = False
                     page["progress"] = "Example interrupted; start again to continue"
-                    self._replace(book, page)
-                    self._write(connection, book, "demo_interrupted", page_id, "Service restarted")
+                    state.replace(book, page)
+                    state.save(connection, book, "demo_interrupted", page_id, "Service restarted")
             connection.execute("UPDATE jobs SET status='interrupted' WHERE status='running'")
+            connection.execute("DELETE FROM runners")
+            state.seal(connection)
+        self._runs.clear()
 
     def add_evidence(
-        self, page_id: str, expected_revision: int, evidence: dict[str, object]
+        self,
+        page_id: str,
+        expected_revision: int,
+        evidence: dict[str, object],
+        claim: dict[str, Any] | None = None,
+        at: datetime | None = None,
     ) -> dict[str, Any]:
-        required = {"id", "label", "value", "source", "kind"}
+        """Incremental evidence. On a page that follows a delivery it needs the current claim.
+
+        Old payloads have five fields and read as unspecified origin, complete. A worker may
+        state origin and state itself; what it states is kept and validated, never replaced.
+        """
         if (
-            set(evidence) != required
+            not EVIDENCE_FIELDS <= set(evidence) <= EVIDENCE_FIELDS | EVIDENCE_OPTIONAL
             or any(
                 not isinstance(value, str) or not value.strip() or len(value) > 4000
                 for value in evidence.values()
@@ -184,37 +123,74 @@ class BookStore:
             or evidence["kind"] not in ("observation", "calculation", "limitation")
         ):
             raise ValueError("evidence requires bounded text id, label, value, source and kind")
-        with self._transaction() as connection:
-            book = self._book(connection)
-            page = self._page(book, page_id, expected_revision)
-            if page["status"] != "draft":
-                raise BookConflict("Only the working draft can receive evidence")
-            if any(item["id"] == evidence["id"] for item in page["evidence"]):
-                raise BookConflict("Evidence ID already exists")
-            page["evidence"].append(evidence)
-            self._replace(book, page)
-            self._write(connection, book, "evidence_added", page_id, str(evidence["label"]))
-            return self._snapshot(connection)
+        stored = {"origin": "unspecified", "state": "complete", **evidence}
+        validate("Evidence", stored)
+        with transaction(self.path, self.changed) as connection:
+            self._store_evidence(connection, page_id, expected_revision, stored, claim, at)
+            state.seal(connection)
+            return state.snapshot(connection)
 
-    def start_demo(self, page_id: str, expected_revision: int) -> bool:
-        with self._transaction() as connection:
-            book = self._book(connection)
-            page = self._page(book, page_id, expected_revision)
+    def _store_evidence(
+        self,
+        connection: sqlite3.Connection,
+        page_id: str,
+        expected_revision: int,
+        stored: dict[str, object],
+        claim: dict[str, Any] | None,
+        at: datetime | None,
+    ) -> None:
+        book = state.read(connection)
+        page = state.find(book, page_id, expected_revision)
+        if page["status"] != "draft":
+            raise BookConflict("Only the working draft can receive evidence", "page_locked")
+        fence(connection, page, claim, at or moment())
+        if any(item["id"] == stored["id"] for item in page["evidence"]):
+            raise BookConflict("Evidence ID already exists", "invalid_request")
+        page["evidence"] = merged(page, [stored], None)
+        state.replace(book, page)
+        state.save(connection, book, "evidence_added", page_id, str(stored["label"]))
+
+    def begin_demo(
+        self, page_id: str, expected_revision: int, at: datetime | None = None
+    ) -> runner.Run:
+        """Start the staged runner and return the exact run its callback must present."""
+        with transaction(self.path, self.changed) as connection:
+            book = state.read(connection)
+            page = state.find(book, page_id, expected_revision)
             if page["status"] != "draft":
-                raise BookConflict("Only a draft can start the example")
+                raise BookConflict("Only a draft can start the example", "page_locked")
             job = connection.execute(
                 "SELECT status FROM jobs WHERE page_id=?", (page_id,)
             ).fetchone()
             if job is not None and job[0] != "interrupted":
-                raise BookConflict("This page already has a demo run")
+                raise BookConflict("This page already has a demo run", "request_reuse")
+            # The synthetic runner is a built-in worker: it takes the delivery like any other.
+            held = leases.adopt(connection, page, at or moment())
             connection.execute("INSERT OR REPLACE INTO jobs VALUES (?, 'running')", (page_id,))
+            run = runner.begin(connection, page_id, held)
             page["progress"] = "Running synthetic example"
             page["demo_running"] = True
-            self._replace(book, page)
-            self._write(connection, book, "demo_started", page_id, "Synthetic runner started")
+            state.replace(book, page)
+            state.save(connection, book, "demo_started", page_id, "Synthetic runner started")
+            state.seal(connection)
+        self._runs[page_id] = run
+        return run
+
+    def start_demo(self, page_id: str, expected_revision: int, at: datetime | None = None) -> bool:
+        self.begin_demo(page_id, expected_revision, at)
         return True
 
-    def run_demo(self, page_id: str, delay: float = 0.7) -> None:
+    def run_demo(
+        self,
+        page_id: str,
+        delay: float = 0.7,
+        run: runner.Run | None = None,
+        clock: Callable[[], datetime] = moment,
+    ) -> None:
+        """Stage the synthetic evidence. A callback that no longer owns its run changes nothing."""
+        run = run or self._runs.get(page_id)
+        if run is None:
+            return
         candidate, assay = (214.0, 220.0), (215.0, 218.0)
         overlap = max(0.0, min(candidate[1], assay[1]) - max(candidate[0], assay[0]))
         steps = [
@@ -252,13 +228,12 @@ class BookStore:
         ]
         for item_id, label, value, kind in steps:
             time.sleep(delay)
-            with self._transaction() as connection:
-                book = self._book(connection)
+            with transaction(self.path, self.changed) as connection:
+                if not runner.valid(connection, run, clock()):
+                    return
+                book = state.read(connection)
                 page = next(p for p in book["pages"] if p["id"] == page_id)
-                job = connection.execute(
-                    "SELECT status FROM jobs WHERE page_id=?", (page_id,)
-                ).fetchone()
-                if page["status"] != "draft" or job is None or job[0] != "running":
+                if page["status"] != "draft":
                     return
                 # Restarting an interrupted demonstration never duplicates existing evidence.
                 evidence_id = f"synthetic-{item_id}"
@@ -271,63 +246,213 @@ class BookStore:
                         "value": value,
                         "kind": kind,
                         "source": "Built-in synthetic fixture v1",
+                        "origin": "synthetic",
+                        "state": "complete",
                     }
                 )
                 page["progress"] = label
-                self._replace(book, page)
-                self._write(connection, book, "evidence_added", page_id, label)
-        with self._transaction() as connection:
-            book = self._book(connection)
+                state.replace(book, page)
+                state.save(connection, book, "evidence_added", page_id, label)
+                state.seal(connection)
+        with transaction(self.path, self.changed) as connection:
+            when = clock()
+            if not runner.valid(connection, run, when):
+                return
+            book = state.read(connection)
             page = next(p for p in book["pages"] if p["id"] == page_id)
             if page["status"] != "draft":
                 return
             page["status"] = "ready"
+            page["outcome"] = "complete"
             page["demo_running"] = False
             page["progress"] = "Evidence ready for your workflow decision"
             page["summary"] = (
                 "The synthetic 214–220 m candidate overlaps an assay record by 3 m (50%)."
             )
-            self._replace(book, page)
+            state.replace(book, page)
             connection.execute("UPDATE jobs SET status='done' WHERE page_id=?", (page_id,))
-            self._write(connection, book, "page_ready", page_id, "Synthetic evidence ready")
+            ack.finish_runner(connection, run, when)
+            state.save(connection, book, "page_ready", page_id, "Synthetic evidence ready")
+            state.seal(connection)
+        if self._runs.get(page_id) == run:
+            del self._runs[page_id]
 
     def decide(
         self, page_id: str, expected_revision: int, choice: str, note: str, request_id: str
     ) -> dict[str, Any]:
-        if choice not in ("accept", "modify", "reject"):
-            raise ValueError("unsupported workflow decision")
-        if not isinstance(note, str) or len(note) > 4000:
-            raise ValueError("note must be text of at most 4000 characters")
-        if not isinstance(request_id, str) or not 1 <= len(request_id) <= 200:
-            raise ValueError("request_id is required and bounded")
-        payload = json.dumps([page_id, expected_revision, choice, note])
-        with self._transaction() as connection:
-            previous = connection.execute(
-                "SELECT payload FROM requests WHERE id=?", (request_id,)
-            ).fetchone()
-            if previous:
-                if previous[0] != payload:
-                    raise BookConflict("Request ID was already used for a different decision")
-                return self._snapshot(connection)
-            book = self._book(connection)
-            page = self._page(book, page_id, expected_revision)
-            if page["status"] != "ready":
-                raise BookConflict("Evidence must be ready before a decision is recorded")
-            page["decision"] = {"choice": choice, "note": note, "recorded_at": now()}
-            page["status"] = "locked"
-            self._replace(book, page)
-            successor = new_page(page["number"] + 1, page_id)
-            successor["summary"] = f"Previous workflow choice: {choice}. " + (
-                note or "Choose the next evidence to examine."
+        with transaction(self.path, self.changed) as connection:
+            commit_decision(connection, page_id, expected_revision, choice, note, request_id)
+            state.seal(connection)
+            return state.snapshot(connection)
+
+    def claim_delivery(
+        self, worker: str, seconds: float = leases.SECONDS, at: datetime | None = None
+    ) -> dict[str, Any] | None:
+        """Hand the oldest pending delivery to a worker as a Handoff, or None."""
+        with transaction(self.path, self.changed) as connection:
+            handoff = leases.claim(connection, worker, at or moment(), seconds)
+            state.seal(connection)
+            return handoff
+
+    def acknowledge_delivery(
+        self,
+        continuation_id: str,
+        attempt: int,
+        seconds: float = leases.SECONDS,
+        at: datetime | None = None,
+    ) -> dict[str, Any]:
+        with transaction(self.path, self.changed) as connection:
+            ack.acknowledge(connection, continuation_id, attempt, at or moment(), seconds)
+            state.seal(connection)
+            return state.snapshot(connection)
+
+    def fail_delivery(
+        self,
+        continuation_id: str,
+        attempt: int,
+        error: dict[str, Any],
+        at: datetime | None = None,
+    ) -> dict[str, Any]:
+        with transaction(self.path, self.changed) as connection:
+            ack.fail(connection, continuation_id, attempt, error, at or moment())
+            state.seal(connection)
+            return state.snapshot(connection)
+
+    def expire_deliveries(self, at: datetime | None = None) -> int:
+        """Return every claim whose lease ended; claims also expire when anyone next acts."""
+        with transaction(self.path, self.changed) as connection:
+            count = leases.expire(connection, at or moment())
+            state.seal(connection)
+            return count
+
+    def submit_result(
+        self, completion: dict[str, Any], at: datetime | None = None
+    ) -> dict[str, Any]:
+        """Apply one worker result to the working page: complete, partial or failed."""
+        with transaction(self.path, self.changed) as connection:
+            finish(connection, completion, at or moment())
+            state.seal(connection)
+            return state.snapshot(connection)
+
+    def request_assessment(
+        self,
+        page_id: str,
+        expected_revision: int,
+        candidates: list[dict[str, Any]] | None = None,
+        instruction: str = "",
+        at: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Ask the provider for advice. Inference runs outside any database transaction.
+
+        The request is prepared in one short transaction and the advice recorded in another that
+        re-checks the page, so a slow provider never blocks other operations and advice for a
+        page that changed meanwhile is refused rather than stored as current.
+        """
+        asked = at or moment()
+        with transaction(self.path, self.changed) as connection:
+            request, token = advice_ops.prepare(
+                connection, page_id, expected_revision, candidates, instruction
             )
-            book["pages"].append(successor)
-            book["current_page_id"] = successor["id"]
-            connection.execute("INSERT INTO requests VALUES (?,?)", (request_id, payload))
-            self._write(
-                connection,
-                book,
-                "decision_recorded",
-                page_id,
-                "User workflow choice recorded; page locked and successor created",
-            )
-            return self._snapshot(connection)
+        advice = self.provider.assess(request, stamp(asked))
+        with transaction(self.path, self.changed) as connection:
+            advice_ops.record(connection, request, advice, token)
+            state.seal(connection)
+            return state.snapshot(connection)
+
+    def attempts(self, continuation_id: str) -> list[dict[str, Any]]:
+        with transaction(self.path, self.changed) as connection:
+            if cont.get(connection, continuation_id) is None:
+                raise BookConflict("Unknown delivery", "not_found")
+            return tries.history(connection, continuation_id)
+
+    def attach_scene(
+        self,
+        page_id: str,
+        expected_revision: int,
+        folder: Path,
+        package_id: str,
+        target: tuple[float, float],
+        reference: tuple[float, float],
+        question: str | None = None,
+    ) -> dict[str, Any]:
+        """Tie a working page to a TSG package and two intervals. A trusted local call only.
+
+        The package is read and its identity checked outside any writer transaction; its file
+        hashes are recorded. A scene is attached once and counts a page revision. Repeating the
+        identical call changes nothing; a different scene or question needs a new page. It is
+        deliberately not an HTTP or MCP operation.
+        """
+        if question is not None and (
+            not isinstance(question, str) or not 0 < len(question.strip()) <= 300
+        ):
+            raise ValueError("question must be bounded text")
+        with transaction(self.path, self.changed) as connection:
+            self._draft(connection, page_id, expected_revision)
+        scene = live.attach(self.science, str(folder), package_id, target, reference)
+        with transaction(self.path, self.changed) as connection:
+            book = state.read(connection)
+            page = self._draft(connection, page_id, expected_revision)
+            fresh = scenes.put(connection, page_id, scene)
+            if not fresh and question in (None, page["question"]):
+                state.seal(connection)
+                return state.snapshot(connection)
+            if not fresh:
+                raise BookConflict("This page already has its question and scene", "request_reuse")
+            if question is not None:
+                page["question"] = question
+            state.replace(book, page)
+            # Reported as evidence_added: the shared Event contract has no scene event, and
+            # changing that contract is not part of this work.
+            state.save(connection, book, "evidence_added", page_id, "Scientific scene attached")
+            state.seal(connection)
+            return state.snapshot(connection)
+
+    def _draft(
+        self, connection: sqlite3.Connection, page_id: str, expected_revision: int
+    ) -> dict[str, Any]:
+        page = state.find(state.read(connection), page_id, expected_revision)
+        if page["status"] != "draft":
+            raise BookConflict("Only the working draft can be changed", "page_locked")
+        return page
+
+    def measure(
+        self,
+        page_id: str,
+        expected_revision: int,
+        stage: str,
+        claim: dict[str, Any] | None = None,
+        at: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Persist one calculated evidence item with its features; the values are never supplied.
+
+        The package is read and calculated outside any writer transaction. The commit then
+        stores the evidence and its measurement together, only if the page revision, the claim
+        and the scene are still what the calculation used.
+        """
+        if stage not in STAGES:
+            raise ValueError(f"stage must be one of {STAGES}")
+        with transaction(self.path, self.changed) as connection:
+            self._draft(connection, page_id, expected_revision)
+            scene = scenes.get(connection, page_id)
+        if scene is None:
+            raise ValueError("this page has no scientific scene")
+        values = live.known(self.science, scene)[stage]
+        item: dict[str, object] = {
+            "id": stage,
+            "label": f"Scientific {stage}",
+            "value": live.evidence_text(stage, values),
+            "source": f"{scene['hole_id']} via pytsg; {scene['method']}",
+            "kind": KINDS[stage],
+            "origin": "actual",
+            "state": "complete",
+        }
+        validate("Evidence", item)
+        with transaction(self.path, self.changed) as connection:
+            if scenes.get(connection, page_id) != scene:
+                raise BookConflict(
+                    "The page's scene changed during the calculation", "stale_revision"
+                )
+            self._store_evidence(connection, page_id, expected_revision, item, claim, at)
+            measures.put(connection, page_id, item, dict(values))
+            state.seal(connection)
+            return state.snapshot(connection)

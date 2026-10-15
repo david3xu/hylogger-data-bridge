@@ -1,7 +1,7 @@
 # Application implementation tasks
 
-Updated: 2026-10-14
-Status: owner-mediated implementation briefs and planned follow-up slices; this document does not dispatch work.
+Updated: 2026-10-15
+Status: owner-mediated briefs. The owner explicitly assigned R1 real-data model work to Claude on 2026-10-15; the copyable handoff carries that assignment into Claude Desktop.
 
 ## Scope gate
 
@@ -9,11 +9,14 @@ All slices serve the [resource-evaluation evidence-review MVP](design.md#mvp-sco
 
 ## Ownership and branches
 
+Current handover: Claude Desktop now owns technical coordination, review and integration with AGY CLI and Gemini app assistance; Codex takes the first-time user perspective. The [handover](submission.md#technical-ownership-handover) supersedes the historical Codex review/integration assignments in this document while preserving concurrent branch/path boundaries.
+
 | Owner | Branch | Initial scope |
 | --- | --- | --- |
 | Claude Sonnet | `codex/claude-backend` | Shared contracts, backend lifecycle and supported host-return feasibility |
 | Gemini Argon | `codex/gemini-frontend` | Live book, assessment display and human decision interaction |
-| Owner + Codex | No implementation assignment | Model/data design, fine-tuning approach, evaluation and architecture review |
+| Claude | `codex/claude-real-model` | R1: real organiser-data preparation, bounded scientific adapter, model fine-tuning and verification |
+| Owner + Codex | Architecture and independent review | Model scope, scientific/label/evaluation review and branch integration |
 
 Each worker must use a separate worktree or clone. Do not switch the shared checkout's branch while another worker runs. After fetching the prepared branches, separate worktrees can be created from the repository root:
 
@@ -57,7 +60,7 @@ Pass: demonstrate streaming, a real submitted choice/note, persisted immutable h
 
 ## S1 — Inspect and adapt one TSG package
 
-Status: planned, unassigned scientific slice. This does not expand Claude's current backend brief or Gemini's frontend brief. The owner and Codex retain model/data planning; choose a scientific implementer before starting this slice.
+Status: Claude owns the minimum inspection/adapter/comparison work needed for R1 under the owner's new real-data assignment. The completed backend handoff and Gemini's frontend brief remain separate. The owner and Codex retain architecture and independent review.
 
 Follow the [pytsg boundary](design.md#tsg-ingestion-with-pytsg) and [data handling](../../data/README.md). The first deliverable is a package inventory and verified mapping, before broad parser or analysis work:
 
@@ -71,8 +74,29 @@ Pass: a reproducible one-hole load and independently verified comparison, with p
 
 Later scientific slices may add change detection, a separate assay reader and verified interval overlap. Do not claim that pytsg alone provides those analyses, assay linkage or model supervision. Schema changes require coordination with Claude; frontend presentation uses Gemini's existing evidence contract. Return changed paths, module responsibilities, exact checks and unresolved scientific questions.
 
+## R1 — Claude real-data model
+
+Owner assignment: resume the previously deferred real-data work. Deliver one bounded real-data Qwen3.5-4B training run and a locally runnable, hash-verified artifact, using actual organiser measurements. Writing scripts or regenerating the synthetic smoke dataset does not complete this task.
+
+Branch: `codex/claude-real-model`, prepared remotely from completed backend handoff `00be2338cda40083dc3d52b1a71bc6b2edccdcd6`. Use only Claude's clean isolated checkout; preserve `codex/claude-delivery` and PR #3 as the completed backend handoff. Open a new draft PR against `codex/claude-delivery`. The existing main-ancestry issue remains with the Git-capable integrator; do not repeat file-copy integration.
+
+Claude owns `training/`, the minimum `src/hylogger_bridge/science/` adapter/calculations and shared feature builder, corresponding tests and necessary Python dependency/configuration changes. Preserve the runtime assessment interface, input version and installed-package behaviour; coordinate any genuinely needed contract change before consumer changes. Do not edit `app/`, build a new framework, or reorganise the repository.
+
+Deliver this as one implementation batch, with concise progress updates rather than approval pauses between ordinary steps:
+
+1. Select a manageable official organiser package through the [data guide](../../data/README.md). Inspect source terms and record URL, hole ID, retrieval time, processing levels, file hashes, fields, units, masks and missing products. Read TSG products through inspected/pinned GSWA pytsg behind the scientific adapter. Prefer a small number of independent holes when feasible; do not download the full catalogue. Do not invent missing assays, mineral fields or spectra.
+2. Implement the minimum QA and interval comparison needed for one real investigation family. Independently check selected calculations. Use the same validated scientific feature builder for training preparation and runtime request preparation; preserve source/tool/method versions and evidence references. Only offer actions supported by actual tools and data, with honest model action coverage.
+3. Produce real-data question–instruction–observed-evidence–candidate records. Identify calculated-reference, teaching-rule and expert-reviewed labels accurately; do not invent expert review. Version any teaching rubric and retain it as a baseline. Include numerical-evidence-sensitive cases and differing legitimate questions on the same evidence, so training is not just fixed question-to-action matching. Never expose future outcomes or gold labels as pre-action features.
+4. Freeze source partitions before record generation. Prefer independent hole/project groups for train/validation/test. If only one hole is usable, retain its true identity and use separated depth blocks with grouped overlapping windows and a documented separation buffer for a clearly labelled within-hole pilot only. Do not present block holdout as independent-hole generalisation. Insufficient defensible labels or source access must be reported honestly, never replaced with synthetic records labelled organiser.
+5. Reuse the pinned Qwen3.5-4B LoRA/decision-head pipeline and prepared local model environment. Run actual bounded fine-tuning with `origin: organiser`, validated provenance and a matching configuration. Preserve the old synthetic artifact and write a new run directory. Record input hashes, counts, splits, label origins, parameter updates and actual training metrics. Use existing local resources; no additional paid compute or public model upload.
+6. Evaluate the trained and untrained model on the same held-out records and compare with the teaching/reference baseline. Report per-action results and evidence-sensitivity checks; rule agreement alone is not geological usefulness or added value. Reload the saved artifact offline and produce a validated model-origin assessment from an actual real-data request. Verify that candidate coverage and runtime feature preparation match training; do not weaken validators. Retain the exact base/adapter/head bundle and integrity metadata.
+
+Pass: inspected real sources, independently checked features, attributed labels, actual training, honest held-out results and offline real-request inference are demonstrated. No universal minimum row count or synthetic accuracy result substitutes for these checks. Run canonical checks and report actual current-head hosted CI. Ordinary CI uses small labelled fixtures; real packages, generated records, books, weights and detailed run logs remain ignored. The handoff includes reproducible commands, model/run version, source and label provenance, limitations and the new PR. Expert geological usefulness remains unproven until evaluated separately.
+
 ## Review and next gates
+
+For the deadline delivery, follow the owner's [version-one submission gate](submission.md). Claude's immediate task is the [single real-data demo closeout](submission.md#claude-single-closeout-delivery) on `codex/claude-real-model`. The owner accepts the current model's accuracy limitation for version one; further training is deferred. This changes the release priority without weakening evidence integrity, scientific validation or immutable-history requirements.
 
 Each worker pushes its own branch and opens a focused draft PR once there is a reviewable change. Do not merge directly into `main`. Review contracts first; then integrate backend/frontend without hiding fixtures or host limitations. Follow the canonical local check and report current-revision hosted CI separately.
 
-Codex reviews architecture, correctness, evidence and scope; implementers own repairs. Model design, real-data supervision and fine-tuning remain in the owner's discussion with Codex. The product remains incomplete until actual local fine-tuning, useful advisory integration, verified scientific tools, separate host acceptance and clean installed-package behaviour are demonstrated. No package/plugin publication, licence selection or submission is authorised by these briefs.
+Codex reviews architecture, correctness, evidence and scope; implementers own repairs. Model design, real-data supervision and fine-tuning remain in the owner's discussion with Codex. Useful model advice, automatic host continuation and a polished installer remain broader product goals; do not advertise them as complete or make them new version-one requirements. No package/plugin publication, licence selection or submission is authorised by these briefs.

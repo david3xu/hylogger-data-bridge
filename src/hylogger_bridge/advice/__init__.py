@@ -1,1 +1,1 @@
-# Purpose: adapt bounded model predictions to the shared advisory contract.
+# Purpose: runtime advice: the provider boundary, model inference and labelled stand-ins.

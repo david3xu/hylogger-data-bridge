@@ -1,0 +1,41 @@
+{
+  "version": "r1-1",
+  "frozen": "Hole groups and splits were fixed before any record was generated.",
+  "seed": 20261015,
+  "root": "data/raw/nvcl",
+  "packages": [
+    "KWAC001_chips.zip",
+    "KWAC002_chips.zip",
+    "KWAC003_chips.zip",
+    "KWAC004_chips.zip",
+    "KWAC005_chips.zip",
+    "KWAC006_chips.zip",
+    "KWAC007_chips.zip",
+    "KWAC010_chips.zip",
+    "KWAC011_chips.zip",
+    "KWAC013_chips.zip",
+    "KWAC014_chips.zip",
+    "KWAC015_chips.zip",
+    "KWAC018_chips.zip",
+    "EGD002_chips.zip",
+    "RCRC2202_chips.zip",
+    "RCRC2298_chips.zip",
+    "SWMB005d_chips.zip",
+    "SWMB007s_chips.zip",
+    "HYRC001_chips.zip"
+  ],
+  "excluded": {
+    "EGD001_chips.zip": "identity conflict: its HoleID class says EGD002 and its SWIR spectra are identical to EGD002's package",
+    "LJM-D012.zip": "diamond core sampled about every 7 mm, not metre chips; metre windows do not apply"
+  },
+  "groups": {
+    "KWAC": "train",
+    "EGD": "validation",
+    "RCRC": "test",
+    "SWMB": "test",
+    "HYRC": "test"
+  },
+  "windows_m": [1, 2, 5],
+  "samples": {"train": 600, "validation": 120, "test": 240},
+  "licence": "CC BY 4.0, https://thredds.nci.org.au/thredds/fileServer/rs07/license/license_CCBY4.txt"
+}
