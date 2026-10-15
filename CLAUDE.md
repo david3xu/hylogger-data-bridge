@@ -28,6 +28,8 @@ Keep one responsibility at directory, module, component and function level. Use 
 
 ## Commands
 
+Installed-product work (Codex, `codex/product-install`, based on `977bcd2`): package 0.1.1 bundles the built book, plugin 0.1.3 and schema; scientific dependencies include published pytsg 1.0.0. The independent dependency check reproduced real SWMB007s QA (both intervals 5/5 valid). The full canonical check passed with 303 Python tests, 42 frontend tests, runtime typing (99 files), training typing (18 files), docs and installed-wheel validation. A private Apple Silicon kit was built and installed into isolated user directories without Node/checkout imports. Its actual copied checkpoint passed the new bounded preflight in 10.97 seconds. An earlier cold service start timed out at 60 seconds; the installer now checks/warms the model before registration. This does not establish a fresh physical-machine or signed/notarized release. Ordinary setup records host workspace mode with no data_root; launching that mode is deliberately gated until AGY's per-conversation workspace adapter is integrated. The installed entry point reserves `--workspace-auto` and the server `WORKSPACE_AUTO` capability flag. AGY owns that integration and automatic decision return. A received queue capability probe proves ingress into this conversation only, not the full book-to-agent loop. Exact current-head hosted CI and PR evidence must be reported separately.
+
 Use Python 3.12 and the locked uv environment. Training uses scikit-learn; the current baseline's numeric JSON inference uses only Python's standard library. That does not constrain the future encoder model's runtime.
 
 ```sh

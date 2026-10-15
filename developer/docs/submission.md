@@ -69,6 +69,23 @@ The repaired smoke script always uses a disposable registry and labels fixture a
 
 ## Host and product boundaries
 
+### Installed-product readiness
+
+Codex is preparing the installed runtime on `codex/product-install`, based on `977bcd2`, separately from AGY's `codex/agy-return`. The wheel now carries the built book, plugin and schema; it installs the scientific reader and exposes setup, diagnostics and bounded model preflight. The private Apple Silicon kit includes the existing model and manages Python/runtime dependencies. See [current implementation evidence](../../CLAUDE.md#commands). Nothing is published to PyPI or a public plugin/model directory.
+
+Normal setup does not pin a data folder. At use time, the supported host must provide the authorised workspace for the current conversation. The source --data-root route remains a developer override. The current package intentionally refuses that automatic workspace mode until AGY's adapter is integrated, rather than scanning an assumed directory.
+
+| Product gate | Current state |
+| --- | --- |
+| Wheel/UI/science installation | Built and checked outside the checkout; real published-reader QA reproduced |
+| Local model startup | Actual installed bundle preflight passed; first cold service start previously timed out, so installation now preflights before registration |
+| Workspace follows the current chat | AGY integration pending; folder changes, nested packages and same hole names in separate workspaces need acceptance |
+| Automatic decision return | Queue probe received in this Codex conversation; bound-case decision, retrieval and successor completion remain unverified |
+| Book automatically opens beside chat | Needs proof through the actual host agent, separately for Codex and ChatGPT Work |
+| ChatGPT Work | No complete host acceptance yet; Codex ingress does not certify it |
+| Fresh machine / distribution | Isolated-profile installation is partial evidence; physical-machine, upgrade/recovery, signing/notarization and supported distribution still need release checks |
+| Public package/model/plugin publication | Not authorised or performed by this implementation batch |
+
 The target remains install once, select an authorised supported folder and converse normally. A localhost page does not invoke a model. Version one can use **explicit chat continuation**: commit in the book, return to chat and say the decision is made; a tool verifies it before acting. Automatic browser-triggered model continuation is separate and unimplemented.
 
 The owner's subsequent clarification retains automatic updates in both directions as a product acceptance requirement. The explicit route can demonstrate the engine but is not completion of that requirement. A lightweight decision watcher must wake the correctly bound host investigation only for new committed work; unchanged heartbeat checks do not invoke an LLM. See [decision return](design.md#decision-return). The preview and PR #15 repairs do not close this host gate.

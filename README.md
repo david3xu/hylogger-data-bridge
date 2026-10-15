@@ -6,6 +6,16 @@ An expert-in-the-loop investigation toolkit for reviewing an unfamiliar drill ho
 
 ## Real-data quickstart
 
+### Installable build (in review)
+
+The product build carries its book interface, plugin files and scientific dependencies; running it does not require Node, Git or this checkout. The private Apple Silicon demo kit also carries the existing trained model and a managed Python installer. Double-click `Install.command`, then use the workspace already connected to your chat host. Setup does not select or permanently pin a HyLogger data folder. Installation requires internet access for Python/runtime dependencies and an installed, signed-in host. It preserves existing books and keeps new state in per-user folders.
+
+For an existing Python 3.12 environment, the built wheel can instead be installed with `python -m pip install /path/to/hylogger_data_bridge-0.1.1-py3-none-any.whl`; `hylogger setup` registers the plugin and selected data/model locations. `hylogger doctor` checks the installed resources. No package has been published to PyPI; the bare `pip install hylogger-data-bridge` product route is not a verified distribution yet.
+
+The intended finished experience also includes automatic continuation after the browser decision. The connected-workspace/automatic-return adapter is a separate delivery; until integrated, ordinary product launch reports that missing capability instead of scanning an assumed folder. The fixed `--data-root` route remains a developer override. ChatGPT connection/automatic page presentation needs separate acceptance from Codex. The local kit is unsigned and is not a public release or a fresh physical-machine certification.
+
+### Developer reproduction
+
 Requires macOS or Linux, Python 3.12, [uv](https://docs.astral.sh/uv/getting-started/installation/), Node.js 22, git and internet access for the one-off downloads (Python/npm packages, pytsg and the public HyLogger package from NCI THREDDS).
 
 ```sh

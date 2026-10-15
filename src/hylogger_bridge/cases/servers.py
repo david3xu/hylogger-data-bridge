@@ -11,6 +11,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from hylogger_bridge.install.paths import asset
+
 
 def identity(book_path: Path) -> tuple[str, str]:
     with sqlite3.connect(book_path.resolve().as_uri() + "?mode=ro", uri=True) as connection:
@@ -54,8 +56,8 @@ def get_or_start_server(cases_dir: Path, case_id: str, book_path: Path) -> str:
         if reused is not None:
             return reused
         record.unlink(missing_ok=True)
-        root = Path(os.environ.get("HYLOGGER_HOME", Path(__file__).resolve().parents[3]))
-        static = (root / "app/dist").resolve()
+        selected = os.environ.get("HYLOGGER_UI_ROOT")
+        static = Path(selected).resolve() if selected else asset("book")
         if not (static / "index.html").is_file():
             raise ValueError("built book UI missing; run npm --prefix app run build")
         identity(book_path)

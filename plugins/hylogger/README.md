@@ -4,6 +4,8 @@ Install once into the local host, select a supported package folder, then ask or
 
 ## Prepare and install
 
+For an installed product wheel/demo kit, use its first-run setup instead of the source steps below. The installed `hylogger setup --model <bundle> --model-python <interpreter>` command stages bundled plugin resources, registers the supported local marketplace, and points the cached launcher at the installed runtime. No separate data folder is selected: the intended adapter uses the workspace already connected to the conversation. It requires neither a checkout nor Node. New runtime settings use `runtime_python`; the source-checkout route remains compatible. `--data-root` is retained as a developer override only. A missing model is reported as unconfigured unless fixture mode is explicitly selected for technical tests. ChatGPT host acceptance and the connected-workspace/automatic decision-return adapter are separate gates; this build refuses automatic workspace mode until that adapter is integrated.
+
 Requires Python 3.12, uv, Node.js 22, git and the Codex CLI supplied with your desktop setup. From this checkout, follow the [real-data quickstart](../../README.md#real-data-quickstart). It prepares `outputs/science-env`, builds `app/dist` and obtains the official SWMB007s package. Installing the project into that science environment with `-e .` removes the runtime import-path setup requirement.
 
 Then run:

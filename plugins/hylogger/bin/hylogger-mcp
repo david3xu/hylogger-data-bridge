@@ -10,6 +10,12 @@ def main() -> None:
     config_root = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
     config_file = config_root / "hylogger/runtime.json"
     config = json.loads(config_file.read_text()) if config_file.is_file() else {}
+    if config.get("runtime_python"):
+        python = Path(config["runtime_python"])
+        if not python.is_file() or not os.access(python, os.X_OK):
+            raise ValueError("installed HyLogger runtime is missing; run the installer again")
+        env = {k: v for k, v in os.environ.items() if k not in {"PYTHONPATH", "HYLOGGER_HOME"}}
+        os.execve(python, [str(python), "-m", "hylogger_bridge.install.cli", "mcp", *sys.argv[1:]], env)
     source = Path(__file__).resolve().parents[3]
     root_value = os.environ.get("HYLOGGER_HOME")
     if root_value is None:

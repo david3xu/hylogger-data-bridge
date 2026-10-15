@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 
 from hylogger_bridge.advice.select import Loader, add_option, startup
 from hylogger_bridge.book import BookConflict, BookStore
+from hylogger_bridge.install.paths import asset
 from hylogger_bridge.work import OPERATIONS
 
 
@@ -217,7 +218,7 @@ def main(argv: list[str] | None = None, load: Loader | None = None) -> None:
     parser = argparse.ArgumentParser(description="Local synthetic live-book demo")
     parser.add_argument("--port", type=int, default=8766)
     parser.add_argument("--db", type=Path, default=Path("outputs/live-book/demo.sqlite3"))
-    parser.add_argument("--static-root", type=Path, default=Path("app/dist"))
+    parser.add_argument("--static-root", type=Path, default=asset("book"))
     add_option(parser)
     args = parser.parse_args(argv)
     # Choose the provider first: a requested model that cannot start must not touch the book.
