@@ -4,6 +4,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
     "jsx": "react-jsx",
     "strict": true,
     "noEmit": true,
@@ -14,5 +15,5 @@
     "verbatimModuleSyntax": true,
     "tsBuildInfoFile": "node_modules/.cache/tsconfig.tsbuildinfo"
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "vite.config.ts", "../schemas/**/*.json"]
 }
