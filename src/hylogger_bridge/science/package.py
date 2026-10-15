@@ -18,7 +18,7 @@ SOURCES = ("_tsg.tsg", "_tsg.bip", "_tsg_tir.tsg", "_tsg_tir.bip")
 
 def name_of(identifier: str) -> str:
     """The hole name inside a catalogue or file label such as KWAC018_chips."""
-    return re.sub(r"[_-]?chips$", "", identifier.strip(), flags=re.IGNORECASE)
+    return re.sub(r"[_-]?chips$", "", Path(identifier.strip()).name, flags=re.IGNORECASE)
 
 
 def _groups(block: Any, column: str) -> tuple[str | None, ...]:

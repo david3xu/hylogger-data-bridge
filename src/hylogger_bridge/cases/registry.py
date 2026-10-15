@@ -10,6 +10,7 @@ from typing import Any
 
 from hylogger_bridge.advice.provider import Provider
 from hylogger_bridge.book import BookStore
+from hylogger_bridge.cases.context import save_workspace, workspace_of
 from hylogger_bridge.cases.dispatch import (
     CommandRunner,
     WatcherRegistry,
@@ -161,9 +162,6 @@ class CaseRegistry:
         book_path = self.cases_dir / f"{case_id}.sqlite3"
         with self._lock, (self.cases_dir / f"{case_id}.init.lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
-            if session_id:
-                bind_session(self.cases_dir, case_id, session_id)
-                self._start_watcher_if_bound(case_id)
             if book_path.exists():
                 store = self._stores.get(case_id)
                 if store is None:
@@ -183,6 +181,10 @@ class CaseRegistry:
                     pkg_folder = resolve_package(data_root, package_id)
                     runtime_start_case(store, pkg_folder, package_id, t, r)
                     page1 = store.snapshot()["pages"][0]
+                save_workspace(self.cases_dir, case_id, data_root)
+                if session_id:
+                    bind_session(self.cases_dir, case_id, session_id)
+                    self._start_watcher_if_bound(case_id)
                 return self._started(case_id, page1, True, workspace=data_root)
 
             pkg_folder = resolve_package(data_root, package_id)
@@ -193,6 +195,10 @@ class CaseRegistry:
             self._stores[case_id] = store
 
             runtime_start_case(store, pkg_folder, package_id, t, r)
+            save_workspace(self.cases_dir, case_id, data_root)
+            if session_id:
+                bind_session(self.cases_dir, case_id, session_id)
+                self._start_watcher_if_bound(case_id)
             return self._started(case_id, store.snapshot()["pages"][0], False, workspace=data_root)
 
     @staticmethod
@@ -262,11 +268,7 @@ class CaseRegistry:
         for p in snapshot.get("pages", []):
             decision = None
             if p.get("decision"):
-                decision = {
-                    "choice": p["decision"]["choice"],
-                    "note": p["decision"]["note"],
-                    "actor": p["decision"].get("actor"),
-                }
+                decision = dict(p["decision"])
             pages_summary.append(
                 {
                     "id": p["id"],
@@ -292,6 +294,8 @@ class CaseRegistry:
             "human_decision_pending": human_decision_pending,
             "session_binding": binding,
             "dispatches": list(dispatches.values()),
+            "continuations": snapshot.get("continuations", []),
+            "workspace": str(workspace_of(self.cases_dir, case_id) or self.data_root or ""),
         }
 
     def continue_case_tool(
@@ -302,18 +306,37 @@ class CaseRegistry:
         session_id: str | None = None,
         workspace: str | Path | None = None,
         unbind: bool = False,
+        continuation_id: str | None = None,
+        decision_id: str | None = None,
     ) -> dict[str, Any]:
-        if unbind:
-            self.unbind_case(case_id)
-        elif session_id:
-            self.bind_case(case_id, session_id)
         store = self.get_store(case_id)
-        data_root = self.resolve_workspace(workspace)
+        original = workspace_of(self.cases_dir, case_id)
+        data_root = self.resolve_workspace(workspace or original)
+        if original is not None and data_root != original:
+            raise ValueError("Continuation workspace differs from the original case workspace")
         store.expire_deliveries()
         snapshot = store.snapshot()
         pending_conts = [
             c for c in snapshot.get("continuations", []) if c.get("state") == "pending"
         ]
+        if continuation_id is not None:
+            notified = next(
+                (c for c in snapshot.get("continuations", []) if c["id"] == continuation_id), None
+            )
+            if notified is None or (decision_id and notified["decision_id"] != decision_id):
+                raise ValueError("Return notification does not match this case decision")
+            if notified["state"] == "completed":
+                return {
+                    "case_id": case_id,
+                    "status": "already_completed",
+                    "page": notified["successor_id"],
+                }
+            if not pending_conts or pending_conts[0]["id"] != continuation_id:
+                raise ValueError("Return notification is stale or its work is already claimed")
+        if unbind:
+            self.unbind_case(case_id)
+        elif session_id:
+            self.bind_case(case_id, session_id)
         if not pending_conts:
             return {
                 "case_id": case_id,

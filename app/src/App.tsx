@@ -5,6 +5,7 @@ import { ChapterRail } from "./book/ChapterRail";
 import { DecisionForm, SealedDecision } from "./book/DecisionForm";
 import { DeliveryStatusBar } from "./book/DeliveryStatusBar";
 import { EvidenceList } from "./book/EvidenceList";
+import { ReturnStatus } from "./book/ReturnStatus";
 import { resolveAssessment } from "./state/assessment";
 import { resolveDelivery } from "./state/delivery";
 import { findParentPage, findSuccessorPage, isAssessmentDeclined } from "./state/reader";
@@ -137,6 +138,10 @@ export function App() {
                 }}
               />
 
+              <ReturnStatus
+                sequence={book?.sequence || 0}
+                pending={Boolean(book?.continuations?.some((item) => item.state === "pending"))}
+              />
               <EvidenceList evidence={page.evidence} bookSource={book?.source} />
 
               <AssessmentPanel

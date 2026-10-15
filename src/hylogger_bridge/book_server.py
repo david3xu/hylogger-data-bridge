@@ -13,6 +13,8 @@ from urllib.parse import parse_qs, urlparse
 
 from hylogger_bridge.advice.select import Loader, add_option, startup
 from hylogger_bridge.book import BookConflict, BookStore
+from hylogger_bridge.cases.dispatch import WatcherRegistry, load_session_binding
+from hylogger_bridge.cases.return_state import return_state
 from hylogger_bridge.install.paths import asset
 from hylogger_bridge.work import OPERATIONS
 
@@ -31,6 +33,17 @@ class BookServer(ThreadingHTTPServer):
         self.launch: Callable[[Callable[[], None]], None] = _start
         self.demo_delay = 0.7
         super().__init__(("127.0.0.1", port), BookHandler)
+        self.return_watchers = WatcherRegistry()
+        self.ensure_return_watcher()
+
+    def ensure_return_watcher(self) -> None:
+        folder, case = self.store.path.parent, self.store.path.stem
+        if load_session_binding(folder, case):
+            self.return_watchers.start_watcher(folder, case, lambda: self.store)
+
+    def server_close(self) -> None:
+        self.return_watchers.stop_all()
+        super().server_close()
 
 
 class BookHandler(BaseHTTPRequestHandler):
@@ -73,6 +86,9 @@ class BookHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/api/book":
             self._json(200, self.server.store.snapshot())
+        elif parsed.path == "/api/return":
+            self.server.ensure_return_watcher()
+            self._json(200, return_state(self.server.store))
         elif parsed.path == "/api/events":
             raw_cursor = (
                 self.headers.get("Last-Event-ID") or parse_qs(parsed.query).get("after", ["0"])[0]
@@ -190,23 +206,7 @@ class BookHandler(BaseHTTPRequestHandler):
                     body["note"],
                     body["request_id"],
                 )
-                try:
-                    from hylogger_bridge.cases.dispatch import (
-                        check_and_dispatch,
-                        load_session_binding,
-                    )
-
-                    cases_dir = store.path.parent
-                    case_id = store.path.stem
-                    binding = load_session_binding(cases_dir, case_id)
-                    if binding and binding.get("active"):
-
-                        def _auto_dispatch() -> None:
-                            check_and_dispatch(cases_dir, case_id, store)
-
-                        self.server.launch(_auto_dispatch)
-                except Exception:
-                    pass
+                self.server.ensure_return_watcher()
             else:
                 self._fields(body, {"expected_revision", "evidence"}, {"claim"})
                 if not isinstance(body["evidence"], dict):

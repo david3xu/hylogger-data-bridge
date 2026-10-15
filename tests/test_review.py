@@ -18,13 +18,14 @@ def test_review_scopes_books_and_does_not_decide(tmp_path: Path, monkeypatch: An
     monkeypatch.setattr("hylogger_bridge.install.review.startup", lambda *a, **k: FixtureProvider())
     registries = []
 
-    def make(cases: Path, root: Path, provider: Any) -> CaseRegistry:
+    def make(cases: Path, root: Path | None, provider: Any, **kwargs: Any) -> CaseRegistry:
         reg = CaseRegistry(
             cases,
             root,
             provider,
             science=lambda *a: chips(),
             server_launcher=lambda *a: "http://127.0.0.1:12345",
+            **kwargs,
         )
         registries.append(reg)
         return reg
@@ -44,7 +45,8 @@ def test_review_scopes_books_and_does_not_decide(tmp_path: Path, monkeypatch: An
         waited = review(root, None, None, None, case=started["case_id"], browser=False)
         assert waited["status"] == "waiting_for_decision"
         assert store.snapshot() == before
-    assert registries[0].cases_dir != registries[-1].cases_dir
+    assert registries[0].cases_dir == registries[-1].cases_dir
+    assert len(list(registries[0].cases_dir.glob("*.sqlite3"))) == 2
 
 
 def test_review_refuses_missing_model_and_incomplete_intervals(

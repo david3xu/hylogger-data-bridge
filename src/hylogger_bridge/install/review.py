@@ -1,5 +1,5 @@
 # Purpose: open real-data evidence books from an explicitly chosen local workspace.
-import hashlib
+import os
 import webbrowser
 from pathlib import Path
 from typing import Any
@@ -16,6 +16,7 @@ def review(
     reference: list[float] | None,
     case: str | None = None,
     browser: bool = True,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     root = workspace.expanduser().resolve()
     if not root.is_dir():
@@ -25,24 +26,26 @@ def review(
     if package and (target is None or reference is None):
         raise ValueError("A package review requires --target and --reference")
     config = read_config()
-    # Separate identical package names and intervals in different local workspaces.
-    namespace = hashlib.sha256(str(root).encode()).hexdigest()[:24]
-    cases = Path(config.get("cases", data_home() / "cases")) / namespace
+    if config.get("codex_path"):
+        os.environ["HYLOGGER_CODEX"] = config["codex_path"]
+    cases = Path(config.get("cases", data_home() / "cases"))
     if package is None and case is None:
         from hylogger_bridge.advice.provider import UnavailableProvider
 
-        registry = CaseRegistry(cases, root, UnavailableProvider())
-        return {"workspace": str(root), **registry.find_packages_tool()}
+        registry = CaseRegistry(cases, None, UnavailableProvider(), workspace_auto=True)
+        return {"workspace": str(root), **registry.find_packages_tool(workspace=root)}
     if not config.get("model") or not config.get("model_python"):
         raise ValueError("Run setup with a local model before starting a review")
     provider = startup(Path(config["model"]), python=Path(config["model_python"]))
-    registry = CaseRegistry(cases, root, provider)
+    registry = CaseRegistry(cases, None, provider, workspace_auto=True)
     if case is not None:
-        result = registry.continue_case_tool(case, target, reference)
+        result = registry.continue_case_tool(case, target, reference, workspace=root)
         case_id = case
     else:
         assert package is not None and target is not None and reference is not None
-        result = registry.start_case(package, target, reference)
+        result = registry.start_case(
+            package, target, reference, workspace=root, session_id=session_id
+        )
         case_id = result["case_id"]
     result.update(registry.open_book_tool(case_id))
     result["workspace"] = str(root)

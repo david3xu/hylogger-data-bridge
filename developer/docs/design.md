@@ -148,3 +148,8 @@ Python paths above live under `src/hylogger_bridge/`. Add them only when impleme
 ## Public preview release
 
 The owner authorised public distribution and a download/fresh-install acceptance test on 15 October 2026, without waiting for the separate automatic-return worker. Publish a pinned GitHub prerelease, not an implicit claim of PyPI or ChatGPT support. Include the installed science runtime, book and existing experimental model; exclude all source HyLogger data and private machine paths. A standalone `hylogger review` command operates on the workspace chosen for that invocation, with workspace-separated books. It never records expert decisions. Chat host registration is optional until its workspace adapter is integrated. Verify downloads and the model before use, retain third-party notices, and test in a new profile and copied real-data folder.
+
+
+## Integrated product closeout
+
+On 15 October 2026 the owner assigned all remaining implementation and integration to Codex and explicitly authorised merging the completed code into main and publishing an updated product. Preserve the other checkouts and existing books. The installed CLI and MCP must share one durable registry; workspace identity belongs in the case ID and persisted context, not in an entry-point-specific directory. A return event must resolve the exact decision and continuation, including delayed/duplicate notifications. Rebinding the same live conversation is idempotent. Register the installed MCP through the supported host CLI and verify actual tool discovery; a loaded skill alone is insufficient. Test the receiving side on a durable labelled case before claiming the automatic loop. ChatGPT/Work support remains host-specific and must not be inferred from a Codex queue receipt.

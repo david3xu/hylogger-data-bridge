@@ -104,7 +104,16 @@ def test_missing_model_interpreter_preserves_prior_settings(
     assert config_path().read_bytes() == original
 
 
-def test_host_registration_uses_supported_commands_with_space_paths(tmp_path: Path) -> None:
+def test_host_registration_uses_supported_commands_with_space_paths(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    isolate(tmp_path, monkeypatch)
+    codex_home = tmp_path / "host config"
+    codex_home.mkdir()
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    settings = codex_home / "config.toml"
+    settings.write_text('[mcp_servers.hylogger]\ncommand = "test"\n[preferences]\nkeep = true\n')
+    prepared = setup(install_host=False)
     record = tmp_path / "calls.jsonl"
     codex = tmp_path / "codex test"
     codex.write_text(
@@ -112,16 +121,21 @@ def test_host_registration_uses_supported_commands_with_space_paths(tmp_path: Pa
         f"with open({str(record)!r},'a') as f:f.write(json.dumps(sys.argv[1:])+'\\n')\n"
     )
     codex.chmod(0o700)
-    host.register(tmp_path / "installed product", codex)
+    host.register(data_home(), codex)
     calls = [json.loads(line) for line in record.read_text().splitlines()]
     assert calls[0] == [
         "plugin",
         "marketplace",
         "add",
-        str(tmp_path / "installed product"),
+        str(data_home()),
         "--json",
     ]
     assert calls[1] == ["plugin", "add", "hylogger@hylogger-local", "--json"]
+    assert calls[2][:4] == ["mcp", "add", "hylogger", "--env"]
+    assert sys.executable in calls[2]
+    assert "startup_timeout_sec = 180.0" in settings.read_text()
+    assert "[preferences]\nkeep = true" in settings.read_text()
+    assert Path(prepared["plugin"]).is_dir()
 
 
 def test_failed_host_registration_restores_prior_settings(tmp_path: Path, monkeypatch: Any) -> None:

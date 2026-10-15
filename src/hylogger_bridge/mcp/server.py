@@ -42,6 +42,8 @@ EXPERT_OPERATIONS: dict[str, ExpertOp] = {
         session_id=args.get("session_id"),
         workspace=args.get("workspace"),
         unbind=bool(args.get("unbind", False)),
+        continuation_id=args.get("continuation_id"),
+        decision_id=args.get("decision_id"),
     ),
     "open_book": lambda reg, args: reg.open_book_tool(args["case_id"]),
     "find_packages": lambda reg, args: reg.find_packages_tool(

@@ -508,7 +508,7 @@ class DispatchTests(BookCase):
         with self.assertRaises(ValueError) as ctx:
             self.registry.continue_case_tool(case_id, workspace=ws3)
         self.assertIn(
-            "package folder is missing or outside the authorised data root", str(ctx.exception)
+            "Continuation workspace differs from the original case workspace", str(ctx.exception)
         )
 
         # Revalidation fails when workspace package folder does not match original stored
@@ -516,7 +516,7 @@ class DispatchTests(BookCase):
         with self.assertRaises(ValueError) as ctx:
             self.registry.continue_case_tool(case_id, workspace=ws2)
         self.assertIn(
-            "case scene is outside the currently authorised package folder", str(ctx.exception)
+            "Continuation workspace differs from the original case workspace", str(ctx.exception)
         )
 
         # Revalidation succeeds when correct workspace is provided

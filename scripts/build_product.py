@@ -59,6 +59,7 @@ def build(model: Path, model_python: Path, output: Path, archive: bool = False) 
     wheel = next((output / "wheels").glob("hylogger_data_bridge-*.whl"))
     build_id = hashlib.sha256(wheel.read_bytes()).hexdigest()[:16]
     (output / "build-id").write_text(build_id + "\n")
+    (output / "model-version").write_text(manifest["version"] + "\n")
     (output / "runtime.txt").write_text(requirements(model_python))
     uv = shutil.which("uv")
     if uv is None:

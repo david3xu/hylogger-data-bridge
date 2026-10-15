@@ -31,7 +31,7 @@ class ProcessProvider(ModelProvider):
             text=True,
         )
         try:
-            hello = self._read(60)
+            hello = self._read(180)
             if hello.get("version") != manifest["version"] or not hello.get("ready"):
                 raise ValueError("model worker did not load the requested checkpoint")
         except BaseException:

@@ -20,11 +20,16 @@ if [[ ! -f "$runtime/bin/python" ]]; then
   "$kit_dir/uv" venv --managed-python --python 3.12 "$runtime"
 fi
 "$kit_dir/uv" pip install --python "$runtime/bin/python" -r "$kit_dir/runtime.txt" "$kit_dir"/wheels/hylogger_data_bridge-*.whl
-model_folder="$install_home/models/$install_id"
+model_id="$(cat "$kit_dir/model-version")"
+if [[ ! "$model_id" =~ ^[a-zA-Z0-9_-]+$ ]]; then echo "Invalid model identifier."; exit 1; fi
+model_folder="$install_home/models/$model_id"
 if [[ ! -d "$model_folder" ]]; then
   temporary_model="$model_folder.installing-$$"
   trap 'rm -rf "$temporary_model"' EXIT
-  if [[ -f "$kit_dir/model-parts.txt" ]]; then
+  if [[ -n "${HYLOGGER_MODEL_BUNDLE:-}" ]]; then
+    "$runtime/bin/hylogger" check-model --model "$HYLOGGER_MODEL_BUNDLE" --model-python "$runtime/bin/python"
+    cp -R "$HYLOGGER_MODEL_BUNDLE" "$temporary_model"
+  elif [[ -f "$kit_dir/model-parts.txt" ]]; then
     mkdir -p "$kit_dir/downloads" "$temporary_model"
     release_url="$(cat "$kit_dir/release-url")"
     while read -r expected_hash part_name; do
@@ -57,15 +62,23 @@ if [[ ! -d "$model_folder" ]]; then
   trap - EXIT
 fi
 setup_options=()
-# The public preview opens standalone books; host integration is explicitly opt-in.
-if [[ "${HYLOGGER_INSTALL_HOST:-0}" != 1 || "${HYLOGGER_SKIP_HOST:-0}" == 1 ]]; then
+# Register the supported Codex host by default; isolated smoke tests may opt out.
+if [[ "${HYLOGGER_SKIP_HOST:-0}" == 1 ]]; then
   setup_options+=(--no-host)
 fi
 echo "Checking the installed local model before connecting it to your chat host."
 "$runtime/bin/hylogger" check-model --model "$model_folder" --model-python "$runtime/bin/python"
 "$runtime/bin/hylogger" setup --model "$model_folder" --model-python "$runtime/bin/python" "${setup_options[@]}"
-echo "Installation finished. Open a real-data book with:"
+launcher="$install_home/hylogger"
+if [[ -f "$launcher" ]] && ! /usr/bin/grep -q 'HyLogger managed launcher' "$launcher"; then
+  echo "Existing unrelated launcher was preserved: $launcher"; exit 1
+fi
+printf '#!/bin/bash\n# HyLogger managed launcher\nexec "%s/bin/hylogger" "$@"\n' "$runtime" > "$launcher"
+chmod 755 "$launcher"
+echo "Installation finished. The installed HyLogger command is $launcher"
+echo "Open a local Codex conversation in your data folder and ask for a HyLogger review."
+echo "You can also open a real-data book with:"
 printf '"%s/bin/hylogger" review --workspace /path/to/folder --package SWMB007s_chips --target 5 10 --reference 0 5\n' "$runtime"
 echo "To discover packages first, omit --package, --target and --reference."
 echo "After deciding in the book, use the same command with --case CASE_ID instead of --package."
-echo "Host-workspace access and automatic return remain separate acceptance gates for this build."
+echo "Codex automatic return uses the bound conversation. ChatGPT/Work support is not certified."

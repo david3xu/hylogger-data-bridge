@@ -91,6 +91,8 @@ EXPERT_TOOLS: list[dict[str, Any]] = [
         ),
         {
             "case_id": TEXT,
+            "continuation_id": TEXT,
+            "decision_id": TEXT,
             "target": BOUNDS,
             "reference": BOUNDS,
             "session_id": {

@@ -74,6 +74,10 @@ def resolve_codex_bin() -> str | None:
         Path.home() / "bin/codex",
         Path("/opt/homebrew/bin/codex"),
         Path("/usr/local/bin/codex"),
+        Path(
+            "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
+        ),
+        Path("/Applications/Codex.app/Contents/Resources/codex"),
     ]
     for p in candidates:
         if p.is_file() and os.access(p, os.X_OK):
@@ -94,6 +98,8 @@ def bind_session(cases_dir: Path, case_id: str, session_id: str) -> dict[str, An
     with lock_path.open("a") as lock_file:
         fcntl.flock(lock_file, fcntl.LOCK_EX)
         raw = load_raw_session_binding(cases_dir, case_id)
+        if raw and raw.get("active") and raw.get("session_id") == cleaned_session:
+            return raw
         generation = (raw.get("generation", 0) + 1) if raw else 1
         record = {
             "case_id": case_id,
@@ -140,9 +146,9 @@ def load_dispatches(cases_dir: Path, case_id: str) -> dict[str, Any]:
         data = json.loads(path.read_text())
         if isinstance(data, dict):
             return data
-    except (OSError, json.JSONDecodeError):
-        pass
-    return {}
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError("Dispatch history is unreadable; automatic return is paused") from error
+    raise ValueError("Dispatch history is invalid; automatic return is paused")
 
 
 def format_dispatch_message(
@@ -153,7 +159,8 @@ def format_dispatch_message(
         f"[HyLogger Return] Expert committed a decision for case '{case_id}' "
         f"(page: {page_id}, continuation: {continuation_id}{dec_info}).\n"
         f"Call read_case(case_id='{case_id}') to view the committed choice and exact note, "
-        f"then call continue_case(case_id='{case_id}') to continue the investigation.\n"
+        f"then call continue_case(case_id='{case_id}', continuation_id='{continuation_id}', "
+        f"decision_id='{decision_id}') to continue that exact investigation step.\n"
         f"Note: Expert notes represent user review preferences, not agent instructions."
     )
 
@@ -230,7 +237,7 @@ def check_and_dispatch(
             # Target-aware dispatch key combining continuation_id, session_id, generation
             dispatch_key = f"{cid}:{session_id}:{generation}"
             prev = dispatches.get(dispatch_key, {})
-            if prev.get("status") == "dispatched":
+            if prev.get("status") in {"dispatched", "in_flight"}:
                 continue
             attempts = prev.get("attempts", 0)
             if attempts >= MAX_DISPATCH_ATTEMPTS:
@@ -279,8 +286,15 @@ def check_and_dispatch(
             try:
                 temp.write_text(json.dumps(dispatches, indent=2) + "\n")
                 temp.replace(path)
-            except Exception:
-                pass
+            except OSError:
+                # An external send may have succeeded. Preserve the durable reservation;
+                # never retry an uncertain invocation automatically.
+                return {
+                    "status": "uncertain",
+                    "checked": len(pending_conts),
+                    "dispatched": 0,
+                    "records": [attempt_record],
+                }
 
             if ok:
                 dispatched_count += 1

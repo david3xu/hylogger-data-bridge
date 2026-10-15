@@ -69,6 +69,15 @@ def main(argv: list[str] | None = None) -> None:
         inspect.add_argument("--reference", type=float, nargs=2)
         inspect.add_argument("--case", help="continue this case after a browser decision")
         inspect.add_argument("--no-browser", action="store_true")
+        inspect.add_argument("--session", help="bind to this verified Codex conversation UUID")
+        case = sub.add_parser("case", help="read, continue or open the same durable MCP case")
+        case.add_argument("action", choices=["read", "continue", "open"])
+        case.add_argument("--case", required=True)
+        case.add_argument("--continuation")
+        case.add_argument("--decision")
+        case.add_argument("--unbind", action="store_true")
+        case.add_argument("--target", type=float, nargs=2)
+        case.add_argument("--reference", type=float, nargs=2)
         sub.add_parser("doctor", help="check installed resources and saved settings")
         model_check = sub.add_parser(
             "check-model", help="verify and warm the installed local model offline"
@@ -94,6 +103,24 @@ def main(argv: list[str] | None = None) -> None:
                         args.reference,
                         args.case,
                         not args.no_browser,
+                        args.session,
+                    ),
+                    indent=2,
+                )
+            )
+        elif args.operation == "case":
+            from hylogger_bridge.install.case import case_operation
+
+            print(
+                json.dumps(
+                    case_operation(
+                        args.action,
+                        args.case,
+                        args.continuation,
+                        args.decision,
+                        args.unbind,
+                        args.target,
+                        args.reference,
                     ),
                     indent=2,
                 )

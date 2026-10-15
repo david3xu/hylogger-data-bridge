@@ -51,6 +51,8 @@ def prepare(model: Path, python: Path, output: Path, tag: str) -> None:
     kit = output / "hylogger-macos-arm64"
     build(model, python, kit)
     public_manifest(kit / "model")
+    model_version = verify(kit / "model")["version"]
+    (kit / "model-version").write_text(model_version + "\n")
     notices = kit / "notices"
     notices.mkdir()
     sources = {
@@ -119,9 +121,11 @@ def prepare(model: Path, python: Path, output: Path, tag: str) -> None:
         "supported packages. Expert decisions are entered in the browser book.\n"
         "After deciding, run review --workspace FOLDER --case CASE_ID to continue explicitly.\n"
         "No HyLogger source data is included. Model advice is weak and experimental.\n"
-        "Host-workspace chat, automatic return and ChatGPT support "
-        "are NOT enabled in this preview.\n"
-        "Host registration is opt-in with HYLOGGER_INSTALL_HOST=1; adapter remains unfinished.\n"
+        "Codex setup registers the installed expert tools and skill by default.\n"
+        "Automatic return requires a verified conversation binding; "
+        "explicit follow-up is available.\n"
+        "Use HYLOGGER_SKIP_HOST=1 for an isolated standalone installation test.\n"
+        "ChatGPT/Work acceptance remains separate and is not claimed.\n"
         "Unsigned / not notarized. Keep enough space for downloads, model, runtime and Python.\n"
     )
     (kit / "SHA256SUMS").unlink()

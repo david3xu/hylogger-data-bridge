@@ -93,7 +93,7 @@ export function ChapterRail({
         <small className="host-tag" title={hostCapability.detail}>
           {hostCapability.automaticDispatchAvailable
             ? `Host bridge: ${hostCapability.hostName}`
-            : "Mode: Standalone · explicit chat follow-up"}
+            : "Local book · chat connection shown on page"}
         </small>
       </div>
     </aside>
