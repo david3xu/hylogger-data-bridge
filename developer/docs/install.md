@@ -2,7 +2,7 @@
 
 Updated: 2026-10-15
 
-**[Download the Apple Silicon installer](https://github.com/david3xu/hylogger-data-bridge/releases/download/v0.1.3-preview.1/hylogger-macos-arm64.zip)** · [Release notes and checksums](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.3-preview.1)
+**[Download the Apple Silicon installer](https://github.com/david3xu/hylogger-data-bridge/releases/download/v0.1.4-preview.1/hylogger-macos-arm64.zip)** · [Release notes and checksums](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.4-preview.1)
 
 ## Requirements
 
@@ -115,6 +115,10 @@ Default locations:
 | Runtime settings | `~/.config/hylogger/runtime.json` |
 
 `XDG_DATA_HOME` and `XDG_CONFIG_HOME` override these roots. Scientific packages stay in your workspace. Setup does not move or delete them. Back up books and case records together; do not hand-edit their decision or delivery records.
+
+## Book and conversation
+
+Keep one book open beside the conversation. Review choices turn its pages live; the agent should not open another tab after each result. The optional **Review note** autosaves as you type in the current browser tab (including reload), with a visible warning if storage is unavailable. It is a draft until you choose an action: **Continue**, **Change the investigation**, or **Set aside** saves the decision, turns the page and notifies the agent. There is no second record button. The new contents entry shows the choice that led to that page. Closing the tab or a different server URL does not guarantee draft recovery; committed notes remain in the local book. The note belongs to the saved decision. You do not need to copy it into chat. The current local host shows a labelled automatic book event when a decision wakes the agent; the note itself is retrieved from the book. Fully invisible wake-ups are not provided by this preview.
 
 ## Troubleshooting
 

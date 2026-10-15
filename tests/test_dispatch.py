@@ -188,7 +188,23 @@ class DispatchTests(BookCase):
         self.assertIn(case_id, sent_msg)
         self.assertIn("read_case", sent_msg)
         self.assertIn("continue_case", sent_msg)
-        self.assertIn("user review preferences", sent_msg)
+        self.assertIn("Automatic book event", sent_msg)
+        self.assertIn("reuse the existing book tab", sent_msg)
+        self.assertNotIn(NOTE, sent_msg)
+        self.assertNotIn("read_case(", sent_msg)
+        # Exact routing stays available, while the actual note is retrieved from the book.
+        records = json.loads(sent_msg.splitlines()[-1])
+        continuation = store.snapshot()["continuations"][0]
+        self.assertEqual(
+            records,
+            {
+                "case_id": case_id,
+                "page_id": p1["id"],
+                "continuation_id": continuation["id"],
+                "decision_id": continuation["decision_id"],
+            },
+        )
+        self.assertEqual(store.snapshot()["pages"][0]["decision"]["note"], NOTE)
 
         # Verify durable dispatch record
         dispatches = load_dispatches(self.cases_dir, case_id)

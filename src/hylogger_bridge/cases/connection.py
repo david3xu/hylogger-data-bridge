@@ -11,6 +11,8 @@ def describe(cases: Path, case_id: str) -> dict[str, Any]:
         "session_binding": binding,
         "return_mode": "automatic" if binding else "manual",
         "automatic_return": binding is not None,
+        "notification_visibility": "chat_message" if binding else "none",
+        "note_delivery": "read_from_saved_decision",
         "return_message": (
             "Return destination configured; host delivery and work completion are separate states."
             if binding

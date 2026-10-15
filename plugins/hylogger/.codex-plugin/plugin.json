@@ -1,6 +1,6 @@
 {
   "name": "hylogger",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Expert-in-the-loop HyLogger drill-hole evidence review and workflow continuation.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",

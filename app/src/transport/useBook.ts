@@ -50,10 +50,8 @@ type PersistedSession = {
 };
 
 export function loadPersistedReader(): Reader {
-  if (typeof window === "undefined" || !window.sessionStorage) {
-    return initialReader;
-  }
   try {
+    if (typeof window === "undefined" || !window.sessionStorage) return initialReader;
     const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
     if (!raw) return initialReader;
     const parsed = JSON.parse(raw) as Partial<PersistedSession>;
@@ -100,11 +98,9 @@ export function loadPersistedReader(): Reader {
   }
 }
 
-export function savePersistedReader(reader: Reader): void {
-  if (typeof window === "undefined" || !window.sessionStorage) {
-    return;
-  }
+export function savePersistedReader(reader: Reader): boolean {
   try {
+    if (typeof window === "undefined" || !window.sessionStorage) return false;
     const payload: PersistedSession = {
       selectedId: reader.selectedId,
       following: reader.following,
@@ -113,13 +109,15 @@ export function savePersistedReader(reader: Reader): void {
       declinedAssessments: reader.declinedAssessments,
     };
     window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
+    return true;
   } catch {
-    /* Storage quota or privacy mode should never break the live book. */
+    return false; // Keep editing possible, but never claim that an unsaved draft was saved.
   }
 }
 
 export function useBook(hostTransport?: HostTransport) {
   const [reader, setReader] = useState<Reader>(loadPersistedReader);
+  const [draftSaveStatus, setDraftSaveStatus] = useState<"saved" | "unavailable" | null>(null);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -163,13 +161,13 @@ export function useBook(hostTransport?: HostTransport) {
   const applyReader = useCallback((updater: (current: Reader) => Reader): Reader => {
     const next = updater(readerRef.current);
     readerRef.current = next;
-    savePersistedReader(next);
+    setDraftSaveStatus(savePersistedReader(next) ? "saved" : "unavailable");
     setReader(next);
     return next;
   }, []);
 
   useEffect(() => {
-    savePersistedReader(reader);
+    setDraftSaveStatus(savePersistedReader(reader) ? "saved" : "unavailable");
   }, [reader]);
 
   const connect = useCallback(
@@ -465,6 +463,7 @@ export function useBook(hostTransport?: HostTransport) {
 
   return {
     ...reader,
+    draftSaveStatus,
     connection,
     error,
     busy,

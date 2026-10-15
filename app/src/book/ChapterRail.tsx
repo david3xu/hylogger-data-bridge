@@ -1,6 +1,7 @@
 // Render the persistent chapter rail for browsing current and historical investigation pages.
 import type { HostCapability } from "../host/bridge";
 import type { Book, Page } from "../state/contracts";
+import { chapterTitle } from "../state/labels";
 
 type ChapterRailProps = {
   book: Book | null;
@@ -61,7 +62,7 @@ export function ChapterRail({
           >
             <span className="chapter-number">{String(item.number).padStart(2, "0")}</span>
             <span>
-              <strong>{item.title}</strong>
+              <strong>{chapterTitle(item, book.pages)}</strong>
               <small>{chapterStatusText(item)}</small>
             </span>
             <span className="chapter-indicator" aria-hidden="true">
