@@ -31,10 +31,9 @@ from hylogger_bridge.book_server import BookServer
 from hylogger_bridge.contracts.book import check_book
 from hylogger_bridge.contracts.check import validate
 from hylogger_bridge.events.runner import RUNNER
-from hylogger_bridge.mcp.server import call, handle, serve
+from hylogger_bridge.mcp.server import ALL_OPERATIONS, call, handle, serve
 from hylogger_bridge.mcp.tools import TOOLS
 from hylogger_bridge.walkthrough import LABEL, run
-from hylogger_bridge.work import OPERATIONS
 
 
 class HttpWorkCase(BookCase):
@@ -169,8 +168,8 @@ class HttpWorkTests(HttpWorkCase):
         self.assertEqual(count(self.path, "asks"), 0)
 
     def test_no_operation_records_a_human_decision(self) -> None:
-        self.assertFalse([name for name in OPERATIONS if "decid" in name or "decision" in name])
-        self.assertEqual({tool["name"] for tool in TOOLS}, set(OPERATIONS))
+        self.assertFalse([name for name in ALL_OPERATIONS if "decid" in name or "decision" in name])
+        self.assertEqual({tool["name"] for tool in TOOLS}, ALL_OPERATIONS)
 
     def test_changes_made_elsewhere_reach_the_event_stream(self) -> None:
         page = ready(self.store)
@@ -221,7 +220,7 @@ class McpTests(BookCase):
         newer = self.ask("initialize", {"protocolVersion": "2099-01-01"})
         self.assertEqual(newer["result"]["protocolVersion"], "2025-06-18")
         listed = self.ask("tools/list")["result"]["tools"]
-        self.assertEqual({tool["name"] for tool in listed}, set(OPERATIONS))
+        self.assertEqual({tool["name"] for tool in listed}, {tool["name"] for tool in TOOLS})
         self.assertTrue(all(tool["inputSchema"]["type"] == "object" for tool in listed))
         self.assertEqual(self.ask("ping")["result"], {})
 

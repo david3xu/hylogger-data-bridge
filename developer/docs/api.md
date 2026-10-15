@@ -63,6 +63,21 @@ PYTHONPATH=src cache/model-env/bin/python -m hylogger_bridge.mcp.server --db out
 
 Then call `request_assessment` (HTTP `/api/work/request_assessment` or the MCP tool) and read the page's `assessment`: `origin: model` with the training-data origin in its limitations. A worker or agent must call the tools explicitly; nothing here makes a chat agent continue automatically. The model was trained on synthetic teaching records, so its advice demonstrates mechanics only. No operation records a human decision or scientific approval. `hylogger-walkthrough` runs the whole flow against a fresh book and prints each step; it is a synthetic, tool-driven mechanics demonstration, not Codex model continuation, which remains unverified.
 
+## Expert tools (MCP)
+
+The MCP server accepts `--cases <dir>` (default `outputs/cases`) and `--data-root <dir>` (default `data/raw/nvcl`). A case is identified by a validated deterministic slug `case_id`, routed to `<cases>/<case_id>.sqlite3`. Existing cases are reused without restart or overwrite. The server maintains one `BookStore` per `case_id`, shared by expert tools and worker tools (via an optional `case` argument).
+
+| Tool | Parameters | Effect |
+| --- | --- | --- |
+| `start_case` | `{package_id, target: [top, bottom], reference: [top, bottom]}` | Derives `case_id`; if the case exists, reuses and returns it; otherwise attaches scene, calculates inventory and QA, requests advice and finishes Page 1. Returns `case_id`, `reused`, advice provenance and Page 1 readable evidence. |
+| `read_case` | `{case_id}` | Returns each page's readable evidence, status, decision choice and exact note, and whether a committed human decision is pending a worker. |
+| `continue_case` | `{case_id, target?, reference?}` | Verifies a committed human decision is pending; if not, returns `waiting_for_decision` asking the expert to decide in the browser book. Otherwise claims delivery, executes the decision-directed continuation, and returns Page 2 readable evidence. |
+| `open_book` | `{case_id}` | Returns the local HTTP URL (`http://127.0.0.1:<port>`) for the evidence book, reusing an active server process if running. Server process details are tracked in `<cases>/<case_id>.server.json`. |
+| `find_packages` | `{hole?}` | Lists supported TSG packages in `--data-root`, optionally filtered by hole identifier. |
+| `list_cases` | `{}` | Lists existing investigations in `--cases` (case_id, hole, intervals, last page status) to enable conversation reuse. |
+
+No tool records, edits, or simulates a decision. Decisions are committed exclusively by human experts in the browser.
+
 ## Acceptance
 
 Observe evidence appear without reload. Submit a real UI choice and see a linked page open automatically. Verify previous-page content cannot be changed, duplicate submissions cannot create extra pages, stale worker results fail, and reconnect/reload preserves history. Test in the actual Codex browser before claiming integration. Maintain the existing selector tests.

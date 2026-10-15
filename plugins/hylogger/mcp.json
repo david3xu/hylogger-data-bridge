@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "hylogger": {
+      "command": "./bin/hylogger-mcp"
+    }
+  }
+}

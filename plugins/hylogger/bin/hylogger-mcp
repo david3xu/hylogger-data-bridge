@@ -1,0 +1,33 @@
+#!/bin/sh
+set -e
+
+if [ -n "$HYLOGGER_HOME" ]; then
+  REPO_ROOT="$HYLOGGER_HOME"
+else
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+  REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd -P)"
+fi
+
+if [ ! -d "$REPO_ROOT" ]; then
+  echo "error: repository root not found at $REPO_ROOT" >&2
+  exit 1
+fi
+
+PYTHON_BIN="$REPO_ROOT/outputs/science-env/bin/python"
+if [ ! -x "$PYTHON_BIN" ]; then
+  echo "error: science env python not found or not executable at $PYTHON_BIN" >&2
+  exit 1
+fi
+
+DIST_DIR="$REPO_ROOT/app/dist"
+if [ ! -d "$DIST_DIR" ] || [ ! -f "$DIST_DIR/index.html" ]; then
+  echo "error: built frontend not found at $DIST_DIR (run: npm --prefix app run build)" >&2
+  exit 1
+fi
+
+export PYTHONPATH="$REPO_ROOT/src:$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
+exec "$PYTHON_BIN" -m hylogger_bridge.mcp.server \
+  --tools expert \
+  --cases "$REPO_ROOT/outputs/cases" \
+  --data-root "$REPO_ROOT/data/raw/nvcl" \
+  "$@"
