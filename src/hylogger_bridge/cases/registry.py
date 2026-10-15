@@ -361,6 +361,7 @@ class CaseRegistry:
         result_dict = {
             "case_id": case_id,
             "status": "continued",
+            "browser_policy": "reuse_existing_tab",
             "page": successor["id"],
             "readable_evidence": readable,
         }
@@ -379,7 +380,12 @@ class CaseRegistry:
             url = self.server_launcher(self.cases_dir, case_id, book_path)
         else:
             url = get_or_start_server(self.cases_dir, case_id, book_path)
-        return {"case_id": case_id, "url": url, **connection_info(self.cases_dir, case_id)}
+        return {
+            "case_id": case_id,
+            "url": url,
+            "browser_policy": "reuse_existing_tab",
+            **connection_info(self.cases_dir, case_id),
+        }
 
     def find_packages_tool(
         self, hole: str | None = None, workspace: str | Path | None = None

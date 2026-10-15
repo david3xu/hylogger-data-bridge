@@ -4,7 +4,7 @@ Review drill-hole evidence from a conversation, with the results in a live inves
 
 HyLogger Data Bridge helps geologists check data quality and compare depth intervals using local HyLogger/TSG packages. Scientific tools calculate the evidence, a local fine-tuned model offers advisory suggestions, and the expert records the next step in the book. Each decision preserves its evidence and exact note.
 
-**[Download for macOS · Apple Silicon](https://github.com/david3xu/hylogger-data-bridge/releases/download/v0.1.3-preview.1/hylogger-macos-arm64.zip)** · [Release notes](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.3-preview.1) · [Installation help](developer/docs/install.md)
+**[Download for macOS · Apple Silicon](https://github.com/david3xu/hylogger-data-bridge/releases/download/v0.1.4-preview.1/hylogger-macos-arm64.zip)** · [Release notes](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.4-preview.1) · [Installation help](developer/docs/install.md)
 
 ## Install
 
@@ -34,7 +34,7 @@ Ask in chat:
 Use your own hole identifier and depth intervals. The agent discovers supported packages in the connected workspace and opens the evidence book beside the conversation.
 
 1. **Review** the data coverage, QA, comparison plan and separately labelled model advice.
-2. **Decide in the book:** continue, change the investigation, or set the candidate aside. Add your note and record the decision.
+2. **Decide in the book:** type an optional note (saved automatically in this tab), then click Continue, Change the investigation, or Set aside. That action saves the decision and turns the page.
 3. **Continue in chat:** the bound Codex conversation receives the saved decision and updates the next page. Earlier pages stay locked.
 
 If a chat turn is already running, its notification waits until that turn finishes. If automatic return is unavailable, tell the agent you have committed your decision; it reads the saved record before acting.
@@ -48,7 +48,7 @@ If a chat turn is already running, its notification waits until that turn finish
 
 It does not estimate resources, calculate assay overlap or identify minerals from raw spectra. The fine-tuned Qwen3.5-4B model is experimental: it predicted `clarify` for every held-out case, matching the majority baseline (38.75%). Its advice is not geological judgement or permission to act. See [training and evaluation](developer/docs/training.md#r1-real-data-pilot).
 
-The installed Codex fallback completed the automatic browser → chat → book cycle. Fresh-chat first-class MCP selection, ChatGPT/Work compatibility, physical fresh-machine installation and expert geological validation remain unverified. [Validation record](CLAUDE.md#verified-automatic-receiving-turn).
+The installed Codex fallback and a fresh chat using first-class MCP tools completed the automatic browser → chat → book cycle. The local host displays a labelled automatic event; the note is read from the saved decision. ChatGPT cloud/web compatibility, physical fresh-machine installation and expert geological validation remain unverified. [Validation record](CLAUDE.md#verified-automatic-receiving-turn).
 
 ## Data and provenance
 

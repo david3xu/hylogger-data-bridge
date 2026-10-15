@@ -88,6 +88,14 @@ def test_explicit_manual_case_and_open_book_report_no_automatic_return(tmp_path:
     failed, opened = ask(reg, "open_book", {"case_id": result["case_id"]})
     assert not failed and opened["return_mode"] == "manual"
     assert "explicit chat follow-up" in opened["return_message"] and not sent
+    assert opened["notification_visibility"] == "none"
+    assert opened["note_delivery"] == "read_from_saved_decision"
+    before = reg.get_store(result["case_id"]).snapshot()
+    failed, repeated = ask(reg, "open_book", {"case_id": result["case_id"]})
+    assert not failed and repeated["url"] == opened["url"]
+    assert repeated["browser_policy"] == "reuse_existing_tab"
+    assert reg.get_store(result["case_id"]).snapshot() == before
+    reg.close()
 
 
 def test_binding_repair_preserves_history_and_notifies_only_verified_conversation(
@@ -109,6 +117,7 @@ def test_binding_repair_preserves_history_and_notifies_only_verified_conversatio
     assert store.snapshot() == before
     failed, opened = ask(reg, "open_book", {"case_id": case})
     assert not failed and opened["session_binding"]["session_id"] == SESSION
+    assert opened["notification_visibility"] == "chat_message"
     reg.close()
 
 

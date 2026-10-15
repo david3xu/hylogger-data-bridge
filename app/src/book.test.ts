@@ -1112,6 +1112,11 @@ describe("hook, transport, and browser session recovery coverage", () => {
     viewer.pause();
     expect(viewer.getState().following).toBe(false);
 
+    const draftNote = '  Automated test: compare "SWIR"\nKeep exact whitespace — Δ  ';
+    viewer.updateDecisionDraft(readyPage1, "modify", draftNote);
+    expect(loadPersistedReader().drafts[readyPage1.id]?.note).toBe(draftNote);
+    expect(viewer.getState().book?.pages[0].decision).toBeNull();
+    expect(vi.mocked(fetch).mock.calls.every((call) => call[1]?.method !== "POST")).toBe(true);
     const decidePromise = viewer.decide(readyPage1, "modify", "Look at the assay interval first.");
     expect(viewer.getState().drafts["page-1"]?.status).toBe("submitting");
 

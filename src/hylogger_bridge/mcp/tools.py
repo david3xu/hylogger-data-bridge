@@ -96,7 +96,8 @@ EXPERT_TOOLS: list[dict[str, Any]] = [
         "continue_case",
         (
             "Continue a case after an expert commits a decision in the browser book. "
-            "Returns page 2 readable evidence, or asks the expert to decide if none is pending."
+            "Returns successor evidence, or asks the expert to decide if none is pending. "
+            "The existing browser book updates live; do not open another tab after continuation."
         ),
         {
             "case_id": TEXT,
@@ -125,7 +126,8 @@ EXPERT_TOOLS: list[dict[str, Any]] = [
         "open_book",
         (
             "Get the local HTTP URL to open the evidence book in the browser, reusing an active "
-            "server if running."
+            "server if running. Reuse an existing tab for this URL; open a right-side tab only "
+            "on first presentation or an explicit reopen request. This tool does not open a tab."
         ),
         {"case_id": TEXT},
         ["case_id"],

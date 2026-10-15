@@ -189,6 +189,7 @@ export function App() {
                   draft={draft}
                   busy={busy}
                   adviceDeclinedInView={adviceDeclined}
+                  draftSaveStatus={viewer.drafts[page.id] ? viewer.draftSaveStatus : null}
                   onChangeDraft={(choice, note) => viewer.updateDecisionDraft(page, choice, note)}
                   onSubmitDecision={(choice, note) => viewer.decide(page, choice, note)}
                 />

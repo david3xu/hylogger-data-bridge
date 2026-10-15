@@ -127,7 +127,15 @@ export function DeliveryStatusBar({
         <strong>{delivery.summary}.</strong> {delivery.detail}
       </p>
       {delivery.chatFollowUp && (
-        <section className="chat-followup-row" aria-label="Explicit chat follow-up">
+        <details
+          className="chat-followup-row"
+          aria-label="Explicit chat follow-up"
+          open={effectiveStatus === "failed"}
+        >
+          <summary>Manual follow-up (if needed)</summary>
+          <p>
+            Only use this if the investigation does not return to your conversation automatically.
+          </p>
           <div className="chat-followup-main">
             <code className="chat-followup-code">{delivery.chatFollowUp}</code>
             <button
@@ -161,7 +169,7 @@ export function DeliveryStatusBar({
               />
             </div>
           )}
-        </section>
+        </details>
       )}
       {(delivery.continuationId ||
         delivery.requestId ||

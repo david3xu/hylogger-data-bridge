@@ -854,6 +854,12 @@ fieldset {
   display: grid;
   gap: 7px;
 }
+.draft-save-status {
+  display: block;
+  margin: 10px 0;
+  font-size: 11px;
+  color: var(--green);
+}
 .choice {
   display: flex;
   align-items: center;
@@ -864,6 +870,16 @@ fieldset {
   font-size: 11px;
   color: #66715f;
   cursor: pointer;
+}
+.choice[type="button"] {
+  justify-content: space-between;
+  background: #fffffb;
+  text-align: left;
+}
+.choice[type="button"]:hover,
+.choice[type="button"]:focus-visible {
+  border-color: #94a37f;
+  background: #f0f3e8;
 }
 .choice.selected {
   border-color: #94a37f;

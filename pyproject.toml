@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hylogger-data-bridge"
-version = "0.1.3"
+version = "0.1.4"
 description = "Local scientific evidence review and advisory tools for HyLogger investigations"
 requires-python = ">=3.12,<3.13"
 dependencies = ["pytsg==1.0.0", "numpy==2.5.4", "pandas==3.0.6", "scipy==1.18.1",

@@ -13,6 +13,7 @@ type DecisionFormProps = {
   draft: DecisionDraft;
   busy: boolean;
   adviceDeclinedInView?: boolean;
+  draftSaveStatus?: "saved" | "unavailable" | null;
   onChangeDraft: (choice: DecisionChoice, note: string) => void;
   onSubmitDecision: (choice: DecisionChoice, note: string) => Promise<boolean>;
 };
@@ -22,6 +23,7 @@ export function DecisionForm({
   draft,
   busy,
   adviceDeclinedInView = false,
+  draftSaveStatus,
   onChangeDraft,
   onSubmitDecision,
 }: DecisionFormProps) {
@@ -32,7 +34,6 @@ export function DecisionForm({
       className="review-box"
       onSubmit={(event) => {
         event.preventDefault();
-        void onSubmitDecision(draft.choice, draft.note);
       }}
     >
       <div className="section-heading">
@@ -43,7 +44,8 @@ export function DecisionForm({
       </div>
       <h2>Where should this investigation go?</h2>
       <p className="quiet">
-        Your choice seals this page and opens the next one. Geological findings remain unreviewed.
+        Add a note if needed, then choose an action below. Your action saves the decision and opens
+        the next page. Geological findings remain unreviewed.
         {adviceDeclinedInView
           ? " Model advice is hidden in this browser view (local viewing preference only)."
           : ""}
@@ -61,42 +63,46 @@ export function DecisionForm({
 
       <fieldset disabled={busy}>
         <legend className="visually-hidden">Choose the next direction</legend>
-        <div className="decision-choices">
-          {(["accept", "modify", "reject"] as const).map((item) => (
-            <label className={draft.choice === item ? "choice selected" : "choice"} key={item}>
-              <input
-                type="radio"
-                name={`choice-${page.id}`}
-                value={item}
-                checked={draft.choice === item}
-                onChange={() => onChangeDraft(item, draft.note)}
-              />
-              <span>{CHOICE_LABELS[item]}</span>
-            </label>
-          ))}
-        </div>
         <label className="note-label" htmlFor={`decision-note-${page.id}`}>
-          Investigation note <span>(optional)</span>
+          Review note <span>(optional)</span>
         </label>
         <textarea
           id={`decision-note-${page.id}`}
           value={draft.note}
           onChange={(event) => onChangeDraft(draft.choice, event.target.value)}
+          aria-describedby={`decision-note-help-${page.id}`}
           maxLength={2000}
           rows={3}
-          placeholder="What should the next page examine?"
+          placeholder="Reason for your choice, or intervals to examine next"
         />
-        <div className="decision-footer">
-          <small>This records your workflow choice, not geological approval.</small>
-          <button type="submit" className="primary-button">
-            {busy
-              ? "Saving decision…"
-              : isRetry
-                ? "Retry decision & turn page"
-                : "Record decision & turn page"}
-            <span aria-hidden="true">↗</span>
-          </button>
+        <p className="quiet" id={`decision-note-help-${page.id}`}>
+          Automatically saved as a draft in this browser tab. Your chosen action commits the review
+          for AI follow-up; typing alone does not start a new investigation step.
+        </p>
+        {draftSaveStatus && (
+          <output className="draft-save-status" aria-live="polite">
+            {draftSaveStatus === "saved"
+              ? "Draft saved in this tab"
+              : "Draft cannot be saved in this tab. Keep this page open until you choose an action."}
+          </output>
+        )}
+        <div className="decision-choices">
+          {(["accept", "modify", "reject"] as const).map((item) => (
+            <button
+              type="button"
+              className={isRetry && draft.choice === item ? "choice selected" : "choice"}
+              key={item}
+              onClick={() => void onSubmitDecision(item, draft.note)}
+            >
+              <span>
+                {isRetry && draft.choice === item ? "Retry: " : ""}
+                {CHOICE_LABELS[item]}
+              </span>
+              <span aria-hidden="true">→</span>
+            </button>
+          ))}
         </div>
+        <p className="quiet">This records your workflow choice, not geological approval.</p>
       </fieldset>
     </form>
   );
