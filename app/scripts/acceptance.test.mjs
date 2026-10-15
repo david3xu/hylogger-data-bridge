@@ -10,11 +10,13 @@
  * 6. Action-vs-advice mismatches (uncited advice or missing candidate distinctness).
  */
 
-import assert from "node:assert/strict";
 import http from "node:http";
 import { describe, expect, it } from "vitest";
 import {
+  checkActionIndependence,
   checkFreshBook,
+  checkLockedPageImmutability,
+  checkReplaySnapshotEquality,
   EXACT_NOTE,
   request,
   runAcceptance,
@@ -205,8 +207,8 @@ describe("acceptance runner deep comparison and fault detection", () => {
     tampered.evidence[0].value = "999 m (tampered)";
 
     expect(() => {
-      assert.deepStrictEqual(tampered, originalLocked, "Locked Page 1 was modified!");
-    }).toThrow(assert.AssertionError);
+      checkLockedPageImmutability(tampered, originalLocked, "worker failure transition");
+    }).toThrow(/Locked Page 1 was modified during worker failure transition/);
   });
 
   it("detects decision replay snapshot inequality", () => {
@@ -225,8 +227,8 @@ describe("acceptance runner deep comparison and fault detection", () => {
     faultyReplay.sequence = 3;
 
     expect(() => {
-      assert.deepStrictEqual(faultyReplay, initialDecided, "Decision replay must be identical");
-    }).toThrow(assert.AssertionError);
+      checkReplaySnapshotEquality(faultyReplay, initialDecided, "Decision replay");
+    }).toThrow(/Decision replay snapshot inequality/);
   });
 
   it("detects completion replay snapshot inequality", () => {
@@ -244,24 +246,76 @@ describe("acceptance runner deep comparison and fault detection", () => {
     faultyReplay.pages[1].summary = "Altered summary on replay";
 
     expect(() => {
-      assert.deepStrictEqual(faultyReplay, initialFinal, "Result replay must be identical");
-    }).toThrow(assert.AssertionError);
+      checkReplaySnapshotEquality(faultyReplay, initialFinal, "Result replay");
+    }).toThrow(/Result replay snapshot inequality/);
+  });
+});
+
+describe("acceptance runner action independence", () => {
+  const candidates = [
+    { id: "opaque-cand-alpha", action_type: "clarify", arguments: {} },
+    { id: "opaque-cand-beta", action_type: "interval_compare", arguments: {} },
+    { id: "opaque-cand-gamma", action_type: "qa_check", arguments: {} },
+  ];
+  const advice = {
+    id: "assess-1",
+    suggestions: [
+      { candidate_id: "opaque-cand-alpha", rank: 1 },
+      { candidate_id: "opaque-cand-beta", rank: 2 },
+    ],
+  };
+
+  it("passes when worker executes an action distinct from top advice suggestion with opaque IDs", () => {
+    const executedAction = {
+      type: "interval_compare",
+      assessment_id: "assess-1",
+    };
+    const result = checkActionIndependence(executedAction, advice, candidates);
+    expect(result.executedActionType).toBe("interval_compare");
+    expect(result.topCandidateId).toBe("opaque-cand-alpha");
+    expect(result.topActionType).toBe("clarify");
   });
 
-  it("enforces action independence from top advice candidate", () => {
-    const topCandidate = "cand-clarify";
+  it("fails when worker executes the action recommended as top advice suggestion", () => {
+    const executedAction = {
+      type: "clarify",
+      assessment_id: "assess-1",
+    };
+    expect(() => checkActionIndependence(executedAction, advice, candidates)).toThrow(
+      /Actual action 'clarify' unexpectedly matched advice top suggestion 'clarify' \(candidate ID 'opaque-cand-alpha'\)/,
+    );
+  });
 
-    // Valid case: worker chose interval_compare, which differs from cand-clarify
-    const validAction = { type: "interval_compare", assessment_id: "assess-1" };
-    expect(validAction.type).not.toBe(topCandidate);
+  it("fails when advice returns an unknown top candidate ID not in candidate list", () => {
+    const badAdvice = {
+      id: "assess-1",
+      suggestions: [{ candidate_id: "unknown-opaque-id", rank: 1 }],
+    };
+    const executedAction = {
+      type: "interval_compare",
+      assessment_id: "assess-1",
+    };
+    expect(() => checkActionIndependence(executedAction, badAdvice, candidates)).toThrow(
+      /Unknown top candidate ID 'unknown-opaque-id' returned by advice \(not found in candidate list\)/,
+    );
+  });
 
-    // Fault case: worker action matches top candidate
-    const faultyAction = { type: "cand-clarify", assessment_id: "assess-1" };
-    expect(() => {
-      if (faultyAction.type === topCandidate) {
-        throw new Error("Actual action unexpectedly matched advice top suggestion");
-      }
-    }).toThrow(/unexpectedly matched/);
+  it("fails when executed action does not cite advice or cites wrong advice ID", () => {
+    const uncitedAction = {
+      type: "interval_compare",
+      assessment_id: null,
+    };
+    expect(() => checkActionIndependence(uncitedAction, advice, candidates)).toThrow(
+      /Executed action does not cite an assessment_id/,
+    );
+
+    const wrongCitedAction = {
+      type: "interval_compare",
+      assessment_id: "other-advice-id",
+    };
+    expect(() => checkActionIndependence(wrongCitedAction, advice, candidates)).toThrow(
+      /Recorded action assessment_id 'other-advice-id' does not match advice ID 'assess-1'/,
+    );
   });
 });
 

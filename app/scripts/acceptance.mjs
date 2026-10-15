@@ -123,6 +123,100 @@ export function checkFreshBook(book) {
   return p1;
 }
 
+export function checkLockedPageImmutability(
+  currentPage0,
+  originalLockedPage,
+  context = "transition",
+) {
+  if (!currentPage0 || !originalLockedPage) {
+    fail("IMMUTABILITY", `Missing page for locked history check during ${context}.`);
+  }
+  try {
+    assert.deepStrictEqual(currentPage0, originalLockedPage);
+  } catch (err) {
+    fail("IMMUTABILITY", `Locked Page 1 was modified during ${context}! Details: ${err.message}`);
+  }
+}
+
+export function checkReplaySnapshotEquality(
+  replaySnapshot,
+  expectedSnapshot,
+  operation = "Replay",
+) {
+  if (!replaySnapshot || !expectedSnapshot) {
+    fail("IDEMPOTENCE", `Missing snapshot for replay equality check (${operation}).`);
+  }
+  try {
+    assert.deepStrictEqual(replaySnapshot, expectedSnapshot);
+  } catch (err) {
+    fail(
+      "IDEMPOTENCE",
+      `${operation} snapshot inequality: replay response must be completely equal to initial snapshot (pages, revision, continuations, events). Details: ${err.message}`,
+    );
+  }
+}
+
+export function checkActionIndependence(executedAction, advice, candidates) {
+  if (!executedAction || typeof executedAction !== "object") {
+    fail("ACTION_INDEPENDENCE", "Missing or invalid executed action payload.");
+  }
+  if (!executedAction.type) {
+    fail("ACTION_INDEPENDENCE", "Executed action is missing 'type'.");
+  }
+  if (!advice || typeof advice !== "object") {
+    fail("ACTION_INDEPENDENCE", "Missing or invalid assessment advice.");
+  }
+  if (!executedAction.assessment_id) {
+    fail("ACTION_INDEPENDENCE", "Executed action does not cite an assessment_id.");
+  }
+  if (executedAction.assessment_id !== advice.id) {
+    fail(
+      "ACTION_INDEPENDENCE",
+      `Recorded action assessment_id '${executedAction.assessment_id}' does not match advice ID '${advice.id}'.`,
+    );
+  }
+  if (!Array.isArray(advice.suggestions) || advice.suggestions.length === 0) {
+    fail("ACTION_INDEPENDENCE", "Advice contains no suggestions.");
+  }
+  const topSuggestion = advice.suggestions[0];
+  const topCandidateId = topSuggestion.candidate_id;
+  if (!topCandidateId) {
+    fail("ACTION_INDEPENDENCE", "Top suggestion has no candidate_id.");
+  }
+
+  // Treat candidate IDs as opaque and resolve via candidate list
+  if (!Array.isArray(candidates) || candidates.length === 0) {
+    fail("ACTION_INDEPENDENCE", "Candidate list must be a non-empty array.");
+  }
+  const candidateMap = new Map();
+  for (const c of candidates) {
+    if (c && typeof c === "object" && c.id && c.action_type) {
+      candidateMap.set(c.id, c.action_type);
+    }
+  }
+
+  const topActionType = candidateMap.get(topCandidateId);
+  if (!topActionType) {
+    fail(
+      "ACTION_INDEPENDENCE",
+      `Unknown top candidate ID '${topCandidateId}' returned by advice (not found in candidate list).`,
+    );
+  }
+
+  if (executedAction.type === topActionType) {
+    fail(
+      "ACTION_INDEPENDENCE",
+      `Actual action '${executedAction.type}' unexpectedly matched advice top suggestion '${topActionType}' (candidate ID '${topCandidateId}'). Expected worker to choose an independent action.`,
+    );
+  }
+
+  return {
+    executedActionType: executedAction.type,
+    topCandidateId,
+    topActionType,
+  };
+}
+
 export async function request(baseURL, method, path, body = null, timeoutMs = 4000) {
   const url = `${baseURL}${path}`;
   const options = {
@@ -293,11 +387,7 @@ export async function runAcceptance(targetUrl, options = {}) {
   if (!replayDecideRes.ok || replayDecideRes.status !== 200) {
     fail("IDEMPOTENCE", "Decision replay request failed.");
   }
-  assert.deepStrictEqual(
-    replayDecideRes.data,
-    decidedBook,
-    "Decision replay snapshot must be completely equal to initial decision snapshot (pages, continuations, events).",
-  );
+  checkReplaySnapshotEquality(replayDecideRes.data, decidedBook, "Decision replay");
   log(
     "IDEMPOTENCE",
     "Decision replay verified completely identical across all pages, continuations, and events.",
@@ -384,11 +474,7 @@ export async function runAcceptance(targetUrl, options = {}) {
     fail("SAFETY", "Failed delivery attempt produced duplicate successor pages!");
   }
   // Deep-compare sealed Page 1 after failed delivery
-  assert.deepStrictEqual(
-    fail1.data.pages[0],
-    originalLockedPage,
-    "Locked Page 1 was modified during worker failure transition!",
-  );
+  checkLockedPageImmutability(fail1.data.pages[0], originalLockedPage, "worker failure transition");
 
   // Verify attempt log
   const attemptsRes = await request(
@@ -470,11 +556,7 @@ export async function runAcceptance(targetUrl, options = {}) {
     fail("SUBMIT_EVIDENCE", `submit_evidence failed: ${JSON.stringify(evRes.data)}`);
   }
   // Deep-compare sealed Page 1 after incremental evidence
-  assert.deepStrictEqual(
-    evRes.data.pages[0],
-    originalLockedPage,
-    "Locked Page 1 was modified during submit_evidence!",
-  );
+  checkLockedPageImmutability(evRes.data.pages[0], originalLockedPage, "submit_evidence");
   const p2AfterEv = evRes.data.pages.find((p) => p.id === successorId);
   const p2RevAfterEv = p2AfterEv.revision;
   log(
@@ -482,8 +564,25 @@ export async function runAcceptance(targetUrl, options = {}) {
     `Incremental evidence submitted to successor page (rev incremented to ${p2RevAfterEv}).`,
   );
 
-  // Request real backend fixture assessment
+  // Request real backend fixture assessment with explicit candidates
   log("ASSESSMENT", "Requesting assessment from backend (FixtureProvider)...");
+  const explicitCandidates = [
+    {
+      id: "cand-opt-clarify",
+      action_type: "clarify",
+      arguments: {},
+    },
+    {
+      id: "cand-opt-compare",
+      action_type: "interval_compare",
+      arguments: {},
+    },
+    {
+      id: "cand-opt-qa",
+      action_type: "qa_check",
+      arguments: {},
+    },
+  ];
   const assessRes = await request(
     baseURL,
     "POST",
@@ -491,6 +590,7 @@ export async function runAcceptance(targetUrl, options = {}) {
     {
       page_id: successorId,
       expected_revision: p2RevAfterEv,
+      candidates: explicitCandidates,
     },
     requestTimeoutMs,
   );
@@ -498,11 +598,7 @@ export async function runAcceptance(targetUrl, options = {}) {
     fail("ASSESSMENT", `request_assessment failed: ${JSON.stringify(assessRes.data)}`);
   }
   // Deep-compare sealed Page 1 after request_assessment
-  assert.deepStrictEqual(
-    assessRes.data.pages[0],
-    originalLockedPage,
-    "Locked Page 1 was modified during request_assessment!",
-  );
+  checkLockedPageImmutability(assessRes.data.pages[0], originalLockedPage, "request_assessment");
 
   const p2Advised = assessRes.data.pages.find((p) => p.id === successorId);
   const advice = p2Advised?.assessment;
@@ -572,26 +668,18 @@ export async function runAcceptance(targetUrl, options = {}) {
   if (p2Final.action?.type !== "interval_compare") {
     fail("ACTION", `Action type mismatch: ${JSON.stringify(p2Final.action)}`);
   }
-  if (p2Final.action?.assessment_id !== advice.id) {
-    fail("ACTION", `Recorded action does not cite advice ID: ${JSON.stringify(p2Final.action)}`);
-  }
-  if (p2Final.action?.type === topCandidate) {
-    fail(
-      "ACTION_INDEPENDENCE",
-      `Actual action '${p2Final.action.type}' unexpectedly matched advice top suggestion '${topCandidate}'.`,
-    );
-  }
+  const independence = checkActionIndependence(p2Final.action, advice, explicitCandidates);
   log(
     "ACTION_VS_ADVICE",
-    `Verified: actual action is '${p2Final.action.type}' (cited advice ${p2Final.action.assessment_id}), ` +
-      `while advice top candidate was '${topCandidate}'. Model advice and worker action remain distinct.`,
+    `Verified: actual action is '${independence.executedActionType}' (cited advice ${p2Final.action.assessment_id}), ` +
+      `while advice top candidate was '${independence.topCandidateId}' (resolved action '${independence.topActionType}'). Model advice and worker action remain distinct.`,
   );
 
   // Deep-compare sealed Page 1 in completion snapshot
-  assert.deepStrictEqual(
+  checkLockedPageImmutability(
     finalBook.pages[0],
     originalLockedPage,
-    "Locked Page 1 was altered during subsequent successor actions!",
+    "subsequent successor actions",
   );
   log("IMMUTABILITY", "Verified: locked Page 1 remained sealed and immutable throughout.");
 
@@ -607,11 +695,7 @@ export async function runAcceptance(targetUrl, options = {}) {
   if (!replayResult.ok || replayResult.status !== 200) {
     fail("RESULT_REPLAY", "Result replay was not idempotent.");
   }
-  assert.deepStrictEqual(
-    replayResult.data,
-    finalBook,
-    "Result replay snapshot must be completely equal to initial completion snapshot (pages, revision, continuations, events).",
-  );
+  checkReplaySnapshotEquality(replayResult.data, finalBook, "Result replay");
   log(
     "IDEMPOTENCE",
     "Result replay verified completely identical across all pages, continuations, and events.",
