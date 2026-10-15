@@ -20,6 +20,7 @@ from hylogger_bridge.pages.decide import decide as commit_decision
 from hylogger_bridge.pages.finish import finish, merged
 from hylogger_bridge.pages.make import new_page
 from hylogger_bridge.science import live
+from hylogger_bridge.science.describe import describe
 from hylogger_bridge.science.request import KINDS, STAGES
 from hylogger_bridge.store import cont, legacy, measures, scenes, state, tables, tries
 from hylogger_bridge.store.conn import transaction
@@ -440,11 +441,19 @@ class BookStore:
             scene = scenes.get(connection, page_id)
         if scene is None:
             raise ValueError("this page has no scientific scene")
+        hole = live.hole_of(self.science, scene)
         values = live.known(self.science, scene)[stage]
+        label, value = describe(
+            hole,
+            (float(scene["target"][0]), float(scene["target"][1])),
+            (float(scene["reference"][0]), float(scene["reference"][1])),
+            stage,
+            values,
+        )
         item: dict[str, object] = {
             "id": stage,
-            "label": f"Scientific {stage}",
-            "value": live.evidence_text(stage, values),
+            "label": label,
+            "value": value,
             "source": f"{scene['hole_id']} via pytsg; {scene['method']}",
             "kind": KINDS[stage],
             "origin": "actual",
