@@ -1,12 +1,9 @@
 // Render the human workflow decision form with retry-safe state and sealed history records.
 import type { DecisionChoice, Page } from "../state/contracts";
+import { CHOICE_LABELS } from "../state/labels";
 import type { DecisionDraft } from "../state/reader";
 
-export const CHOICE_LABELS: Record<DecisionChoice, string> = {
-  accept: "Continue with this evidence",
-  modify: "Change the investigation",
-  reject: "Set this candidate aside",
-};
+export { CHOICE_LABELS } from "../state/labels";
 
 type DecisionFormProps = {
   page: Page;

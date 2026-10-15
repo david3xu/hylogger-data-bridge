@@ -3,14 +3,15 @@ import { Children, isValidElement, type ReactElement, type ReactNode } from "rea
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, it, vi } from "vitest";
 import fixtures from "../../../schemas/fixtures/v1/Book.json";
-import { checkBook, type Page } from "../state/contracts";
+import { checkBook, type DecisionChoice, type Page } from "../state/contracts";
+import { CHOICE_LABELS, chapterTitle } from "../state/labels";
 import { getDraft, initialReader, updateDraft } from "../state/reader";
 import { loadPersistedReader, savePersistedReader } from "../transport/useBook";
 import { DecisionForm } from "./DecisionForm";
 
 const note = '  Automated test: inspect "SWIR"\nExact whitespace — Δ  ';
 function ready(): Page {
-  const page = checkBook(fixtures.valid["decided-with-successor"]).pages[0];
+  const page = checkBook(structuredClone(fixtures.valid["decided-with-successor"])).pages[0];
   return { ...page, status: "ready", decision: null };
 }
 function elements(node: ReactNode): ReactElement<Record<string, unknown>>[] {
@@ -80,3 +81,18 @@ it("typing only edits a draft; each action commits its own choice and the exact 
   expect(html).toContain("Draft cannot be saved");
   expect(html.indexOf("<textarea")).toBeLessThan(html.indexOf("<button"));
 });
+
+it.each(["accept", "modify", "reject"] as DecisionChoice[])(
+  "names the successor from its parent’s %s choice, not its own later decision",
+  (choice) => {
+    const book = checkBook(structuredClone(fixtures.valid["decided-with-successor"]));
+    const parent = book.pages[0];
+    if (!parent.decision) throw new Error("fixture needs a parent decision");
+    parent.decision.choice = choice;
+    const successor = book.pages[1];
+    const originalTitle = successor.title;
+    expect(chapterTitle(successor, book.pages)).toBe(CHOICE_LABELS[choice]);
+    expect(chapterTitle(parent, book.pages)).toBe(parent.title);
+    expect(successor.title).toBe(originalTitle);
+  },
+);
