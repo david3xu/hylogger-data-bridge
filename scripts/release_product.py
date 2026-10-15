@@ -86,17 +86,26 @@ def prepare(model: Path, python: Path, output: Path, tag: str) -> None:
     archive = output / "model.tar"
     with tarfile.open(archive, "w") as stream:
         for path in sorted((kit / "model").rglob("*")):
-            if path.is_file():
+            if (
+                path.is_file()
+                and path.relative_to(kit / "model").as_posix() != "base/model.safetensors"
+            ):
                 stream.add(path, arcname=str(path.relative_to(kit / "model")), recursive=False)
     parts = []
     with archive.open("rb") as stream:
         number = 0
-        while block := stream.read(512 * 1024 * 1024):
+        while block := stream.read(32 * 1024 * 1024):
             part = output / f"model-part-{number:03d}"
             part.write_bytes(block)
             parts.append(part)
             number += 1
     archive.unlink()
+    base_hash = sha(kit / "model/base/model.safetensors")
+    (kit / "model-files.txt").write_text(
+        f"{base_hash}  base/model.safetensors  "
+        "https://huggingface.co/mlx-community/Qwen3.5-4B-4bit/resolve/"
+        "0e7ffd5c629ef7719d4cbc04069232580bfa9d9c/model.safetensors\n"
+    )
     shutil.rmtree(kit / "model")
     (kit / "model-parts.txt").write_text("".join(f"{sha(p)}  {p.name}\n" for p in parts))
     release = f"https://github.com/david3xu/hylogger-data-bridge/releases/download/{tag}"

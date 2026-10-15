@@ -39,6 +39,17 @@ if [[ ! -d "$model_folder" ]]; then
       fi
     done < "$kit_dir/model-parts.txt"
     cat "$kit_dir"/downloads/model-part-* | /usr/bin/tar -xf - -C "$temporary_model"
+    while read -r expected_hash relative_name model_url; do
+      if [[ "$relative_name" != base/model.safetensors || "$model_url" != https://huggingface.co/mlx-community/Qwen3.5-4B-4bit/resolve/* ]]; then
+        echo "Invalid upstream model file."; exit 1
+      fi
+      destination="$temporary_model/$relative_name"
+      /usr/bin/curl --fail --location --retry 3 "$model_url" -o "$destination.partial"
+      if [[ "$(/usr/bin/shasum -a 256 "$destination.partial" | /usr/bin/awk '{print $1}')" != "$expected_hash" ]]; then
+        echo "Upstream model checksum mismatch."; exit 1
+      fi
+      mv "$destination.partial" "$destination"
+    done < "$kit_dir/model-files.txt"
   else
     cp -R "$kit_dir/model" "$temporary_model"
   fi
