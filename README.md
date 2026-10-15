@@ -1,115 +1,64 @@
 # HyLogger Data Bridge
 
-An expert-in-the-loop investigation toolkit for reviewing an unfamiliar drill hole with HyLogger data. Scientific code calculates the evidence, a small local model offers advice, and the geologist records the review decision in an evidence book that keeps every page and note.
+Review drill-hole evidence from a conversation, with the results in a live investigation book.
 
-**Version one, honestly:** one real hole (SWMB007s) from the public NVCL WA catalogue. The tool checks data quality and compares two depth intervals using TSG-interpreted SWIR mineral groups, shows the evidence in a browser book, records your accept / modify / reject decision with your exact note, and continues the investigation according to that decision. It does not estimate resources, identify minerals from raw spectra, or use assays (none are linked in this case). The local model is weak (see [Limitations](#limitations)).
+HyLogger Data Bridge helps geologists check data quality and compare depth intervals using local HyLogger/TSG packages. Scientific tools calculate the evidence, a local fine-tuned model offers advisory suggestions, and the expert records the next step in the book. Each decision preserves its evidence and exact note.
 
-## Install the Codex desktop preview
+**[Download for macOS · Apple Silicon](https://github.com/david3xu/hylogger-data-bridge/releases/download/v0.1.2-preview.1/hylogger-macos-arm64.zip)** · [Release notes](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.2-preview.1) · [Installation help](developer/docs/install.md)
 
-Install and sign in to Codex desktop first. Download the Apple Silicon installer from the [v0.1.2 preview release](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.2-preview.1). Extract `hylogger-macos-arm64.zip` and run `bash Install.command` inside its folder. It installs managed Python, the scientific reader, book interface, existing experimental model and the local Codex tools/skill. No source checkout, Node, Git or administrator access is needed. First installation requires internet and about 3.2 GB of model downloads. The observed installed model/runtime footprint is about 4.3 GiB, with managed Python and caches additional. Existing models and books are preserved. The preview is unsigned and not notarized.
+## Install
 
-Open a local Codex conversation in your project folder and ask: **“Review SWMB007s: check data quality and compare 5–10 m with 0–5 m.”** The agent discovers supported packages in that connected workspace, prepares evidence and opens the book. Review the evidence and decide in the book. A bound Codex conversation receives a return notification (after any active turn ends); its tools read the exact stored decision and continue the matching page. The book shows notification and worker-completion states separately. Unbound cases retain explicit follow-up. Model advice is weak, experimental and non-authoritative.
+Requires an Apple Silicon Mac and an installed, signed-in Codex desktop. The first installation needs internet and about 3.2 GB of model downloads. Model and runtime use about 4.3 GiB on disk, plus managed Python and caches. This is an unsigned preview.
 
-Your workspace can contain nested package folders, for example `project/SWMB007s_chips/pkg/*_tsg.tsg` with the matching package files. No HyLogger source data is included in the installer. Setup never pins a separate scientific-data folder globally. Use `HYLOGGER_SKIP_HOST=1 bash Install.command` for an isolated standalone install.
+1. **Download** the ZIP above and extract it with Finder.
+2. **Install:** open `Install.command` in the extracted folder. To run it from Terminal instead, open Terminal in that folder and run:
 
-For a direct local book, the installer prints the installed command path. Use that full command path for `hylogger review --workspace /path/to/project` to discover packages, then add `--package SWMB007s_chips --target 5 10 --reference 0 5`. After a browser decision, use `hylogger case read --case CASE_ID` and `hylogger case continue --case CASE_ID --continuation CONTINUATION_ID --decision DECISION_ID`. These use the same durable registry as MCP. Existing chats can use this installed fallback until their tool list refreshes.
+   ```sh
+   bash Install.command
+   ```
 
-ChatGPT/Work compatibility and a fresh physical-machine certification remain separate acceptance gates. No PyPI package is published; use the release installer or wheel. The installed fallback completed the automatic browser-to-chat-to-book round trip on the tested Codex host. First-class MCP selection in a fresh chat remains separately unverified. See [current implementation evidence](CLAUDE.md#verified-automatic-receiving-turn) for verified results and limitations.
+3. **Start a new local Codex chat** in the folder containing your supported HyLogger data.
 
-## Real-data quickstart
+The installer sets up Python, scientific dependencies, the book, the existing model and Codex tools. You do not need Git, Node, a source checkout or a training run. No HyLogger source data is included. See [data preparation and troubleshooting](developer/docs/install.md).
 
-### Developer reproduction
+## Use
 
-Requires macOS or Linux, Python 3.12, [uv](https://docs.astral.sh/uv/getting-started/installation/), Node.js 22, git and internet access for the one-off downloads (Python/npm packages, pytsg and the public HyLogger package from NCI THREDDS).
+Ask in chat:
 
-```sh
-git clone https://github.com/david3xu/hylogger-data-bridge && cd hylogger-data-bridge
-uv sync --locked
-npm --prefix app ci && npm --prefix app run build
+> Review SWMB007s: check data quality and compare 5–10 m with 0–5 m.
 
-# Science environment (GSWA pytsg, pinned) and the real package
-uv venv outputs/science-env --python 3.12
-uv pip install --python outputs/science-env/bin/python -r training/science.txt -e .
-uv run python -m training.fetch --only SWMB007s_chips.zip
+Use your own hole identifier and depth intervals. The agent discovers supported packages in the connected workspace and opens the evidence book beside the conversation.
 
-# One step: a fresh book for SWMB007s, comparing 5-10 m (target) with 0-5 m (reference)
-export PYTHONPATH=src:.
-outputs/science-env/bin/python -m training.live demo --book outputs/live-book/real-swmb007s.sqlite3
+1. **Review** the data coverage, QA, comparison plan and separately labelled model advice.
+2. **Decide in the book:** continue, change the investigation, or set the candidate aside. Add your note and record the decision.
+3. **Continue in chat:** the bound Codex conversation receives the saved decision and updates the next page. Earlier pages stay locked.
 
-# Serve the book
-uv run python -m hylogger_bridge.book_server --db outputs/live-book/real-swmb007s.sqlite3
-```
+If a chat turn is already running, its notification waits until that turn finishes. If automatic return is unavailable, tell the agent you have committed your decision; it reads the saved record before acting.
 
-Open `http://127.0.0.1:8766`. The first page shows the hole, both intervals, data coverage and quality calculated from the package, the advice and where it came from, and the limits of the case. Choose **accept**, **modify** or **reject**, write a note and submit. The page locks with your exact note and a new working page opens. Then, in a second terminal:
+## What this preview does
 
-```sh
-export PYTHONPATH=src:.
-outputs/science-env/bin/python -m training.live continue --book outputs/live-book/real-swmb007s.sqlite3
-```
+- Reads supported local TSG packages with GSWA's [pytsg](https://github.com/Geological-Survey-of-Western-Australia/pytsg).
+- Checks interval coverage and valid-spot counts, then compares TSG-interpreted SWIR mineral groups.
+- Keeps evidence, model advice and human choices separate, with persistent pages and provenance.
+- Supports expert evidence review for **resource evaluation**, demonstrated on the real SWMB007s metre-chip package.
 
-`continue` follows your decision: **accept** calculates the planned interval comparison; **reject** stops without calculating; **modify** calculates only the intervals you pass explicitly (`--target 10 15 --reference 5 10`, metres) and otherwise records that clarification is needed, so you can decide again. Your note is never parsed, changed or replaced. Reload the browser page to see the result.
+It does not estimate resources, calculate assay overlap or identify minerals from raw spectra. The fine-tuned Qwen3.5-4B model is experimental: it predicted `clarify` for every held-out case, matching the majority baseline (38.75%). Its advice is not geological judgement or permission to act. See [training and evaluation](developer/docs/training.md#r1-real-data-pilot).
 
-`demo` refuses to reuse an existing book; give a new `--book` name for a fresh case. `--package`, `--package-id`, `--target` and `--reference` select another prepared package and intervals.
+The installed Codex fallback completed the automatic browser → chat → book cycle. Fresh-chat first-class MCP selection, ChatGPT/Work compatibility, physical fresh-machine installation and expert geological validation remain unverified. [Validation record](CLAUDE.md#verified-automatic-receiving-turn).
 
-## What you can and cannot reproduce
+## Data and provenance
 
-| Route | Reproducible from a fresh clone | How |
-| --- | --- | --- |
-| Real scientific calculations (inventory, QA, interval comparison) | Yes | The quickstart above, from the public package |
-| Advice on the first page without the model | Yes, labelled | Default: the book shows `origin: fixture` and says no trained model was consulted |
-| Actual local model advice | Only with the model bundle | Add `--model outputs/model/real-r1/model --model-python <model environment python>` to `demo`. The public preview distributes the bundle (Qwen3.5-4B base, LoRA adapters, decision head); [training](developer/docs/training.md#r1-real-data-pilot) documents how it was made |
+The demonstration uses `SWMB007s_chips.zip` from the WA NVCL catalogue on NCI THREDDS (DOI 10.25914/ctaf-6c13), licensed [CC BY 4.0](https://thredds.nci.org.au/thredds/fileServer/rs07/license/license_CCBY4.txt). Model preparation used 19 frozen packages, documented in the [training guide](developer/docs/training.md). Raw packages, images, books and generated training records are excluded from this repository and installer. [Data sources and handling](data/README.md).
 
-No step needs a paid service or account. The model, when used, runs offline with network access blocked.
+## Documentation
 
-## Connecting an AI tool
+| I want to… | Guide |
+| --- | --- |
+| Install, prepare data or troubleshoot | [Installation](developer/docs/install.md) |
+| Run from source or reproduce the demo | [Development](developer/docs/develop.md) |
+| Understand the scientific and expert-review boundaries | [Design](developer/docs/design.md) |
+| Inspect model training and evaluation | [Training](developer/docs/training.md) |
+| Integrate tools or work on the Codex plugin | [API](developer/docs/api.md) · [Plugin](plugins/hylogger/README.md) |
+| Contribute or inspect validation | [Contributing](developer/docs/github.md) · [Acceptance](CLAUDE.md#verified-automatic-receiving-turn) |
 
-The installed preview registers expert MCP tools and the review skill through Codex's supported local commands. Open a new local conversation after installation if its tools have not refreshed. Tools discover data only in the authorised workspace supplied by the chat, including nested package folders; a connected folder is not automatically uploaded. See the [plugin guide](plugins/hylogger/README.md) for installation, return binding and the developer route.
-
-Expert tools: `find_packages`, `list_cases`, `start_case`, `read_case`, `open_book`, `continue_case`. They prepare evidence and consume committed browser decisions. None records a human decision. A lightweight watcher notifies the bound Codex conversation for new work; the receiving agent verifies the exact decision and continuation before acting. The local book reports queue and work states separately. Browser display heartbeats do not invoke an LLM.
-
-For developer reproduction, `python3 scripts/setup_plugin.py --data-root data/raw/nvcl` retains the source-checkout route. The worker MCP (`uv run hylogger-mcp --db <book>`) is a separate technical interface. See the [API](developer/docs/api.md); neither a worker smoke test nor a queue receipt alone establishes a completed chat round trip.
-
-## Limitations
-
-- **Model.** Qwen3.5-4B fine-tuned on 960 real-measurement records whose labels are teaching rules, not expert decisions. On 240 held-out records it answers `clarify` every time: 38.75%, exactly the majority baseline (untrained 17.5%). Treat its advice as an experimental, disclosed negative result. Details: [R1 real-data pilot](developer/docs/training.md#r1-real-data-pilot).
-- **Science.** Mineral groups are TSG's own SWIR interpretations of clean spots, not fresh identification from spectra. Only QA and interval comparison are implemented for the real case; no assay overlap is calculated or claimed.
-- **Workflow.** Bound Codex cases support automatic return; unbound cases use explicit follow-up. Modified intervals must be validated explicitly; notes are never executed as instructions.
-- **Validation.** No expert geological validation has been recorded. Decisions made while testing are labelled `[TEST DECISION — not expert validation]`.
-
-## Data
-
-NVCL WA catalogue on NCI THREDDS, licensed CC BY 4.0 ([licence](https://thredds.nci.org.au/thredds/fileServer/rs07/license/license_CCBY4.txt), DOI 10.25914/ctaf-6c13). The demonstration uses the metre-chip package `SWMB007s_chips.zip`; `training.fetch` records its URL, retrieval time, size and SHA-256 in `data/raw/nvcl/retrieval.jsonl`. Packages are read with GSWA [pytsg](https://github.com/Geological-Survey-of-Western-Australia/pytsg) at a pinned commit (`training/science.txt`). Model training used 19 frozen packages (`training/real.json`). Raw packages, books, generated records and model weights stay outside Git ([data handling](data/README.md)).
-
-## Synthetic demo and developer checks
-
-```sh
-uv run --locked --offline python -m hylogger_bridge.book_server
-```
-
-This serves a visibly synthetic example on `http://127.0.0.1:8766` for checking the book mechanics. `bash scripts/check.sh` runs formatting, lint, strict typing, the Python and frontend tests, the documentation link check and the wheel probe. The earlier synthetic action selector and Qwen experiment are described in [training](developer/docs/training.md#running-the-selected-experiment).
-
-## Project guide
-
-- [Design](developer/docs/design.md): expert authority, local model, book and package boundaries.
-- [Model training](developer/docs/training.md): grounded examples, supervision, the real-data pilot and its result.
-- [API](developer/docs/api.md): HTTP routes, worker lifecycle and MCP tools.
-- [Submission readiness](developer/docs/submission.md): version-one gates and status.
-- [Tasks](developer/docs/tasks.md) and [contributing and CI](developer/docs/github.md).
-- [Development instructions](CLAUDE.md) and [data handling](data/README.md).
-
-```text
-app/                   React and TypeScript evidence book
-src/hylogger_bridge/   Python runtime: book, science adapter, advice, HTTP/MCP adapters
-training/              Real-data preparation, the real case commands, model training and evaluation
-tests/                 Python checks
-schemas/               Versioned shared contracts
-scripts/               Developer validation
-developer/docs/        Project documentation
-data/                  Local source data; only README tracked
-```
-
-## Scope and rights
-
-Data Adoption theme: **expert evidence review supporting resource evaluation**. Resource estimation, grade control, ore–waste classification, alteration mapping, geometallurgy and environmental assessment are outside this version. A flagged interval is a review candidate, not proof of ore, grade or mineralisation. See the [scope and value criteria](developer/docs/design.md#mvp-scope-resource-evaluation-evidence-review).
-
-This is an independent project repository for the GSWA HyLogger Hackathon 2026; see the [organiser repository](https://github.com/Geological-Survey-of-Western-Australia/gswa-hackathon-2026) for event requirements. No project licence has been selected. Source datasets keep their own licences. AI assisted preparation and implementation; claims here describe only demonstrated capabilities.
+Independent project for the [GSWA HyLogger Hackathon 2026](https://github.com/Geological-Survey-of-Western-Australia/gswa-hackathon-2026), Data Adoption theme. No project source-code licence has been selected; source datasets and bundled dependencies retain their own licences. AI assisted development and preparation.

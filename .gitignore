@@ -46,6 +46,8 @@ htmlcov/
 !/AGENTS.md
 !/CLAUDE.md
 !/data/README.md
+!/developer/docs/install.md
+!/developer/docs/develop.md
 !/developer/docs/design.md
 !/developer/docs/training.md
 !/developer/docs/api.md

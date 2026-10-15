@@ -27,7 +27,7 @@ The installed model loads offline in a bounded child process. Missing or invalid
 
 ## Developer route and evidence
 
-Follow the [developer quickstart](../../README.md#real-data-quickstart), then run:
+Follow the [developer quickstart](../../developer/docs/develop.md#reproduce-the-real-data-case), then run:
 
 ```sh
 python3 scripts/setup_plugin.py --data-root data/raw/nvcl
