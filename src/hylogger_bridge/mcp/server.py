@@ -32,13 +32,16 @@ EXPERT_OPERATIONS: dict[str, ExpertOp] = {
         session_id=args.get("session_id"),
         workspace=args.get("workspace"),
     ),
-    "read_case": lambda reg, args: reg.read_case(args["case_id"]),
+    "read_case": lambda reg, args: reg.read_case(
+        args["case_id"], unbind=bool(args.get("unbind", False))
+    ),
     "continue_case": lambda reg, args: reg.continue_case_tool(
         args["case_id"],
         args.get("target"),
         args.get("reference"),
         session_id=args.get("session_id"),
         workspace=args.get("workspace"),
+        unbind=bool(args.get("unbind", False)),
     ),
     "open_book": lambda reg, args: reg.open_book_tool(args["case_id"]),
     "find_packages": lambda reg, args: reg.find_packages_tool(

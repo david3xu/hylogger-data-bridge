@@ -71,9 +71,16 @@ EXPERT_TOOLS: list[dict[str, Any]] = [
         "read_case",
         (
             "Read a case's pages, readable evidence, decision choice and note, and whether a human "
-            "decision is pending a worker."
+            "decision is pending a worker. Pass unbind=true to unbind session and stop automatic "
+            "return."
         ),
-        {"case_id": TEXT},
+        {
+            "case_id": TEXT,
+            "unbind": {
+                "type": "boolean",
+                "description": "Optional flag to unbind the session and stop automatic return.",
+            },
+        },
         ["case_id"],
     ),
     _tool(
@@ -95,6 +102,10 @@ EXPERT_TOOLS: list[dict[str, Any]] = [
                 "description": (
                     "Optional path to the authorised workspace root to revalidate package access."
                 ),
+            },
+            "unbind": {
+                "type": "boolean",
+                "description": "Optional flag to unbind the session and stop automatic return.",
             },
         },
         ["case_id"],

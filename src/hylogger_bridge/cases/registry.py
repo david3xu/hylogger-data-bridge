@@ -246,7 +246,9 @@ class CaseRegistry:
             res["workspace"] = str(workspace)
         return res
 
-    def read_case(self, case_id: str) -> dict[str, Any]:
+    def read_case(self, case_id: str, unbind: bool = False) -> dict[str, Any]:
+        if unbind:
+            self.unbind_case(case_id)
         store = self.get_store(case_id)
         store.expire_deliveries()
         self._start_watcher_if_bound(case_id)
@@ -299,8 +301,11 @@ class CaseRegistry:
         reference: tuple[float, float] | list[float] | None = None,
         session_id: str | None = None,
         workspace: str | Path | None = None,
+        unbind: bool = False,
     ) -> dict[str, Any]:
-        if session_id:
+        if unbind:
+            self.unbind_case(case_id)
+        elif session_id:
             self.bind_case(case_id, session_id)
         store = self.get_store(case_id)
         data_root = self.resolve_workspace(workspace)

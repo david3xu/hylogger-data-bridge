@@ -1,9 +1,12 @@
 # Purpose: test session binding, durable dispatch tracking, watcher deduplication, and host return.
 import json
+import os
 import subprocess
 import threading
 import time
+from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 from support import NOTE, BookCase, working
 from test_science import chips
@@ -16,8 +19,10 @@ from hylogger_bridge.cases.dispatch import (
     check_and_dispatch,
     is_valid_session_id,
     load_dispatches,
+    load_raw_session_binding,
     load_session_binding,
     queue_to_session,
+    resolve_codex_bin,
     unbind_session,
 )
 from hylogger_bridge.cases.registry import CaseRegistry
@@ -131,9 +136,10 @@ class DispatchTests(BookCase):
         self.assertEqual(msg_id, "01a13ec3-ab5e-7142-a019-2a7ea5fbf3ec")
         self.assertEqual(len(self.cmd_runner.calls), 1)
         self.assertEqual(
-            self.cmd_runner.calls[0],
-            ["codex", "queue", "--thread", VALID_SESSION_UUID, "--message", "test message"],
+            self.cmd_runner.calls[0][1:],
+            ["queue", "--thread", VALID_SESSION_UUID, "--message", "test message"],
         )
+        self.assertTrue(self.cmd_runner.calls[0][0].endswith("codex"))
 
         # Failure handling
         failing_runner = MockCommandRunner(returncode=1, stdout="", stderr="Session not found\n")
@@ -301,9 +307,14 @@ class DispatchTests(BookCase):
         p1 = working(store.snapshot())
         store.decide(p1["id"], p1["revision"], "accept", test_note, "req-human-dec-1")
 
-        # 4. Check and dispatch (as watcher does)
-        check_res = check_and_dispatch(self.cases_dir, case_id, store, cmd_runner=self.cmd_runner)
-        self.assertEqual(check_res["dispatched"], 1)
+        # 4. Wait for background watcher to dispatch automatically
+        deadline = time.time() + 2.0
+        while time.time() < deadline:
+            dispatches = load_dispatches(self.cases_dir, case_id)
+            if dispatches and next(iter(dispatches.values()))["status"] == "dispatched":
+                break
+            time.sleep(0.01)
+        self.assertEqual(len(self.cmd_runner.calls), 1)
 
         # 5. read_case now shows human_decision_pending: True and the recorded dispatch
         read2 = self.registry.read_case(case_id)
@@ -685,3 +696,200 @@ class DispatchTests(BookCase):
         content = json.loads(reply["result"]["content"][0]["text"])
         self.assertEqual(len(content["packages"]), 1)
         self.assertEqual(content["packages"][0]["package_id"], "meta_hole")
+
+    def test_pre_reservation_storage_failure(self) -> None:
+        started = self.registry.start_case(self.pkg_id, [10.0, 20.0], [30.0, 40.0])
+        case_id = started["case_id"]
+        bind_session(self.cases_dir, case_id, VALID_SESSION_UUID)
+        store = self.registry.get_store(case_id)
+        p1 = working(store.snapshot())
+        store.decide(p1["id"], p1["revision"], "accept", NOTE, "req-disk-fail")
+
+        orig_write_text = Path.write_text
+        fail_disk = True
+
+        def mock_write_text(path_self: Path, data: str, *args: Any, **kwargs: Any) -> int:
+            if fail_disk and (".dispatch." in path_self.name and path_self.name.endswith(".tmp")):
+                raise OSError("simulated full disk")
+            return orig_write_text(path_self, data, *args, **kwargs)
+
+        with patch.object(Path, "write_text", side_effect=mock_write_text, autospec=True):
+            for _ in range(4):
+                with self.assertRaises(OSError):
+                    check_and_dispatch(self.cases_dir, case_id, store, cmd_runner=self.cmd_runner)
+            # cmd_runner was never called because reservation failed before dispatch
+            self.assertEqual(len(self.cmd_runner.calls), 0)
+
+        # Restore write: recovery succeeds and respects MAX_DISPATCH_ATTEMPTS
+        failing_runner = MockCommandRunner(returncode=1, stdout="", stderr="host down")
+        for attempt in range(1, MAX_DISPATCH_ATTEMPTS + 1):
+            res = check_and_dispatch(self.cases_dir, case_id, store, cmd_runner=failing_runner)
+            self.assertEqual(res["dispatched"], 0)
+            self.assertEqual(len(failing_runner.calls), attempt)
+
+        # Attempt 4 is bounded
+        res4 = check_and_dispatch(self.cases_dir, case_id, store, cmd_runner=failing_runner)
+        self.assertEqual(res4["dispatched"], 0)
+        self.assertEqual(len(failing_runner.calls), MAX_DISPATCH_ATTEMPTS)
+
+    def test_fenced_rebinding_and_generation(self) -> None:
+        started = self.registry.start_case(self.pkg_id, [10.0, 20.0], [30.0, 40.0])
+        case_id = started["case_id"]
+        store = self.registry.get_store(case_id)
+
+        # Bind S1 (generation 1)
+        bind_session(self.cases_dir, case_id, VALID_SESSION_UUID)
+        p1 = working(store.snapshot())
+        store.decide(p1["id"], p1["revision"], "accept", NOTE, "req-fenced-1")
+
+        # Dispatch 1: call to S1
+        res1 = check_and_dispatch(self.cases_dir, case_id, store, cmd_runner=self.cmd_runner)
+        self.assertEqual(res1["dispatched"], 1)
+        self.assertEqual(len(self.cmd_runner.calls), 1)
+        self.assertIn(VALID_SESSION_UUID, self.cmd_runner.calls[0])
+
+        # Rebind S2 while still pending
+        bind_session(self.cases_dir, case_id, ALT_SESSION_UUID)
+        raw_b2 = load_raw_session_binding(self.cases_dir, case_id)
+        self.assertIsNotNone(raw_b2)
+        assert raw_b2 is not None
+        self.assertEqual(raw_b2["generation"], 2)
+
+        # Dispatch to S2: 1 call to S2
+        res2 = check_and_dispatch(self.cases_dir, case_id, store, cmd_runner=self.cmd_runner)
+        self.assertEqual(res2["dispatched"], 1)
+        self.assertEqual(len(self.cmd_runner.calls), 2)
+        self.assertIn(ALT_SESSION_UUID, self.cmd_runner.calls[1])
+
+        # Receipts for both S1 and S2 are preserved
+        dispatches = load_dispatches(self.cases_dir, case_id)
+        self.assertEqual(len(dispatches), 2)
+        self.assertTrue(
+            any(
+                r["session_id"] == VALID_SESSION_UUID and r["status"] == "dispatched"
+                for r in dispatches.values()
+            )
+        )
+        self.assertTrue(
+            any(
+                r["session_id"] == ALT_SESSION_UUID and r["status"] == "dispatched"
+                for r in dispatches.values()
+            )
+        )
+
+        # Check again: 0 calls
+        res3 = check_and_dispatch(self.cases_dir, case_id, store, cmd_runner=self.cmd_runner)
+        self.assertEqual(res3["dispatched"], 0)
+        self.assertEqual(len(self.cmd_runner.calls), 2)
+
+        # Complete continuation
+        self.registry.continue_case_tool(case_id)
+
+        # Rebind S3: 0 calls
+        s3_uuid = "41a34091-2ee0-4b53-a8ce-8eb8c3209f58"
+        bind_session(self.cases_dir, case_id, s3_uuid)
+        res4 = check_and_dispatch(self.cases_dir, case_id, store, cmd_runner=self.cmd_runner)
+        self.assertEqual(res4["dispatched"], 0)
+        self.assertEqual(len(self.cmd_runner.calls), 2)
+
+        # Test unbind-before-send: 0 calls, not_bound
+        s2_case = self.registry.start_case(self.pkg_id, [20.0, 30.0], [40.0, 50.0])
+        c2_id = s2_case["case_id"]
+        c2_store = self.registry.get_store(c2_id)
+        bind_session(self.cases_dir, c2_id, VALID_SESSION_UUID)
+        c2_p1 = working(c2_store.snapshot())
+        c2_store.decide(c2_p1["id"], c2_p1["revision"], "accept", NOTE, "req-unbind-before-send")
+
+        unbind_session(self.cases_dir, c2_id)
+        res_unbound = check_and_dispatch(
+            self.cases_dir, c2_id, c2_store, cmd_runner=self.cmd_runner
+        )
+        self.assertEqual(res_unbound["status"], "not_bound")
+        self.assertEqual(res_unbound["dispatched"], 0)
+        self.assertEqual(len(self.cmd_runner.calls), 2)
+
+    def test_expert_unbind_tool(self) -> None:
+        started = self.registry.start_case(
+            self.pkg_id, [10.0, 20.0], [30.0, 40.0], session_id=VALID_SESSION_UUID
+        )
+        case_id = started["case_id"]
+        self.assertIsNotNone(load_session_binding(self.cases_dir, case_id))
+        self.assertTrue(self.registry._watchers.is_watching(case_id))
+
+        # Call read_case with unbind=True via MCP handle
+        reply = handle(
+            self.registry,
+            {
+                "jsonrpc": "2.0",
+                "id": 51,
+                "method": "tools/call",
+                "params": {
+                    "name": "read_case",
+                    "arguments": {"case_id": case_id, "unbind": True},
+                },
+            },
+            tools_mode="expert",
+        )
+        self.assertIsNotNone(reply)
+        assert reply is not None
+        self.assertFalse(reply["result"]["isError"])
+        content = json.loads(reply["result"]["content"][0]["text"])
+        self.assertIsNone(content.get("session_binding"))
+        self.assertIsNone(load_session_binding(self.cases_dir, case_id))
+        self.assertFalse(self.registry._watchers.is_watching(case_id))
+
+        # Also test continue_case with unbind=True via MCP handle
+        bind_session(self.cases_dir, case_id, ALT_SESSION_UUID)
+        self.registry._start_watcher_if_bound(case_id)
+        self.assertIsNotNone(load_session_binding(self.cases_dir, case_id))
+
+        store = self.registry.get_store(case_id)
+        p1 = working(store.snapshot())
+        store.decide(p1["id"], p1["revision"], "accept", NOTE, "req-unbind-cont")
+
+        reply_cont = handle(
+            self.registry,
+            {
+                "jsonrpc": "2.0",
+                "id": 52,
+                "method": "tools/call",
+                "params": {
+                    "name": "continue_case",
+                    "arguments": {"case_id": case_id, "unbind": True},
+                },
+            },
+            tools_mode="expert",
+        )
+        self.assertIsNotNone(reply_cont)
+        assert reply_cont is not None
+        self.assertFalse(reply_cont["result"]["isError"])
+        self.assertIsNone(load_session_binding(self.cases_dir, case_id))
+        self.assertFalse(self.registry._watchers.is_watching(case_id))
+
+    def test_host_executable_resolution_spaces_and_minimal_path(self) -> None:
+        spaced_dir = self.path.parent / "bin with spaces"
+        spaced_dir.mkdir(parents=True, exist_ok=True)
+        fake_codex = spaced_dir / "fake codex"
+        fake_codex.write_text(
+            '#!/bin/sh\necho "Queued message 01a13ec3-ab5e-7142-a019-2a7ea5fbf3ec for thread $3."\n'
+        )
+        fake_codex.chmod(0o755)
+
+        with patch.dict(os.environ, {"HYLOGGER_CODEX": str(fake_codex)}):
+            resolved = resolve_codex_bin()
+            self.assertEqual(resolved, str(fake_codex))
+
+            ok, out, msg_id = queue_to_session(
+                VALID_SESSION_UUID, "test spaces msg", cmd_runner=subprocess.run
+            )
+            self.assertTrue(ok)
+            self.assertEqual(msg_id, "01a13ec3-ab5e-7142-a019-2a7ea5fbf3ec")
+
+        with patch.dict(os.environ, {"PATH": "/nonexistent", "HYLOGGER_CODEX": ""}):
+            with patch("shutil.which", return_value=None):
+                with patch("pathlib.Path.is_file", return_value=False):
+                    self.assertIsNone(resolve_codex_bin())
+                    ok_miss, err_miss, msg_id_miss = queue_to_session(VALID_SESSION_UUID, "msg")
+                    self.assertFalse(ok_miss)
+                    self.assertIn("Host executable 'codex' not found", err_miss)
+                    self.assertIsNone(msg_id_miss)
