@@ -161,10 +161,9 @@ class DispatchTests(BookCase):
         self.assertEqual(len(self.cmd_runner.calls), 0)
 
     def test_check_and_dispatch_idempotent_duplicate_prevention(self) -> None:
-        started = self.registry.start_case(
-            self.pkg_id, [10.0, 20.0], [30.0, 40.0], session_id=VALID_SESSION_UUID
-        )
+        started = self.registry.start_case(self.pkg_id, [10.0, 20.0], [30.0, 40.0])
         case_id = started["case_id"]
+        bind_session(self.cases_dir, case_id, VALID_SESSION_UUID)
         store = self.registry.get_store(case_id)
 
         # Simulate human committing decision in browser book
