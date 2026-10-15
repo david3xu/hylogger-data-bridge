@@ -61,7 +61,7 @@ The demonstration uses `SWMB007s_chips.zip` from the WA NVCL catalogue on NCI TH
 | Install, prepare data or troubleshoot | [Installation](developer/docs/install.md) |
 | Run from source or reproduce the demo | [Development](developer/docs/develop.md) |
 | Understand the scientific and expert-review boundaries | [Design](developer/docs/design.md) |
-| Inspect model training and evaluation | [Training](developer/docs/training.md) |
+| Inspect model training and evaluation | [Training](developer/docs/training.md) · [Three-condition pilot](developer/docs/evaluation.md) |
 | Integrate tools or work on the Codex plugin | [API](developer/docs/api.md) · [Plugin](plugins/hylogger/README.md) |
 | Contribute or inspect validation | [Contributing](developer/docs/github.md) · [Acceptance](CLAUDE.md#verified-automatic-receiving-turn) |
 

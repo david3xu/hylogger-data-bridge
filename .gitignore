@@ -50,6 +50,7 @@ htmlcov/
 !/developer/docs/develop.md
 !/developer/docs/design.md
 !/developer/docs/training.md
+!/developer/docs/evaluation.md
 !/developer/docs/api.md
 !/developer/docs/tasks.md
 !/developer/docs/github.md
