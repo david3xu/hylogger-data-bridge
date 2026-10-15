@@ -274,7 +274,13 @@ class ResultTests(BookCase):
         page = page_of(after, first["id"])
         shown = (page["status"], page["outcome"], page["evidence"])
         self.assertEqual(shown, ("ready", "failed", []))
-        decision = self.store.decide(page["id"], page["revision"], "reject", "Needs depths", "d1")
+        decision = self.store.decide(
+            page["id"],
+            page["revision"],
+            "reject",
+            "[TEST DECISION — not expert validation] Needs depths",
+            "d1",
+        )
         check_book(decision)
 
     def test_a_failed_result_is_never_notified_as_committed(self) -> None:

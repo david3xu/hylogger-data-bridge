@@ -374,6 +374,8 @@ class BookStore:
         target: tuple[float, float],
         reference: tuple[float, float],
         question: str | None = None,
+        claim: dict[str, Any] | None = None,
+        at: datetime | None = None,
     ) -> dict[str, Any]:
         """Tie a working page to a TSG package and two intervals. A trusted local call only.
 
@@ -387,11 +389,13 @@ class BookStore:
         ):
             raise ValueError("question must be bounded text")
         with transaction(self.path, self.changed) as connection:
-            self._draft(connection, page_id, expected_revision)
+            page = self._draft(connection, page_id, expected_revision)
+            fence(connection, page, claim, at or moment())
         scene = live.attach(self.science, str(folder), package_id, target, reference)
         with transaction(self.path, self.changed) as connection:
             book = state.read(connection)
             page = self._draft(connection, page_id, expected_revision)
+            fence(connection, page, claim, at or moment())
             fresh = scenes.put(connection, page_id, scene)
             if not fresh and question in (None, page["question"]):
                 state.seal(connection)

@@ -17,7 +17,7 @@ LABEL = (
     "agent continued automatically: this is not Codex continuation. Evidence and advice are "
     "synthetic fixtures; nothing here is geological judgement."
 )
-NOTE = "Check the assay interval first."
+NOTE = "[TEST DECISION — not expert validation] Check the assay interval first."
 
 
 class Client:

@@ -24,7 +24,7 @@ from hylogger_bridge.store.legacy import SYNTHETIC
 from hylogger_bridge.store.tables import UnsupportedVersion
 
 SRC = Path(__file__).resolve().parents[1] / "src"
-NOTE = "  Exact note – with é and a\nnewline  "
+NOTE = "[TEST DECISION — not expert validation]   Exact note – with é and a\nnewline  "
 
 
 def working(snapshot: dict[str, Any]) -> dict[str, Any]:
