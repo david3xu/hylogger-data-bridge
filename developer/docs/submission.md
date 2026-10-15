@@ -71,6 +71,8 @@ The repaired smoke script always uses a disposable registry and labels fixture a
 
 The target remains install once, select an authorised supported folder and converse normally. A localhost page does not invoke a model. Version one can use **explicit chat continuation**: commit in the book, return to chat and say the decision is made; a tool verifies it before acting. Automatic browser-triggered model continuation is separate and unimplemented.
 
+The owner's subsequent clarification retains automatic updates in both directions as a product acceptance requirement. The explicit route can demonstrate the engine but is not completion of that requirement. A lightweight decision watcher must wake the correctly bound host investigation only for new committed work; unchanged heartbeat checks do not invoke an LLM. See [decision return](design.md#decision-return). The preview and PR #15 repairs do not close this host gate.
+
 Do not assume ChatGPT Work universally requires a tunnel or remote endpoint. Local desktop and hosted web/cloud have different connection capabilities; verify each surface. Codex proof does not establish ChatGPT Work proof. End-user packaging, prebuilt assets, supported model distribution and per-user state remain separate gates.
 
 Useful advice is not achieved. Expert labels may help future supervision, but no concrete cause of collapse or guarantee that more labels alone fixes it has been established. Keep model quality deferred without obscuring the reproducible scientific workflow.

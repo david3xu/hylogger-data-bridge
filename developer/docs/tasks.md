@@ -56,7 +56,7 @@ Work on `codex/gemini-frontend` in your isolated checkout. Build on the existing
 
 Own `app/` and its package/lock files and frontend tests. Coordinate schema requests through Claude. Do not edit Python storage, training, runtime packaging, root CI or shared release files concurrently. Do not implement an installer, model fitting, data preparation, cloud service or custom scheduler under this brief.
 
-Pass: demonstrate streaming, a real submitted choice/note, persisted immutable history, successor navigation, retries/reconnect, visible delivery failure and clearly labelled advice fixtures. A heartbeat must not trigger content or model work. Return changed paths, responsibilities, exact checks, visible demo evidence and remaining limits.
+Pass: demonstrate streaming, a real submitted choice/note, persisted immutable history, successor navigation, retries/reconnect, visible delivery failure and clearly labelled advice fixtures. An unchanged heartbeat/keepalive must not trigger content or model work. A newly committed decision is a separate work event: the intended automatic return path must deliver it to the bound agent investigation, and manual follow-up remains only a fallback. Return changed paths, responsibilities, exact checks, visible demo evidence and remaining limits.
 
 ## S1 — Inspect and adapt one TSG package
 

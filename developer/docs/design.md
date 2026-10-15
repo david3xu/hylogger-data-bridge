@@ -60,7 +60,7 @@ The next bounded scientific slice is [S1 in the task plan](tasks.md#s1--inspect-
 
 Use React/TypeScript with Vite and a local Python service. SQLite owns persistent pages and event history. Versioned templates fill a working page as actual evidence arrives. Submitting a choice and note atomically records that decision, locks the page and creates its linked successor. Corrections create new pages; locked history is immutable.
 
-SSE notifies the viewer only after committed writes. Sequence IDs, replay and authoritative snapshots recover after disconnect/reload. Reading history pauses auto-navigation; returning to the current page resumes following. Heartbeats only maintain a connection: they do not create evidence, turn pages or invoke models.
+SSE notifies the viewer only after committed writes. Sequence IDs, replay and authoritative snapshots recover after disconnect/reload. Reading history pauses auto-navigation; returning to the current page resumes following. Transport keepalives only maintain a connection: they do not create evidence, turn pages or invoke models.
 
 Keep synthetic fixtures visibly labelled. A workflow choice is not scientific approval. The current staged runner is separate from both model inference and real scientific analysis.
 
@@ -68,11 +68,15 @@ Keep synthetic fixtures visibly labelled. A workflow choice is not scientific ap
 
 The existing demo saves decisions and updates the browser. The missing bridge must deliver the exact committed choice/note to the intended agent investigation, then return results to its successor page.
 
+Owner clarification (15 October 2026): automatic updates in both directions remain the intended product behaviour. A lightweight watcher may check for newly committed decisions; unchanged checks must not invoke a model. A new pending decision must reach the bound host investigation through a supported adapter, which starts or queues actual agent work and returns evidence to the book. SSE keepalives, polling a queue and starting a model turn are distinct operations. Manual chat follow-up is a fallback and does not pass automatic-loop acceptance. This host wakeup is still unimplemented; no automatic mode may be advertised until the same-session round trip is observed.
+
 Persist the decision, successor and pending continuation in one transaction. Carry stable decision/run/page IDs, schema version, locked revision, successor ID, reviewed evidence references, timestamp and actual actor. Send submitted input rather than keystrokes or autosave drafts. A compact host receipt can identify the committed decision; tools retrieve authoritative context.
 
 Use at-least-once delivery with idempotent application effects. Track pending/running/completed/failed states, bounded retries and recoverable claims when workers compete. Acknowledgement and successful investigation completion are distinct. Do not promise exactly-once external model invocation across crashes. Reject stale writes and late results targeting locked/unrelated pages. Add a general worker-to-ready transition independent of the synthetic runner, including honest partial/failed evidence.
 
 First prove a supported round trip in Codex desktop. A generic browser SSE event, MCP tool call or context update alone does not demonstrate model continuation. Retain the standalone browser. If a native host panel is necessary, bring that container change for review before replacing the selected experience. Do not inject keystrokes, guess the foreground chat, edit undocumented settings or silently introduce a separately billed API/cloud path.
+
+Official capabilities need host-specific verification: [Codex App Server](https://learn.chatgpt.com/docs/app-server) exposes explicit turn-start operations for clients, but this does not establish that a plugin can attach to an existing desktop conversation. [MCP Events](https://developers.openai.com/plugins/build/mcp-events) documents webhook-triggered Work Cloud/dot surfaces; it does not prove the local Codex route. Do not replace that missing proof with a recurring model call labelled a heartbeat.
 
 ## Local decision model
 
