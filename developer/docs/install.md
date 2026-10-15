@@ -1,0 +1,109 @@
+# Install and use HyLogger
+
+Updated: 2026-10-15
+
+**[Download the Apple Silicon installer](https://github.com/david3xu/hylogger-data-bridge/releases/download/v0.1.2-preview.1/hylogger-macos-arm64.zip)** · [Release notes and checksums](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.2-preview.1)
+
+## Requirements
+
+- macOS on an Apple Silicon Mac. This preview is not an Intel Mac, Windows or Linux installer.
+- Codex desktop installed and signed in, for the conversational workflow.
+- Internet during installation; about 3.2 GB of model downloads plus Python and dependencies.
+- About 4.3 GiB for the installed model and runtime, with additional space for managed Python, caches and your data.
+
+The preview is unsigned and not notarized. No source checkout, Git, Node, administrator access or model training is needed. The model runs locally after installation. Host conversation data handling still follows your Codex settings; local model inference is not a claim that all chat processing is offline.
+
+## Install
+
+1. Download `hylogger-macos-arm64.zip` and extract it with Finder.
+2. Open `Install.command` inside the extracted folder. Alternatively, open Terminal in that folder and run `bash Install.command`.
+3. Wait for model verification and “Installation finished.” The installer prints the installed command path.
+4. Start a new local Codex conversation in your data workspace so the installed tools and skill can load.
+
+Setup installs a managed Python runtime, scientific reader, prebuilt book interface, existing fine-tuned model and local Codex integration. It registers only HyLogger's plugin/marketplace and MCP server. An older local HyLogger marketplace is upgraded with rollback on setup failure; unrelated host configuration is preserved. No scientific-data folder is selected globally at installation.
+
+For an isolated standalone install, run `HYLOGGER_SKIP_HOST=1 bash Install.command`. This skips host registration. ChatGPT/Work support is not certified by the Codex installation.
+
+## Prepare a data folder
+
+Use an unpacked supported HyLogger TSG package, retaining its companion files and folder structure. Nested package folders are supported:
+
+```text
+my-project/
+└── data/
+    └── SWMB007s_chips/
+        └── pkg/
+            ├── …_tsg.tsg
+            └── … companion package files
+```
+
+Open `my-project` as the conversation's workspace. The agent passes that authorised folder to the tools, which discover supported packages inside it. It does not search the whole computer. This is not a general importer for arbitrary CSVs, assay tables, images or ZIP archives.
+
+No source dataset is bundled. The tested case is `SWMB007s_chips.zip` from the [WA NVCL catalogue](https://thredds.nci.org.au/thredds/catalog/rs07/WA/catalog.html). See [data handling](../../data/README.md) for attribution and the [source reproduction guide](develop.md#reproduce-the-real-data-case) for the bounded fetch command.
+
+## First investigation
+
+Ask:
+
+> Review SWMB007s: check data quality and compare 5–10 m with 0–5 m.
+
+The agent discovers the package, prepares real inventory and QA with separately labelled advice, and opens a local evidence book. If the hole or depth bounds are ambiguous, it asks for clarification.
+
+Review the proposed comparison and decide **in the browser book**. Continue accepts the proposed next step; change needs explicit replacement intervals; set aside stops that candidate. Your choice and exact note are saved, the page locks and a successor opens.
+
+A bound Codex conversation receives a notification for new committed work, verifies its exact decision and continuation, and calculates the matching next step. If a turn is active, the notification waits until it ends. The book reports queue status separately from work completion. If return is unavailable, say “I have committed my decision” in chat; the agent reads the stored record first. Never paste a note as a substitute for the saved decision.
+
+The local model offers advice, not a geological decision. Its measured quality is weak; [training results](training.md#r1-real-data-pilot) disclose the collapse to `clarify`. No assays or resource estimates are produced.
+
+## Open a book without chat
+
+On a default installation, use the stable command below. If you use XDG directories, use the path printed by the installer instead.
+
+```sh
+"$HOME/.local/share/hylogger/hylogger" review --workspace /path/to/my-project
+```
+
+That lists supported packages. To prepare the example review:
+
+```sh
+"$HOME/.local/share/hylogger/hylogger" review \
+  --workspace /path/to/my-project \
+  --package data/SWMB007s_chips \
+  --target 5 10 --reference 0 5
+```
+
+Use the exact package identifier returned by discovery. This standalone route is unbound and needs explicit follow-up after a browser decision. The installed `case read`, `case continue` and `case open` commands use the same registry as MCP; see the [expert case API](api.md#installed-expert-cases-and-return).
+
+## Updates and storage
+
+Download and run the newer release installer. Existing model assets are reused when the model version is unchanged; existing books are preserved. A stable launcher points to the selected installed runtime. Start a new local chat after updating if its tools have not refreshed.
+
+Default locations:
+
+| Contents | Location |
+| --- | --- |
+| Launcher | `~/.local/share/hylogger/hylogger` |
+| Books and case records | `~/.local/share/hylogger/cases/` |
+| Model, runtime and bundled plugin | `~/.local/share/hylogger/` |
+| Runtime settings | `~/.config/hylogger/runtime.json` |
+
+`XDG_DATA_HOME` and `XDG_CONFIG_HOME` override these roots. Scientific packages stay in your workspace. Setup does not move or delete them. Back up books and case records together; do not hand-edit their decision or delivery records.
+
+## Troubleshooting
+
+| Symptom | What to do |
+| --- | --- |
+| Codex tools do not appear | Open a new **local** chat after setup. The current chat may retain its previous tool list. The installed review skill also provides the agent a same-registry command fallback. |
+| No package found | Check that the connected workspace contains the unpacked TSG package and companion files. Give the hole name; ask the agent to list supported packages. |
+| “Decision committed; pending delivery” | Check the separate chat-return status. An active chat turn must finish before a queued notification can run. If no return occurs, tell the same conversation that you committed the decision. |
+| Model cannot load | Read the installer/runtime error and retry setup with the verified bundle. A model error is not replaced with fabricated fixture advice. |
+| `uv: Permission denied` after extraction | Extract the original ZIP with Finder or macOS Archive Utility; some generic extraction libraries discard executable permissions. |
+| macOS blocks this unsigned preview | Read the system message and review the release source. Signing/notarization is not provided; installation may require your organisation's approval. |
+
+To inspect local installation settings and bundled resources:
+
+```sh
+"$HOME/.local/share/hylogger/hylogger" doctor
+```
+
+The [acceptance record](../../CLAUDE.md#verified-automatic-receiving-turn) states exactly what was tested. Fresh-chat first-class MCP selection, ChatGPT/Work, a new physical machine and expert geological validation remain separate checks. For source setup or debugging, use the [developer guide](develop.md).

@@ -41,7 +41,7 @@ The initial independent audit used isolated archives of remote main `52d127a` an
 | Expert plugin | Six expert tools and skill; supported local marketplace installation succeeded. The installed cache launcher works outside the checkout without shell exports. Ordinary-chat selection remains unverified |
 | Fresh clone report | AGY reproduced the developer route on `75bcb4f` with an existing source archive and technical API decision. Its setup/path findings are repaired here; this is not expert validation or host acceptance |
 
-Detailed training evidence belongs in [training](training.md); judge-facing commands belong in the [README](../../README.md).
+Detailed training evidence belongs in [training](training.md); user installation belongs in the [README](../../README.md); source reproduction commands belong in the [developer guide](develop.md).
 
 ## PR #14 defects and repairs
 

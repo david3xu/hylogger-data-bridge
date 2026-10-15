@@ -39,7 +39,7 @@ bash scripts/check.sh
 uv build --offline --out-dir outputs/dist
 ```
 
-In a restricted workspace, set `UV_CACHE_DIR=cache/uv`. See [README](README.md) for training and demo launch commands. For UI development run the Python service, then `npm --prefix app run dev`; Vite proxies `/api`. Only one service may own a book database. Use `--db outputs/live-book/another.sqlite3 --port 8767` for another case.
+In a restricted workspace, set `UV_CACHE_DIR=cache/uv`. See the [developer guide](developer/docs/develop.md) for demo commands and the [training guide](developer/docs/training.md) for model commands. For UI development run the Python service, then `npm --prefix app run dev`; Vite proxies `/api`. Only one service may own a book database. Use `--db outputs/live-book/another.sqlite3 --port 8767` for another case.
 
 Advice provider selection: both launchers share `--model <folder>`. Without it they use labelled fixture advice and say so on stderr. With it they load the verified local bundle through `LocalProvider` and fail with a clear error, never substituting fixture advice, if the folder, its hashes or the model runtime is missing or invalid. Run the model launchers in the prepared model environment; ordinary CI loads no weights.
 
