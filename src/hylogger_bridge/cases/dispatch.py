@@ -169,11 +169,13 @@ def queue_to_session(
 
     codex_bin = resolve_codex_bin()
     if not codex_bin:
-        return (
-            False,
-            "Host executable 'codex' not found; set HYLOGGER_CODEX or install codex on PATH",
-            None,
-        )
+        if cmd_runner is subprocess.run:
+            return (
+                False,
+                "Host executable 'codex' not found; set HYLOGGER_CODEX or install codex on PATH",
+                None,
+            )
+        codex_bin = "codex"
 
     cmd = [codex_bin, "queue", "--thread", session_id, "--message", message]
     try:
