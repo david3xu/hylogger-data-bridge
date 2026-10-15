@@ -6,6 +6,8 @@ HyLogger Data Bridge helps geologists check data quality and compare depth inter
 
 **[Download for macOS · Apple Silicon](https://github.com/david3xu/hylogger-data-bridge/releases/download/v0.1.4-preview.1/hylogger-macos-arm64.zip)** · [Release notes](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.4-preview.1) · [Installation help](developer/docs/install.md)
 
+**[Five-minute pitch slides (PDF)](developer/slides/fieldnotes.pdf)**
+
 ## Install
 
 Requires an Apple Silicon Mac and an installed, signed-in Codex desktop. The first installation needs internet and about 3.2 GB of model downloads. Model and runtime use about 4.3 GiB on disk, plus managed Python and caches. This is an unsigned preview.
