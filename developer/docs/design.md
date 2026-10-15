@@ -39,7 +39,7 @@ A one-hole product demonstration is distinct from the independent source groups 
 
 ## TSG ingestion with pytsg
 
-Use GSWA's [pytsg](https://github.com/Geological-Survey-of-Western-Australia/pytsg) as the TSG-package reader behind our scientific adapter. Its documented `pytsg.read_tsg(package_path)` interface exposes package data, including spectral arrays and wavelengths. This is a proposed integration; no dependency installation or real-package validation has been performed in this project.
+Use GSWA's [pytsg](https://github.com/Geological-Survey-of-Western-Australia/pytsg) as the TSG-package reader behind our scientific adapter. Its documented `pytsg.read_tsg(package_path)` interface exposes package data, including spectral arrays and wavelengths. pytsg is pinned in `training/science.txt`; the R1 pilot read and checked real organiser packages through it (see [training](training.md#r1-real-data-pilot)).
 
 ```text
 Local TSG package → pytsg → validated internal data contract
@@ -76,7 +76,7 @@ First prove a supported round trip in Codex desktop. A generic browser SSE event
 
 ## Local decision model
 
-The owner requires a locally installed fine-tuned model grounded in the organiser's HyLogger datasets. It must be meaningfully consulted during chat, not merely loaded or added as a decorative endorsement. The organiser supplies scientific measurements; that does not imply expert next-action labels exist. No real dataset is downloaded in this repository yet.
+The owner requires a locally installed fine-tuned model grounded in the organiser's HyLogger datasets. It must be meaningfully consulted during chat, not merely loaded or added as a decorative endorsement. The organiser supplies scientific measurements; that does not imply expert next-action labels exist. The R1 pilot downloaded 19 frozen NVCL WA packages (ignored by Git) and trained on teaching-rule labels; its model matches the majority baseline.
 
 The existing synthetic logistic classifier is a mechanics baseline. It is fitted from scratch, lacks question/instruction/evidence inputs and is not the target fine-tuned model. The owner selected Qwen3.5-4B with LoRA and a decision head for the first experiment on 2026-10-15. A synthetic local run and offline base/adapter reload have been verified; measured evidence and remaining real-data limits are in [project instructions](../../CLAUDE.md#local-qwen-demonstration-evidence).
 
@@ -103,6 +103,8 @@ The full model feature requires demonstrated real-data fine-tuning, meaningful a
 ## Package and hosts
 
 Target one Python runtime with scientific operations, book service, trained inference assets and prebuilt React assets, exposed through a thin MCP adapter and CLI. End users should not need Node, a source checkout, training libraries or a training run. Keep immutable installed assets separate from writable per-user books. The one-command product installer is a future goal, not an available release; host enablement/consent is a separate step.
+
+The target experience is unchanged: install once, connect a supported data folder, chat normally, watch the book, decide and continue. Version one ships a documented fallback instead (see the [README quickstart](../../README.md#real-data-quickstart)): explicit `training.live demo` and `continue` commands beside the browser book. The fallback is not the target experience and does not demonstrate tool selection during chat or automatic continuation.
 
 Share contracts, science, model, backend and templates across hosts. Installation, transport, panel integration and message delivery use capability-based adapters. Test Codex desktop first and ChatGPT desktop separately. A local Python install does not establish ChatGPT web connectivity. Codex CLI can use the standalone book with explicit follow-up until a supported automatic route is proven. Web/cloud/tunnel distribution is deferred.
 
