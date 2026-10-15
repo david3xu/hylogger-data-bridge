@@ -1,7 +1,7 @@
 # Local model training
 
 Updated: 2026-10-15
-Status: owner selected Qwen3.5-4B and authorised the initial fine-tuning feasibility implementation on 2026-10-15. Real HyLogger preparation remains a separate slice; the local synthetic demonstration has completed training and strict offline reload. Real organiser-data validation remains outstanding.
+Status: the owner selected Qwen3.5-4B on 2026-10-15; the local synthetic demonstration has completed training and strict offline reload. The owner then resumed real-data work and assigned Claude the bounded [R1 delivery](tasks.md#r1--claude-real-data-model). Real organiser-data validation remains outstanding.
 
 ## Purpose and authority
 
@@ -189,7 +189,7 @@ Consult at meaningful investigation checkpoints. Read-only navigation, keystroke
 
 The synthetic local training and portability demonstration is complete. For the next real-data experiment, keep one bounded question family and only implemented scientific actions. Select and inspect actual packages, then review a small batch of grounded training records and their labels. Fine-tune Qwen3.5-4B on those reviewed records and compare against the exact teaching rules on held-out source groups. One-hole results demonstrate mechanics, not unseen-hole generalisation. Do not promise a useful model merely from generating hundreds or thousands of rule-labelled states.
 
-Decide who implements the required scientific calculations before assigning training code. Frontend/backend work continues against the assessment interface. The model recommends follow-ups; the agent/human chooses and the backend independently validates execution. Implementation is now authorised for the bounded model portability experiment. This document records intent and actual checks; it does not establish that a training run or deployment succeeded.
+Claude implements the minimum scientific calculations and preparation needed for R1. Frontend/backend work continues against the assessment interface. The model recommends follow-ups; the agent/human chooses and the backend independently validates execution. The synthetic portability experiment is complete; the resumed real-data assignment has not yet met its training and evaluation gates.
 
 ## Running the selected experiment
 

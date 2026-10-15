@@ -96,9 +96,9 @@ Only train output fields supported by labels. Action rankings do not automatical
 
 ### Training and evaluation
 
-The proposed data-to-model process is maintained in [local model training](training.md): real-package inspection, grounded partial-observation records, explicit label origins, advisory-model fine-tuning, independent source-group evaluation and local export. That record includes encoder/ranker and LoRA decision-head candidates, Colab training feasibility and an early target-laptop inference check. The owner authorised the bounded Qwen3.5-4B feasibility implementation on 2026-10-15. Real-data preparation and expert validation remain separate work; this does not authorise additional compute purchases or broad dataset downloads.
+The data-to-model process is maintained in [local model training](training.md): real-package inspection, grounded partial-observation records, explicit label origins, advisory-model fine-tuning, independent source-group evaluation and local export. The owner authorised the synthetic Qwen3.5-4B experiment, then resumed real-data work and assigned Claude the bounded [R1 delivery](tasks.md#r1--claude-real-data-model). That permits necessary pilot-package preparation and training; expert geological validation remains distinct. Additional compute purchases and full-collection downloads remain outside scope.
 
-The full model feature requires demonstrated local fine-tuning, meaningful advisory integration and evaluated investigation outcomes. Gemini and Claude's initial application tasks remain separate from model/data work.
+The full model feature requires demonstrated real-data fine-tuning, meaningful advisory integration and evaluated investigation outcomes. Claude's completed backend handoff stays separate from the new R1 model branch; Gemini's application assignment remains separate from model/data work.
 
 ## Package and hosts
 
@@ -110,6 +110,10 @@ Host UI message APIs belong to supported integrated apps, not arbitrary localhos
 
 ## Structure and names
 
+Owner decision recorded on 2026-10-15: keep the current repository structure. Refine data/output organisation when the deferred real-data preparation work resumes; do not reorganise the repository now or create a separate decision-model repository. Keep developer training under root `training/` and runtime model inference under `src/hylogger_bridge/advice/`.
+
+At that later stage, separate raw scientific packages from prepared decision records and group generated models, metrics and logs by training run. Raw data, generated records, model weights and run outputs remain ignored. This is a later organisation task, not an instruction to move existing files or create empty folders now. See the [real-data deferral](training.md#owner-decision-real-data-training-deferred).
+
 Use one responsibility at every level. Prefer short familiar names; parent directories provide context. Avoid catch-all utilities/managers and empty scaffold layers.
 
 | Boundary | Responsibility and representative short paths |
@@ -118,7 +122,7 @@ Use one responsibility at every level. Prefer short familiar names; parent direc
 | `pages/`, `runs/` | Lifecycle/application operations, such as `pages/decide.py` |
 | `store/` | SQLite persistence; caller owns multi-write transactions |
 | `events/` | Durable continuation delivery; distinct from browser SSE |
-| `policy/` | Local loading/inference, such as `model.py`, `assess.py` |
+| `advice/` | Local model loading/inference; preserve the existing baseline `policy.py` import |
 | `science/` | Reproducible operations, such as `qa.py`, `overlap.py` |
 | `server/`, `mcp/`, `cli/` | Thin transports calling shared application operations |
 | `app/src/book/`, `templates/` | Book composition and page presentation |
