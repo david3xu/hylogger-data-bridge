@@ -99,3 +99,8 @@ Useful advice is not achieved. Expert labels may help future supervision, but no
 ## Claude single closeout delivery
 
 The earlier Claude R1 closeout is integrated and is not a new assignment. Its historical audit is [available](https://github.com/david3xu/hylogger-data-bridge/pull/3#issuecomment-6183174878). Current work is repair review, host acceptance and submission closeout. Do not repeat completed R1 work or treat old checklist items as instructions to retrain or reimplement the engine.
+
+
+### Public standalone preview acceptance
+
+The owner authorised publication without waiting for the separate chat-return adapter. The [public preview release](https://github.com/david3xu/hylogger-data-bridge/releases/tag/v0.1.1-preview.1) has passed download/install and real-data book acceptance in a fresh local folder/profile; [canonical evidence](../../CLAUDE.md#public-preview-package) records the exact scope. It installs managed Python, scientific libraries and the existing experimental model. No source HyLogger data is distributed. Browser decision persistence, explicit continuation, duplicate replay and restart preservation passed on the installed runtime. This completes the standalone preview gate, not the connected-workspace chat, automatic return, ChatGPT, physical fresh-machine or model-usefulness gates.
