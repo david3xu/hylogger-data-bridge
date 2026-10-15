@@ -1,7 +1,8 @@
 {
-  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "hylogger",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "Expert-in-the-loop HyLogger drill-hole evidence review and workflow continuation.",
-  "skills": ["skills/hylogger-review"]
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "requires_local_executor": true
 }

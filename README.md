@@ -4,7 +4,21 @@ An expert-in-the-loop investigation toolkit for reviewing an unfamiliar drill ho
 
 **Version one, honestly:** one real hole (SWMB007s) from the public NVCL WA catalogue. The tool checks data quality and compares two depth intervals using TSG-interpreted SWIR mineral groups, shows the evidence in a browser book, records your accept / modify / reject decision with your exact note, and continues the investigation according to that decision. It does not estimate resources, identify minerals from raw spectra, or use assays (none are linked in this case). The local model is weak (see [Limitations](#limitations)).
 
+## Install the Codex desktop preview
+
+Download the Apple Silicon installer from [GitHub Releases](https://github.com/david3xu/hylogger-data-bridge/releases). Extract `hylogger-macos-arm64.zip` and run `bash Install.command` inside its folder. It installs managed Python, the scientific reader, book interface, existing experimental model and the local Codex tools/skill. No source checkout, Node, Git or administrator access is needed. First installation requires internet and about 3 GB of model downloads. Existing models and books are preserved. The preview is unsigned and not notarized.
+
+Open a local Codex conversation in your project folder and ask: **“Review SWMB007s: check data quality and compare 5–10 m with 0–5 m.”** The agent discovers supported packages in that connected workspace, prepares evidence and opens the book. Review the evidence and decide in the book. A bound Codex conversation receives a return notification; its tools read the exact stored decision and continue the matching page. The book shows notification and worker-completion states separately. Unbound cases retain explicit follow-up. Model advice is weak, experimental and non-authoritative.
+
+Your workspace can contain nested package folders, for example `project/SWMB007s_chips/pkg/*_tsg.tsg` with the matching package files. No HyLogger source data is included in the installer. Setup never pins a separate scientific-data folder globally. Use `HYLOGGER_SKIP_HOST=1 bash Install.command` for an isolated standalone install.
+
+For a direct local book, the installer prints the installed command path. Run `hylogger review --workspace /path/to/project` to discover packages, then add `--package SWMB007s_chips --target 5 10 --reference 0 5`. After a browser decision, use `hylogger case read --case CASE_ID` and `hylogger case continue --case CASE_ID --continuation CONTINUATION_ID --decision DECISION_ID`. These use the same durable registry as MCP. Existing chats can use this installed fallback until their tool list refreshes.
+
+ChatGPT/Work compatibility and a fresh physical-machine certification remain separate acceptance gates. No PyPI package is published; use the release installer or wheel. See [current implementation evidence](CLAUDE.md#integrated-codex-product) for verified results and limitations.
+
 ## Real-data quickstart
+
+### Developer reproduction
 
 Requires macOS or Linux, Python 3.12, [uv](https://docs.astral.sh/uv/getting-started/installation/), Node.js 22, git and internet access for the one-off downloads (Python/npm packages, pytsg and the public HyLogger package from NCI THREDDS).
 
@@ -15,8 +29,8 @@ npm --prefix app ci && npm --prefix app run build
 
 # Science environment (GSWA pytsg, pinned) and the real package
 uv venv outputs/science-env --python 3.12
-uv pip install --python outputs/science-env/bin/python -r training/science.txt
-python3 -m training.fetch --only SWMB007s_chips.zip
+uv pip install --python outputs/science-env/bin/python -r training/science.txt -e .
+uv run python -m training.fetch --only SWMB007s_chips.zip
 
 # One step: a fresh book for SWMB007s, comparing 5-10 m (target) with 0-5 m (reference)
 export PYTHONPATH=src:.
@@ -43,28 +57,23 @@ outputs/science-env/bin/python -m training.live continue --book outputs/live-boo
 | --- | --- | --- |
 | Real scientific calculations (inventory, QA, interval comparison) | Yes | The quickstart above, from the public package |
 | Advice on the first page without the model | Yes, labelled | Default: the book shows `origin: fixture` and says no trained model was consulted |
-| Actual local model advice | Only with the model bundle | Add `--model outputs/model/real-r1/model --model-python <model environment python>` to `demo`. The bundle (Qwen3.5-4B base, LoRA adapters, decision head) is not published; [training](developer/docs/training.md#r1-real-data-pilot) documents how it was made |
+| Actual local model advice | Only with the model bundle | Add `--model outputs/model/real-r1/model --model-python <model environment python>` to `demo`. The public preview distributes the bundle (Qwen3.5-4B base, LoRA adapters, decision head); [training](developer/docs/training.md#r1-real-data-pilot) documents how it was made |
 
 No step needs a paid service or account. The model, when used, runs offline with network access blocked.
 
 ## Connecting an AI tool
 
-`uv run hylogger-mcp --db <book>` starts a stdio MCP adapter that exposes the book's worker operations: read the book, claim, acknowledge or fail a delivery, submit evidence or a result, request advice and read delivery attempts. See the [API](developer/docs/api.md).
+The installed preview registers expert MCP tools and the review skill through Codex's supported local commands. Open a new local conversation after installation if its tools have not refreshed. Tools discover data only in the authorised workspace supplied by the chat, including nested package folders; a connected folder is not automatically uploaded. See the [plugin guide](plugins/hylogger/README.md) for installation, return binding and the developer route.
 
-Not yet available or verified: the scientific QA and interval comparison are not MCP tools (version one runs them through `continue`); no ChatGPT or Codex plugin is published; automatic selection of these tools during normal chat and automatic continuation after a browser decision have not been demonstrated. The intended next version is: install once, connect a supported data folder, chat normally, watch the book, decide, continue.
+Expert tools: `find_packages`, `list_cases`, `start_case`, `read_case`, `open_book`, `continue_case`. They prepare evidence and consume committed browser decisions. None records a human decision. A lightweight watcher notifies the bound Codex conversation for new work; the receiving agent verifies the exact decision and continuation before acting. The local book reports queue and work states separately. Browser display heartbeats do not invoke an LLM.
 
-### Codex plugin (preview)
-
-A preview plugin package for Codex desktop is provided in `plugins/hylogger/`:
-- **Demonstration:** Expert chats normally → Codex selects our tools → real evidence book opens → expert decides IN THE BROWSER → expert returns to chat and says they decided → Codex verifies the committed decision through a tool → continues. This is EXPLICIT chat continuation, not automatic browser-to-agent continuation.
-- **Tools:** `start_case`, `read_case`, `continue_case`, `open_book`, `find_packages`, `list_cases`.
-- **Status:** Tool operation is verified by smoke test; host acceptance in Codex desktop is UNVERIFIED. See [plugins/hylogger/README.md](plugins/hylogger/README.md) for local installation instructions.
+For developer reproduction, `python3 scripts/setup_plugin.py --data-root data/raw/nvcl` retains the source-checkout route. The worker MCP (`uv run hylogger-mcp --db <book>`) is a separate technical interface. See the [API](developer/docs/api.md); neither a worker smoke test nor a queue receipt alone establishes a completed chat round trip.
 
 ## Limitations
 
 - **Model.** Qwen3.5-4B fine-tuned on 960 real-measurement records whose labels are teaching rules, not expert decisions. On 240 held-out records it answers `clarify` every time: 38.75%, exactly the majority baseline (untrained 17.5%). Treat its advice as an experimental, disclosed negative result. Details: [R1 real-data pilot](developer/docs/training.md#r1-real-data-pilot).
 - **Science.** Mineral groups are TSG's own SWIR interpretations of clean spots, not fresh identification from spectra. Only QA and interval comparison are implemented for the real case; no assay overlap is calculated or claimed.
-- **Workflow.** The worker that continues after your decision is an explicit command, not an automatic chat agent. Modified intervals are passed by an operator; notes are never parsed.
+- **Workflow.** Bound Codex cases support automatic return; unbound cases use explicit follow-up. Modified intervals must be validated explicitly; notes are never executed as instructions.
 - **Validation.** No expert geological validation has been recorded. Decisions made while testing are labelled `[TEST DECISION — not expert validation]`.
 
 ## Data

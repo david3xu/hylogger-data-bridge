@@ -1,20 +1,28 @@
 # Purpose: case registry and expert operations for authoritative multi-case routing.
+import fcntl
 import json
-import os
-import re
-import socket
 import sqlite3
 import subprocess
-import sys
 import threading
-import time
-import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from hylogger_bridge.advice.provider import Provider
 from hylogger_bridge.book import BookStore
+from hylogger_bridge.cases.context import save_workspace, workspace_of
+from hylogger_bridge.cases.dispatch import (
+    CommandRunner,
+    WatcherRegistry,
+    bind_session,
+    check_and_dispatch,
+    load_dispatches,
+    load_session_binding,
+    unbind_session,
+)
+from hylogger_bridge.cases.identity import case_slug as case_slug
+from hylogger_bridge.cases.identity import interval, resolve_package
+from hylogger_bridge.cases.identity import is_valid_case_id as is_valid_case_id
 from hylogger_bridge.cases.runtime import (
     continue_case,
     create_initial_page,
@@ -22,116 +30,11 @@ from hylogger_bridge.cases.runtime import (
 from hylogger_bridge.cases.runtime import (
     start_case as runtime_start_case,
 )
+from hylogger_bridge.cases.servers import get_or_start_server
 from hylogger_bridge.science.package import name_of
+from hylogger_bridge.store import scenes
 
 ServerLauncher = Callable[[Path, str, Path], str]
-
-
-def is_valid_case_id(case_id: str) -> bool:
-    return bool(re.match(r"^[a-zA-Z0-9_-]+$", case_id)) and not case_id.startswith("-")
-
-
-def case_slug(
-    package_id: str,
-    target: tuple[float, float] | list[float],
-    reference: tuple[float, float] | list[float],
-) -> str:
-    pkg = re.sub(r"[^a-zA-Z0-9_-]", "_", package_id.strip()).lower()
-    t0, t1 = float(target[0]), float(target[1])
-    r0, r1 = float(reference[0]), float(reference[1])
-    return f"{pkg}-{t0:g}_{t1:g}-vs-{r0:g}_{r1:g}"
-
-
-def resolve_package(data_root: Path, package_id: str) -> Path:
-    if not package_id or not isinstance(package_id, str):
-        raise ValueError("package_id must be a non-empty string")
-    clean_id = package_id.strip()
-    if ".." in clean_id or "/" in clean_id or "\\" in clean_id:
-        raise ValueError(f"Invalid package_id: {package_id!r}")
-    candidate = (data_root / clean_id).resolve()
-    data_root_resolved = data_root.resolve()
-    if not candidate.is_relative_to(data_root_resolved):
-        raise ValueError(f"Package path {candidate} escapes data root {data_root}")
-    if not candidate.is_dir():
-        raise ValueError(f"Package {package_id} not found in {data_root}")
-    pkg_sub = candidate / "pkg"
-    if pkg_sub.is_dir():
-        return pkg_sub
-    return candidate
-
-
-def is_port_in_use(port: int) -> bool:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(("127.0.0.1", port)) == 0
-
-
-def check_book_server_alive(pid: int, port: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-    try:
-        req = urllib.request.Request(f"http://127.0.0.1:{port}/api/book", method="GET")
-        with urllib.request.urlopen(req, timeout=0.5) as resp:
-            return bool(resp.status == 200)
-    except Exception:
-        return False
-
-
-def get_or_start_server(cases_dir: Path, case_id: str, book_path: Path) -> str:
-    server_file = cases_dir / f"{case_id}.server.json"
-    if server_file.is_file():
-        try:
-            info = json.loads(server_file.read_text())
-            pid = int(info["pid"])
-            port = int(info["port"])
-            if check_book_server_alive(pid, port):
-                return f"http://127.0.0.1:{port}"
-        except Exception:
-            pass
-        try:
-            server_file.unlink(missing_ok=True)
-        except OSError:
-            pass
-
-    target_port = 8766
-    if is_port_in_use(target_port):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(("127.0.0.1", 0))
-            target_port = s.getsockname()[1]
-
-    repo_root = (
-        Path(os.environ["HYLOGGER_HOME"]).resolve()
-        if os.environ.get("HYLOGGER_HOME")
-        else Path(__file__).resolve().parents[3]
-    )
-    static_root = (repo_root / "app" / "dist").resolve()
-
-    cmd = [
-        sys.executable,
-        "-m",
-        "hylogger_bridge.book_server",
-        "--db",
-        str(book_path.resolve()),
-        "--port",
-        str(target_port),
-        "--static-root",
-        str(static_root),
-    ]
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    deadline = time.time() + 3.0
-    while time.time() < deadline:
-        if check_book_server_alive(proc.pid, target_port):
-            break
-        time.sleep(0.05)
-
-    server_file.write_text(json.dumps({"pid": proc.pid, "port": target_port}) + "\n")
-    return f"http://127.0.0.1:{target_port}"
 
 
 class CaseRegistry:
@@ -140,21 +43,59 @@ class CaseRegistry:
     def __init__(
         self,
         cases_dir: Path,
-        data_root: Path,
-        provider: Provider,
+        data_root: Path | None = None,
+        provider: Provider | None = None,
         science: Any = None,
         default_db: Path | None = None,
         server_launcher: ServerLauncher | None = None,
+        cmd_runner: CommandRunner = subprocess.run,
+        watcher_interval: float = 1.0,
+        workspace_auto: bool = False,
     ) -> None:
         self.cases_dir = cases_dir.resolve()
-        self.data_root = data_root.resolve()
+        self.data_root = data_root.resolve() if data_root is not None else None
+        self.workspace_auto = workspace_auto or (self.data_root is None)
         self.provider = provider
         self.science = science
         self.default_db = default_db.resolve() if default_db else None
         self.server_launcher = server_launcher
+        self.cmd_runner = cmd_runner
+        self.watcher_interval = watcher_interval
         self._stores: dict[str, BookStore] = {}
+        self._watchers = WatcherRegistry()
         self._lock = threading.Lock()
         self.cases_dir.mkdir(parents=True, exist_ok=True)
+
+    def _start_watcher_if_bound(self, case_id: str) -> None:
+        binding = load_session_binding(self.cases_dir, case_id)
+        if binding and binding.get("active"):
+            self._watchers.start_watcher(
+                self.cases_dir,
+                case_id,
+                lambda: self.get_store(case_id),
+                interval=self.watcher_interval,
+                cmd_runner=self.cmd_runner,
+            )
+
+    def bind_case(self, case_id: str, session_id: str) -> dict[str, Any]:
+        store = self.get_store(case_id)
+        record = bind_session(self.cases_dir, case_id, session_id)
+        self._start_watcher_if_bound(case_id)
+        check_and_dispatch(
+            self.cases_dir,
+            case_id,
+            store,
+            cmd_runner=self.cmd_runner,
+        )
+        return record
+
+    def unbind_case(self, case_id: str) -> dict[str, Any]:
+        _ = self.get_store(case_id)
+        self._watchers.stop_watcher(case_id)
+        return unbind_session(self.cases_dir, case_id)
+
+    def close(self) -> None:
+        self._watchers.stop_all()
 
     def get_store(self, case_id: str | None = None) -> BookStore:
         if case_id is None:
@@ -180,48 +121,73 @@ class CaseRegistry:
             self._stores[case_id] = store
             return store
 
+    def resolve_workspace(self, workspace: str | Path | None = None) -> Path:
+        if workspace is not None:
+            cleaned = str(workspace).strip()
+            if not cleaned:
+                raise ValueError("workspace cannot be empty")
+            p = Path(cleaned).resolve()
+            if not p.is_dir():
+                raise ValueError(
+                    f"Authorised workspace does not exist or is not a directory: {workspace}"
+                )
+            return p
+        if self.data_root is not None:
+            return self.data_root
+        raise ValueError(
+            "No authorised workspace provided. Pass 'workspace' with the path to the "
+            "folder connected to the conversation."
+        )
+
     def start_case(
         self,
         package_id: str,
         target: tuple[float, float] | list[float],
         reference: tuple[float, float] | list[float],
+        session_id: str | None = None,
+        workspace: str | Path | None = None,
     ) -> dict[str, Any]:
-        if len(target) != 2 or len(reference) != 2:
-            raise ValueError("target and reference must each have 2 elements [top, bottom]")
-        t = (float(target[0]), float(target[1]))
-        r = (float(reference[0]), float(reference[1]))
-        if t[0] >= t[1] or r[0] >= r[1]:
-            raise ValueError("Interval bounds must be finite and increasing")
-
-        case_id = case_slug(package_id, t, r)
+        data_root = self.resolve_workspace(workspace)
+        t, r = interval(target), interval(reference)
+        if self.workspace_auto or (workspace is not None and data_root != self.data_root):
+            case_id = case_slug(package_id, t, r, workspace=data_root)
+        else:
+            case_id = case_slug(package_id, t, r)
+            # Old public case IDs remain usable; only reuse when stored scientific criteria match.
+            legacy = f"{package_id.strip().lower()}-{t[0]:g}_{t[1]:g}-vs-{r[0]:g}_{r[1]:g}"
+            if is_valid_case_id(legacy) and (self.cases_dir / f"{legacy}.sqlite3").exists():
+                old = self.get_store(legacy)
+                if self._matches(old, package_id, t, r, workspace=data_root):
+                    case_id = legacy
         book_path = self.cases_dir / f"{case_id}.sqlite3"
-
-        with self._lock:
+        with self._lock, (self.cases_dir / f"{case_id}.init.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
             if book_path.exists():
-                # Reusing existing case without restart or overwrite
-                if case_id not in self._stores:
-                    self._stores[case_id] = BookStore(
-                        book_path, provider=self.provider, science=self.science
-                    )
-                store = self._stores[case_id]
+                store = self._stores.get(case_id)
+                if store is None:
+                    store = BookStore(book_path, provider=self.provider, science=self.science)
+                    self._stores[case_id] = store
                 snapshot = store.snapshot()
                 page1 = snapshot["pages"][0]
-                advice = page1.get("assessment") or {}
-                readable = [
-                    {"id": e["id"], "label": e.get("label", e["id"]), "value": e["value"]}
-                    for e in page1.get("evidence", [])
-                ]
-                return {
-                    "case_id": case_id,
-                    "reused": True,
-                    "page": page1["id"],
-                    "status": page1["status"],
-                    "advice_origin": advice.get("origin"),
-                    "model_version": advice.get("model_version"),
-                    "readable_evidence": readable,
-                }
+                if not self._matches(store, package_id, t, r, workspace=data_root):
+                    with sqlite3.connect(store.path) as conn:
+                        attached = scenes.get(conn, page1["id"])
+                    if attached is not None:
+                        raise ValueError("stored case scene does not match the requested criteria")
+                    expected = create_initial_page(package_id, t, r)["page"]["question"]
+                    if page1["question"] != expected:
+                        raise ValueError("stored case does not match the requested criteria")
+                if page1["status"] == "draft":
+                    pkg_folder = resolve_package(data_root, package_id)
+                    runtime_start_case(store, pkg_folder, package_id, t, r)
+                    page1 = store.snapshot()["pages"][0]
+                save_workspace(self.cases_dir, case_id, data_root)
+                if session_id:
+                    bind_session(self.cases_dir, case_id, session_id)
+                    self._start_watcher_if_bound(case_id)
+                return self._started(case_id, page1, True, workspace=data_root)
 
-            pkg_folder = resolve_package(self.data_root, package_id)
+            pkg_folder = resolve_package(data_root, package_id)
             initial_page = create_initial_page(package_id, t, r)
             store = BookStore(
                 book_path, provider=self.provider, science=self.science, start=initial_page
@@ -229,26 +195,69 @@ class CaseRegistry:
             self._stores[case_id] = store
 
             runtime_start_case(store, pkg_folder, package_id, t, r)
-            snapshot = store.snapshot()
-            page1 = snapshot["pages"][0]
-            advice = page1.get("assessment") or {}
-            readable = [
-                {"id": e["id"], "label": e.get("label", e["id"]), "value": e["value"]}
-                for e in page1.get("evidence", [])
-            ]
-            return {
-                "case_id": case_id,
-                "reused": False,
-                "page": page1["id"],
-                "status": page1["status"],
-                "advice_origin": advice.get("origin"),
-                "model_version": advice.get("model_version"),
-                "readable_evidence": readable,
-            }
+            save_workspace(self.cases_dir, case_id, data_root)
+            if session_id:
+                bind_session(self.cases_dir, case_id, session_id)
+                self._start_watcher_if_bound(case_id)
+            return self._started(case_id, store.snapshot()["pages"][0], False, workspace=data_root)
 
-    def read_case(self, case_id: str) -> dict[str, Any]:
+    @staticmethod
+    def _matches(
+        store: BookStore,
+        package_id: str,
+        target: Any,
+        reference: Any,
+        workspace: Path | None = None,
+    ) -> bool:
+        page = store.snapshot()["pages"][0]
+        with sqlite3.connect(store.path) as conn:
+            scene = scenes.get(conn, page["id"])
+        if scene is None:
+            return False
+        matched = (
+            scene["package_id"] == package_id.strip()
+            and tuple(scene["target"]) == tuple(target)
+            and tuple(scene["reference"]) == tuple(reference)
+        )
+        if not matched:
+            return False
+        if workspace is not None:
+            folder = Path(scene.get("folder", "")).resolve()
+            if not folder.is_relative_to(workspace.resolve()):
+                return False
+        return True
+
+    def _started(
+        self,
+        case_id: str,
+        page: dict[str, Any],
+        reused: bool,
+        workspace: Path | None = None,
+    ) -> dict[str, Any]:
+        advice = page.get("assessment") or {}
+        binding = load_session_binding(self.cases_dir, case_id)
+        res = {
+            "case_id": case_id,
+            "reused": reused,
+            "page": page["id"],
+            "status": page["status"],
+            "advice_origin": advice.get("origin"),
+            "model_version": advice.get("model_version"),
+            "assessment": page.get("assessment"),
+            "readable_evidence": page.get("evidence", []),
+        }
+        if binding:
+            res["session_binding"] = binding
+        if workspace:
+            res["workspace"] = str(workspace)
+        return res
+
+    def read_case(self, case_id: str, unbind: bool = False) -> dict[str, Any]:
+        if unbind:
+            self.unbind_case(case_id)
         store = self.get_store(case_id)
         store.expire_deliveries()
+        self._start_watcher_if_bound(case_id)
         snapshot = store.snapshot()
         pending_conts = [
             c for c in snapshot.get("continuations", []) if c.get("state") == "pending"
@@ -259,30 +268,34 @@ class CaseRegistry:
         for p in snapshot.get("pages", []):
             decision = None
             if p.get("decision"):
-                decision = {
-                    "choice": p["decision"]["choice"],
-                    "note": p["decision"]["note"],
-                    "actor": p["decision"].get("actor"),
-                }
+                decision = dict(p["decision"])
             pages_summary.append(
                 {
                     "id": p["id"],
                     "number": p["number"],
+                    "revision": p["revision"],
+                    "question": p["question"],
+                    "summary": p["summary"],
                     "title": p.get("title"),
                     "status": p["status"],
                     "outcome": p.get("outcome"),
-                    "readable_evidence": [
-                        {"id": e["id"], "label": e.get("label", e["id"]), "value": e["value"]}
-                        for e in p.get("evidence", [])
-                    ],
+                    "readable_evidence": [dict(e) for e in p.get("evidence", [])],
                     "decision": decision,
+                    "assessment": p.get("assessment"),
+                    "action": p.get("action"),
                 }
             )
 
+        binding = load_session_binding(self.cases_dir, case_id)
+        dispatches = load_dispatches(self.cases_dir, case_id)
         return {
             "case_id": case_id,
             "pages": pages_summary,
             "human_decision_pending": human_decision_pending,
+            "session_binding": binding,
+            "dispatches": list(dispatches.values()),
+            "continuations": snapshot.get("continuations", []),
+            "workspace": str(workspace_of(self.cases_dir, case_id) or self.data_root or ""),
         }
 
     def continue_case_tool(
@@ -290,13 +303,40 @@ class CaseRegistry:
         case_id: str,
         target: tuple[float, float] | list[float] | None = None,
         reference: tuple[float, float] | list[float] | None = None,
+        session_id: str | None = None,
+        workspace: str | Path | None = None,
+        unbind: bool = False,
+        continuation_id: str | None = None,
+        decision_id: str | None = None,
     ) -> dict[str, Any]:
         store = self.get_store(case_id)
+        original = workspace_of(self.cases_dir, case_id)
+        data_root = self.resolve_workspace(workspace or original)
+        if original is not None and data_root != original:
+            raise ValueError("Continuation workspace differs from the original case workspace")
         store.expire_deliveries()
         snapshot = store.snapshot()
         pending_conts = [
             c for c in snapshot.get("continuations", []) if c.get("state") == "pending"
         ]
+        if continuation_id is not None:
+            notified = next(
+                (c for c in snapshot.get("continuations", []) if c["id"] == continuation_id), None
+            )
+            if notified is None or (decision_id and notified["decision_id"] != decision_id):
+                raise ValueError("Return notification does not match this case decision")
+            if notified["state"] == "completed":
+                return {
+                    "case_id": case_id,
+                    "status": "already_completed",
+                    "page": notified["successor_id"],
+                }
+            if not pending_conts or pending_conts[0]["id"] != continuation_id:
+                raise ValueError("Return notification is stale or its work is already claimed")
+        if unbind:
+            self.unbind_case(case_id)
+        elif session_id:
+            self.bind_case(case_id, session_id)
         if not pending_conts:
             return {
                 "case_id": case_id,
@@ -308,13 +348,17 @@ class CaseRegistry:
                 ),
             }
 
+        with sqlite3.connect(store.path) as conn:
+            stored = conn.execute("SELECT scene FROM scenes").fetchall()
+        for (encoded,) in stored:
+            scene = json.loads(encoded)
+            expected = resolve_package(data_root, scene["package_id"])
+            if Path(scene["folder"]).resolve() != expected:
+                raise ValueError("case scene is outside the currently authorised package folder")
         done = continue_case(store, target=target, reference=reference, on_no_pending="raise_error")
         snapshot = store.snapshot()
         successor = next(p for p in snapshot["pages"] if p["id"] == done["page"])
-        readable = [
-            {"id": e["id"], "label": e.get("label", e["id"]), "value": e["value"]}
-            for e in successor.get("evidence", [])
-        ]
+        readable = [dict(e) for e in successor.get("evidence", [])]
         result_dict = {
             "case_id": case_id,
             "status": "continued",
@@ -338,25 +382,50 @@ class CaseRegistry:
             url = get_or_start_server(self.cases_dir, case_id, book_path)
         return {"case_id": case_id, "url": url}
 
-    def find_packages_tool(self, hole: str | None = None) -> dict[str, Any]:
-        packages = []
-        if self.data_root.is_dir():
-            for p in sorted(self.data_root.iterdir()):
-                if not p.is_dir():
+    def find_packages_tool(
+        self, hole: str | None = None, workspace: str | Path | None = None
+    ) -> dict[str, Any]:
+        root = self.resolve_workspace(workspace)
+        packages: list[dict[str, str]] = []
+        if not root.is_dir():
+            return {"packages": []}
+
+        discovered_dirs: set[Path] = set()
+        for tsg_file in sorted(root.glob("**/*_tsg.tsg")):
+            if not tsg_file.resolve().is_relative_to(root):
+                continue
+            pkg_dir = tsg_file.parent.resolve()
+            if not pkg_dir.is_relative_to(root):
+                continue
+            actual_pkg = (
+                pkg_dir.parent.resolve()
+                if pkg_dir.name == "pkg" and pkg_dir.parent.resolve().is_relative_to(root)
+                else pkg_dir
+            )
+            if actual_pkg in discovered_dirs:
+                continue
+
+            rel = actual_pkg.relative_to(root)
+            package_id = rel.as_posix()
+            try:
+                resolve_package(root, package_id)
+            except ValueError:
+                continue
+            discovered_dirs.add(actual_pkg)
+
+            hole_id = name_of(actual_pkg.name)
+
+            if hole:
+                h_clean = hole.strip().lower()
+                if h_clean != hole_id.lower() and h_clean not in hole_id.lower():
                     continue
-                pkg_sub = p / "pkg"
-                pkg_dir = pkg_sub if pkg_sub.is_dir() else p
-                if any(pkg_dir.glob("*_tsg.tsg")):
-                    hole_id = name_of(p.name)
-                    if hole:
-                        h_clean = hole.strip().lower()
-                        if h_clean != hole_id.lower() and h_clean not in hole_id.lower():
-                            continue
-                    packages.append({"hole_id": hole_id, "package_id": p.name})
+            packages.append({"hole_id": hole_id, "package_id": package_id})
+
         return {"packages": packages}
 
-    def list_cases_tool(self) -> dict[str, Any]:
+    def list_cases_tool(self, workspace: str | Path | None = None) -> dict[str, Any]:
         cases = []
+        target_ws = self.resolve_workspace(workspace) if workspace else None
         if self.cases_dir.is_dir():
             for p in sorted(self.cases_dir.glob("*.sqlite3")):
                 case_id = p.stem
@@ -375,6 +444,7 @@ class CaseRegistry:
                         hole_id = ""
                         target = None
                         reference = None
+                        case_folder = None
                         s_row = conn.execute("SELECT scene FROM scenes LIMIT 1").fetchone()
                         if s_row:
                             scene = json.loads(s_row[0])
@@ -384,17 +454,23 @@ class CaseRegistry:
                             )
                             target = scene.get("target")
                             reference = scene.get("reference")
+                            case_folder = scene.get("folder")
 
-                        cases.append(
-                            {
-                                "case_id": case_id,
-                                "hole": hole_id,
-                                "target": target,
-                                "reference": reference,
-                                "last_page_status": last_status,
-                                "pages_count": len(pages),
-                            }
-                        )
+                        if target_ws and case_folder:
+                            if not Path(case_folder).resolve().is_relative_to(target_ws):
+                                continue
+
+                        case_info: dict[str, Any] = {
+                            "case_id": case_id,
+                            "hole": hole_id,
+                            "target": target,
+                            "reference": reference,
+                            "last_page_status": last_status,
+                            "pages_count": len(pages),
+                        }
+                        if case_folder:
+                            case_info["folder"] = case_folder
+                        cases.append(case_info)
                 except Exception:
                     continue
         return {"cases": cases}

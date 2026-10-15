@@ -1,7 +1,10 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
   "mcpServers": {
     "hylogger": {
-      "command": "./bin/hylogger-mcp"
+      "type": "stdio",
+      "command": "${PLUGIN_ROOT}/bin/hylogger-mcp",
+      "cwd": "${PLUGIN_ROOT}"
     }
   }
 }

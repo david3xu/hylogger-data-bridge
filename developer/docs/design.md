@@ -60,7 +60,7 @@ The next bounded scientific slice is [S1 in the task plan](tasks.md#s1--inspect-
 
 Use React/TypeScript with Vite and a local Python service. SQLite owns persistent pages and event history. Versioned templates fill a working page as actual evidence arrives. Submitting a choice and note atomically records that decision, locks the page and creates its linked successor. Corrections create new pages; locked history is immutable.
 
-SSE notifies the viewer only after committed writes. Sequence IDs, replay and authoritative snapshots recover after disconnect/reload. Reading history pauses auto-navigation; returning to the current page resumes following. Heartbeats only maintain a connection: they do not create evidence, turn pages or invoke models.
+SSE notifies the viewer only after committed writes. Sequence IDs, replay and authoritative snapshots recover after disconnect/reload. Reading history pauses auto-navigation; returning to the current page resumes following. Transport keepalives only maintain a connection: they do not create evidence, turn pages or invoke models.
 
 Keep synthetic fixtures visibly labelled. A workflow choice is not scientific approval. The current staged runner is separate from both model inference and real scientific analysis.
 
@@ -68,11 +68,23 @@ Keep synthetic fixtures visibly labelled. A workflow choice is not scientific ap
 
 The existing demo saves decisions and updates the browser. The missing bridge must deliver the exact committed choice/note to the intended agent investigation, then return results to its successor page.
 
+Owner clarification (15 October 2026): automatic updates in both directions remain the intended product behaviour. A lightweight watcher may check for newly committed decisions; unchanged checks must not invoke a model. A new pending decision must reach the bound host investigation through a supported adapter, which starts or queues actual agent work and returns evidence to the book. SSE keepalives, polling a queue and starting a model turn are distinct operations. Manual chat follow-up is a fallback and does not pass automatic-loop acceptance. This host wakeup is still unimplemented; no automatic mode may be advertised until the same-session round trip is observed.
+
 Persist the decision, successor and pending continuation in one transaction. Carry stable decision/run/page IDs, schema version, locked revision, successor ID, reviewed evidence references, timestamp and actual actor. Send submitted input rather than keystrokes or autosave drafts. A compact host receipt can identify the committed decision; tools retrieve authoritative context.
 
 Use at-least-once delivery with idempotent application effects. Track pending/running/completed/failed states, bounded retries and recoverable claims when workers compete. Acknowledgement and successful investigation completion are distinct. Do not promise exactly-once external model invocation across crashes. Reject stale writes and late results targeting locked/unrelated pages. Add a general worker-to-ready transition independent of the synthetic runner, including honest partial/failed evidence.
 
 First prove a supported round trip in Codex desktop. A generic browser SSE event, MCP tool call or context update alone does not demonstrate model continuation. Retain the standalone browser. If a native host panel is necessary, bring that container change for review before replacing the selected experience. Do not inject keystrokes, guess the foreground chat, edit undocumented settings or silently introduce a separately billed API/cloud path.
+
+Official capabilities need host-specific verification: [Codex App Server](https://learn.chatgpt.com/docs/app-server) exposes explicit turn-start operations for clients, but this does not establish that a plugin can attach to an existing desktop conversation. [MCP Events](https://developers.openai.com/plugins/build/mcp-events) documents webhook-triggered Work Cloud/dot surfaces; it does not prove the local Codex route. Do not replace that missing proof with a recurring model call labelled a heartbeat.
+
+## Installed product
+
+The owner assigned automatic return to AGY on `codex/agy-return`, with Codex owning installation on `codex/product-install`. Both start from the reviewed repair baseline `977bcd2`; they integrate through separate PRs. The owner manually relays the worker brief. A brief does not dispatch a worker.
+
+The first installed target is macOS Apple Silicon with an installed, signed-in local host. A release wheel carries the built book UI, schema and plugin assets. Runtime code uses installed resources and per-user configuration/books; it must not import `training`, require a source checkout, run Node or install developer tools. Setup registers the local marketplace through supported host commands and retains existing books/preferences. The installer manages Python and scientific dependencies; it does not ask for a separate data folder. At use time, the adapter takes the authorised workspace already connected to the current conversation, scopes discovery there and distinguishes investigations in different workspaces. A shared MCP process's cwd or global data_root is not proof of that context. The fixed --data-root route remains for developer reproduction only. The initial packaged entry point reserves --workspace-auto and the adapter's WORKSPACE_AUTO capability flag; until that adapter is integrated it fails clearly instead of silently scanning a guessed folder. Model inference uses a verified local bundle; no retraining occurs during installation. A private full demo kit may include the existing weights, but neither this assignment nor a successful build publishes a package, model or plugin listing. Missing model assets must be visible and must never silently become fixture advice.
+
+Verify the wheel from outside the checkout with an isolated user home/cache, installed assets, real package QA/comparison and the local model. This tests removal of development-machine dependencies; it is not a fresh physical-machine or signed/notarized release claim. End-to-end product acceptance also requires AGY's actual same-conversation automatic return proof.
 
 ## Local decision model
 
@@ -102,9 +114,9 @@ The full model feature requires demonstrated real-data fine-tuning, meaningful a
 
 ## Package and hosts
 
-Target one Python runtime with scientific operations, book service, trained inference assets and prebuilt React assets, exposed through a thin MCP adapter and CLI. End users should not need Node, a source checkout, training libraries or a training run. Keep immutable installed assets separate from writable per-user books. The one-command product installer is a future goal, not an available release; host enablement/consent is a separate step.
+Target one Python runtime with scientific operations, book service, trained inference assets and prebuilt React assets, exposed through a thin MCP adapter and CLI. End users should not need Node, a source checkout, training libraries or a training run. Keep immutable installed assets separate from writable per-user books. The Apple Silicon preview installer supplies managed Python, the prebuilt book, scientific runtime, existing model and Codex registration. ChatGPT/Work acceptance and signed distribution remain separate.
 
-The target experience is unchanged: install once, connect a supported data folder, chat normally, watch the book, decide and continue. Version one ships a documented fallback instead (see the [README quickstart](../../README.md#real-data-quickstart)): explicit `training.live demo` and `continue` commands beside the browser book. The fallback is not the target experience and does not demonstrate tool selection during chat or automatic continuation.
+The target experience is unchanged: install once, connect a supported data folder, chat normally, watch the book, decide and continue. The developer fallback remains documented in the [README quickstart](../../README.md#real-data-quickstart). The installed Codex adapter uses a shared durable registry and exact decision/continuation IDs for automatic return. Actual receiving-side acceptance is recorded separately from transport tests.
 
 Share contracts, science, model, backend and templates across hosts. Installation, transport, panel integration and message delivery use capability-based adapters. Test Codex desktop first and ChatGPT desktop separately. A local Python install does not establish ChatGPT web connectivity. Codex CLI can use the standalone book with explicit follow-up until a supported automatic route is proven. Web/cloud/tunnel distribution is deferred.
 
@@ -131,3 +143,13 @@ Use one responsibility at every level. Prefer short familiar names; parent direc
 | `app/src/state/`, `transport/`, `host/` | Reader state, backend access, capability messaging |
 
 Python paths above live under `src/hylogger_bridge/`. Add them only when implemented behaviour requires extraction. Keep training developer-only. Adapters must not call one another over HTTP to reuse logic; UI must not duplicate scientific calculations. Extract existing broad files in bounded changes preserving imports, commands and books. Do not leave a module and same-named package competing for imports.
+
+
+## Public preview release
+
+The owner authorised public distribution and a download/fresh-install acceptance test on 15 October 2026, without waiting for the separate automatic-return worker. Publish a pinned GitHub prerelease, not an implicit claim of PyPI or ChatGPT support. Include the installed science runtime, book and existing experimental model; exclude all source HyLogger data and private machine paths. A standalone `hylogger review` command operates on the workspace chosen for that invocation, with workspace-separated books. It never records expert decisions. Chat host registration is optional until its workspace adapter is integrated. Verify downloads and the model before use, retain third-party notices, and test in a new profile and copied real-data folder.
+
+
+## Integrated product closeout
+
+On 15 October 2026 the owner assigned all remaining implementation and integration to Codex and explicitly authorised merging the completed code into main and publishing an updated product. Preserve the other checkouts and existing books. The installed CLI and MCP must share one durable registry; workspace identity belongs in the case ID and persisted context, not in an entry-point-specific directory. A return event must resolve the exact decision and continuation, including delayed/duplicate notifications. Rebinding the same live conversation is idempotent. Register the installed MCP through the supported host CLI and verify actual tool discovery; a loaded skill alone is insufficient. Test the receiving side on a durable labelled case before claiming the automatic loop. ChatGPT/Work support remains host-specific and must not be inferred from a Codex queue receipt.

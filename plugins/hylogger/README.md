@@ -1,119 +1,40 @@
-# HyLogger Evidence Review Plugin for Codex Desktop (Preview)
+# HyLogger local Codex preview
 
-This plugin provides local Model Context Protocol (MCP) expert tools and skill instructions
-for reviewing HyLogger drill-hole spectral data within Codex desktop.
+Install once, open a local chat in a supported data workspace, and ask for drill-hole evidence review. The installed tools read local TSG packages, calculate QA and compare intervals. The expert decides in the browser book; the agent verifies the stored decision before continuing. Model advice is experimental and weak.
 
-## What this slice demonstrates
+## Installed product
 
-Expert chats normally → Codex selects our tools → real evidence book opens → expert decides IN THE BROWSER → expert returns to chat and says they decided → Codex verifies the committed decision through a tool → continues. This is EXPLICIT chat continuation, not automatic browser-to-agent continuation.
+Use the [public preview installer](https://github.com/david3xu/hylogger-data-bridge/releases). It provides managed Python, prebuilt UI, the scientific runtime and the existing fine-tuned model. No source checkout, Node or fixed data folder is required. Setup registers only HyLogger's local marketplace/plugin and its installed MCP server. An older local HyLogger marketplace is replaced with rollback on failure. Existing books, model assets and unrelated host settings are preserved.
 
-## Capabilities
+Open a new local Codex conversation after installation if tools have not refreshed. Verify the plugin with `codex plugin list --marketplace hylogger-local --json` and the server with `codex mcp list --json`. An already-running chat can use the installed case command through the skill; the expert does not need to type it. This unsigned Apple Silicon preview requires internet during installation; ChatGPT/Work and physical fresh-machine acceptance remain separate.
 
-The plugin exposes six expert tools over stdio MCP (worker tools are hidden in expert mode):
-- `start_case`: Prepare or reuse an authoritative case for a real HyLogger package inside the authorised data directory (`--data-root`).
-- `read_case`: Read a case's pages, readable evidence, decision choice, exact note, and whether a human decision is pending a worker.
-- `continue_case`: Verify that a committed human decision is pending in the book; if not, ask the expert to decide in the browser; otherwise continue with the decision-directed calculation (e.g. interval comparison).
-- `open_book`: Return the local HTTP URL to open the evidence book in the browser, reusing an active server process if already running.
-- `find_packages`: Locate supported packages inside the authorised data folder.
-- `list_cases`: List existing case investigations so conversations can reuse them.
+## Expert workflow
 
-No tool records, edits, or simulates a human decision. Decisions are committed exclusively by human experts in the browser.
+Ask: “Review SWMB007s: check quality and compare 5–10 m with 0–5 m.” The agent obtains the trusted workspace and its actual conversation ID, discovers supported packages there, and asks for missing or ambiguous bounds. No data is bundled or searched outside that authorised workspace.
 
-## Official Packaging Guidance
+1. `start_case` prepares inventory, QA and separately labelled advice; `open_book` returns the local book URL.
+2. The expert reviews evidence and commits accept, modify or reject with the exact note in the browser.
+3. A lightweight watcher queues a notification to the bound Codex conversation. The book distinguishes notification receipt from completed scientific work.
+4. The agent calls `read_case`, matches page/decision/continuation IDs, then calls `continue_case`. The successor contains the result; history stays locked. Duplicate or delayed notifications cannot execute later work accidentally.
 
-Based on the official packaging documentation at https://developers.openai.com/plugins/build/plugins
-(read October 15, 2026), the plugin follows the specifications described in:
-- **"Install a local plugin manually"** (subsections: *"Example repo marketplace"* and *"Personal marketplace example"*)
-- **"Bundled MCP servers and lifecycle hooks"** (portable `mcp.json` manifest)
-- **"Path rules"** (keeping `plugin.json`, `mcp.json`, and `skills/` at plugin root)
+An unbound case or unavailable return channel uses explicit chat follow-up. Browser SSE updates the display; it never invokes an LLM. Notes are expert context, not executable agent instructions. Test decisions are labelled and are not geological validation.
 
-## Prerequisites
+## Tools and model boundary
 
-Before loading the plugin in Codex desktop, run the repository [Real-data quickstart](../../README.md#real-data-quickstart) install block to prepare all runtime assets:
+Six expert MCP tools: `find_packages`, `list_cases`, `start_case`, `read_case`, `open_book`, `continue_case`. Worker operations are separate. No expert tool records a human decision. Installed CLI and MCP share a durable registry and saved original workspace; read/continue/open work across entry points.
+
+The installed model loads offline in a bounded child process. Missing or invalid requested assets fail visibly without fixture substitution. Default developer fixture mode is labelled. The actual model predicts `clarify` for every held-out record (38.75%, majority baseline); it is not useful geological advice. See [training](../../developer/docs/training.md). Scientific results describe TSG-interpreted SWIR groups, not mineral abundance, assays or resource estimates.
+
+## Developer route and evidence
+
+Follow the [developer quickstart](../../README.md#real-data-quickstart), then run:
 
 ```sh
-uv sync --locked
-npm --prefix app ci && npm --prefix app run build
-uv venv outputs/science-env --python 3.12
-uv pip install --python outputs/science-env/bin/python -r training/science.txt
-python3 -m training.fetch --only SWMB007s_chips.zip
+python3 scripts/setup_plugin.py --data-root data/raw/nvcl
+codex plugin marketplace add .
+codex plugin add hylogger@hylogger-local
 ```
 
-This completes the required prerequisites:
-1. **Base Python environment**: `uv sync --locked`.
-2. **Built frontend assets**: `npm --prefix app ci && npm --prefix app run build` generates `app/dist/index.html`.
-3. **Science virtual environment**: `outputs/science-env/bin/python` with pinned `pytsg` installed via `training/science.txt`.
-4. **Authorised drill-hole dataset**: Public package `SWMB007s_chips` fetched into `data/raw/nvcl`.
+This older route requires its checkout and science environment to remain available. `--model` and `--model-python` select an existing bundle; `--fixture` explicitly selects labelled technical fixtures. Production installation uses the bundled installed runtime instead.
 
-## Local Installation in Codex Desktop
-
-### Option A: Repo Marketplace (Official Method)
-
-Following the official guidance section **"Install a local plugin manually"** (*"Example repo marketplace"*):
-
-1. Keep the plugin directory at `$REPO_ROOT/plugins/hylogger`.
-2. Add or update `$REPO_ROOT/.agents/plugins/marketplace.json`:
-   ```json
-   {
-     "name": "local-repo",
-     "plugins": [
-       {
-         "name": "hylogger",
-         "source": {
-           "source": "local",
-           "path": "./plugins/hylogger"
-         },
-         "policy": {
-           "installation": "AVAILABLE",
-           "authentication": "ON_INSTALL"
-         },
-         "category": "Productivity"
-       }
-     ]
-   }
-   ```
-3. Restart or reload Codex desktop and install the HyLogger plugin from the local marketplace.
-
-### Option B: Local MCP Server Configuration
-
-You can also point Codex desktop directly at the launcher via `.mcp.json` / `mcp.json` using the plugin-root-relative path:
-```json
-{
-  "mcpServers": {
-    "hylogger": {
-      "command": "./bin/hylogger-mcp"
-    }
-  }
-}
-```
-
-### Relocation / Setting HYLOGGER_HOME
-
-The launcher script `plugins/hylogger/bin/hylogger-mcp` is working-directory independent:
-- When run within the repository, it automatically resolves `$REPO_ROOT` from its own path (`../../..`).
-- If the plugin folder is copied or moved outside the repository (for example, into `~/.codex/plugins/hylogger` as described under *"Personal marketplace example"*), set the `HYLOGGER_HOME` environment variable to the absolute path of the repository:
-  ```sh
-  export HYLOGGER_HOME="/absolute/path/to/hylogger-data-bridge"
-  ```
-  The launcher will use `$HYLOGGER_HOME` to locate `outputs/science-env`, `app/dist`, and `data/raw/nvcl`.
-
-## Starting a New Conversation
-
-1. Start a new conversation in Codex desktop with the HyLogger plugin active.
-2. Enter the exact prompt:
-   ```text
-   Review hole SWMB007s: compare 5–10 m with 0–5 m and check data quality first.
-   ```
-3. **Expected workflow**:
-   - Codex recognizes the intent and calls `start_case` with `package_id="SWMB007s_chips"`, `target=[5.0, 10.0]`, and `reference=[0.0, 5.0]`.
-   - Codex calls `open_book` to obtain the local evidence book URL (e.g. `http://127.0.0.1:8766`).
-   - Codex explains Page 1 evidence (Interval inventory, QA valid spot counts, TSG exclusions, advisory status of models) and provides the browser URL.
-   - The expert opens the URL in their browser, reviews the evidence, selects a choice (`accept`, `modify`, or `reject`), enters their note, and clicks Commit.
-   - The expert returns to Codex chat and states: *"I have committed my decision in the browser."*
-   - Codex calls `read_case` to confirm `human_decision_pending: true`.
-   - Codex calls `continue_case` to execute the continuation and reports Page 2 results.
-
-## Verification Status
-
-- Tool operation: verified by smoke test
-- Host acceptance in Codex: UNVERIFIED
+The [canonical acceptance record](../../CLAUDE.md#integrated-codex-product) separates unit checks, real-data installed tests and actual host-return acceptance. Queue receipt alone is insufficient. Manifest and marketplace formats follow [official OpenAI packaging guidance](https://developers.openai.com/plugins/build/plugins), checked 15 October 2026. Portable Agent Plugins 1.0.0 manifests retain a compatibility overlay. GitHub prerelease distribution is separate from a public plugin-directory listing.

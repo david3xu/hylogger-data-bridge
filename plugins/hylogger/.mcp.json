@@ -1,7 +1,8 @@
 {
   "mcpServers": {
     "hylogger": {
-      "command": "./bin/hylogger-mcp"
+      "command": "${PLUGIN_ROOT}/bin/hylogger-mcp",
+      "cwd": "${PLUGIN_ROOT}"
     }
   }
 }

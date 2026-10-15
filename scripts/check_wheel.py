@@ -13,6 +13,12 @@ PROBE = (
     "import hylogger_bridge.contracts.load as load\n"
     "assert load.__file__.startswith(sys.argv[1]), load.__file__\n"
     "assert load.schema()['title'].startswith('HyLogger')\n"
+    "from hylogger_bridge.install.paths import asset\n"
+    "assert (asset('book') / 'index.html').is_file()\n"
+    "assert (asset('plugin') / 'plugin.json').is_file()\n"
+    "assert (asset('plugin') / 'skills/hylogger-review/SKILL.md').is_file()\n"
+    "import importlib.metadata as m\n"
+    "assert m.version('pytsg') == '1.0.0'\n"
 )
 
 
@@ -27,13 +33,20 @@ def main() -> None:
         with zipfile.ZipFile(wheel) as archive:
             if archive.read(MEMBER) != (root / "schemas" / "v1.json").read_bytes():
                 raise SystemExit("The wheel lacks schemas/v1.json or carries a different copy")
+            if any(
+                n.startswith(("training/", "cache/", "outputs/", "data/"))
+                for n in archive.namelist()
+            ):
+                raise SystemExit("The wheel contains developer or user data")
         env = work / "venv"
         subprocess.run(["uv", "venv", "--python", sys.executable, str(env)], check=True)
         python = str(env / "bin" / "python")
         subprocess.run(["uv", "pip", "install", "--python", python, str(wheel)], check=True)
         # -I ignores the working directory and environment, so only the installed copy can load.
         subprocess.run([python, "-I", "-c", PROBE, str(env)], cwd=work, check=True)
-    print("Wheel carries the schema and loads outside the checkout")
+    print(
+        "Wheel carries the UI, plugin and schema, installs science and loads outside the checkout"
+    )
 
 
 if __name__ == "__main__":

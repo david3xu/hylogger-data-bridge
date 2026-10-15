@@ -18,7 +18,7 @@ SOURCES = ("_tsg.tsg", "_tsg.bip", "_tsg_tir.tsg", "_tsg_tir.bip")
 
 def name_of(identifier: str) -> str:
     """The hole name inside a catalogue or file label such as KWAC018_chips."""
-    return re.sub(r"[_-]?chips$", "", identifier.strip(), flags=re.IGNORECASE)
+    return re.sub(r"[_-]?chips$", "", Path(identifier.strip()).name, flags=re.IGNORECASE)
 
 
 def _groups(block: Any, column: str) -> tuple[str | None, ...]:
@@ -76,19 +76,20 @@ def identify(package_id: str, claims: Claims) -> tuple[str, tuple[tuple[str, str
     return hole, (("declared package", package_id), *seen)
 
 
-def read(folder: Path, package_id: str) -> Hole:
+def read(folder: Path | str, package_id: str) -> Hole:
     """Read one flat package folder; `package_id` is the catalogue name it was downloaded as."""
-    data = importlib.import_module("pytsg").read_tsg(str(folder))
+    path = Path(folder)
+    data = importlib.import_module("pytsg").read_tsg(str(path))
     if data.nir is None or data.tir is None:
-        raise ValueError(f"{folder} needs both SWIR and TIR products; found {data.available}")
+        raise ValueError(f"{path} needs both SWIR and TIR products; found {data.available}")
     nir, tir = data.nir, data.tir
     if (
         len(nir.scalars) != len(tir.scalars)
         or not (nir.scalars["Depth (m)"].to_numpy() == tir.scalars["Depth (m)"].to_numpy()).all()
     ):
         raise ValueError("SWIR and TIR spots do not line up by depth")
-    hole, identity = identify(package_id, _claims(folder, nir, tir))
-    files = tuple((p.name, _hash(p)) for p in sorted(folder.iterdir()) if p.name.endswith(SOURCES))
+    hole, identity = identify(package_id, _claims(path, nir, tir))
+    files = tuple((p.name, _hash(p)) for p in sorted(path.iterdir()) if p.name.endswith(SOURCES))
     return Hole(
         hole_id=hole,
         depth=tuple(float(v) for v in nir.scalars["Depth (m)"].tolist()),

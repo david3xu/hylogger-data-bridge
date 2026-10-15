@@ -1,0 +1,11 @@
+{
+  "name": "hylogger-local",
+  "plugins": [
+    {
+      "name": "hylogger",
+      "source": {"source": "local", "path": "./plugins/hylogger"},
+      "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+      "category": "Productivity"
+    }
+  ]
+}

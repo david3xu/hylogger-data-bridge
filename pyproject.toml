@@ -4,19 +4,21 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hylogger-data-bridge"
-version = "0.1.0"
-description = "Local next-action learning prototype for HyLogger investigations"
+version = "0.1.2"
+description = "Local scientific evidence review and advisory tools for HyLogger investigations"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = ["pytsg==1.0.0", "numpy==2.5.4", "pandas==3.0.6", "scipy==1.18.1",
+                "simplejpeg==1.9.0", "dhcomp==0.4.7"]
 
 [project.scripts]
+hylogger = "hylogger_bridge.install.cli:main"
 hylogger-policy = "hylogger_bridge.cli:main"
 hylogger-mcp = "hylogger_bridge.mcp.server:main"
 hylogger-walkthrough = "hylogger_bridge.walkthrough:main"
 
 [dependency-groups]
 train = ["scikit-learn==1.7.2"]
-dev = ["pytest==8.4.2", "ruff==0.14.1", "mypy==1.18.2"]
+dev = ["pytest==8.4.2", "ruff==0.14.1", "mypy==1.18.2", "hatchling==1.27.0"]
 
 [tool.uv]
 default-groups = ["dev", "train"]
@@ -26,6 +28,11 @@ packages = ["src/hylogger_bridge"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "schemas/v1.json" = "hylogger_bridge/contracts/v1.json"
+"plugins/hylogger" = "hylogger_bridge/assets/plugin"
+"packaging/notices" = "hylogger_bridge/assets/notices"
+
+[tool.hatch.build.hooks.custom]
+path = "packaging/hook.py"
 
 [tool.ruff]
 target-version = "py312"
@@ -36,7 +43,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.mypy]
 strict = true
-files = ["src", "scripts", "tests"]
+files = ["src", "scripts", "tests", "packaging"]
 
 [[tool.mypy.overrides]]
 module = ["sklearn.*"]
