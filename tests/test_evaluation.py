@@ -128,6 +128,58 @@ class EvaluationTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             evaluate.accept(base, tuned, run, "r", None)
 
+    def test_invalid_probability_reports_are_refused(self) -> None:
+        first = self.good["predictions"][0]
+        offered = list(first["scores"])
+        spread = {offered[0]: 1.0, offered[1]: 0.0, offered[2]: 0.0, offered[3]: 0.0}
+        cases = {
+            "nan": {k: float("nan") for k in offered},
+            "bool": {**first["scores"], offered[0]: True},
+            "text": {**first["scores"], offered[0]: "0.25"},
+            "negative": {**first["scores"], offered[0]: -0.25, offered[1]: 0.75},
+            "too_large": {**first["scores"], offered[0]: 1.5, offered[1]: -0.5},
+            "sum": {k: 0.4 for k in offered},
+        }
+        for name, scores in cases.items():
+            bad = [{**first, "scores": scores}, self.good["predictions"][1]]
+            with self.subTest(name), self.assertRaises(SystemExit):
+                evaluate.check({"predictions": bad}, self.rows, name)
+        wrong_winner = [
+            {**first, "scores": spread, "pred": "cand-clarify"},
+            self.good["predictions"][1],
+        ]
+        with self.assertRaises(SystemExit):
+            evaluate.check({"predictions": wrong_winner}, self.rows, "winner")
+        right_winner = [
+            {**first, "scores": spread, "pred": offered[0]},
+            self.good["predictions"][1],
+        ]
+        evaluate.check({"predictions": right_winner}, self.rows, "winner")
+
+    def test_same_evidence_pairs_must_keep_the_candidate_criteria(self) -> None:
+        a = row("a", "cand-clarify", "Q1", 1, {"target_top": 5.0})
+        moved = row("b", "cand-stop", "Q2", 1, {"target_top": 50.0})
+        kept = row("c", "cand-stop", "Q2", 1, {"target_top": 5.0})
+        self.assertEqual(evaluate.same_evidence([a, moved]), [])
+        self.assertEqual(len(evaluate.same_evidence([a, kept])), 1)
+
+    def test_partial_controlled_arguments_are_an_error(self) -> None:
+        import sys
+        from unittest import mock
+
+        base = ["evaluate", "--records", "r", "--run", "r", "--untrained", "u"]
+        base += ["--trained", "t", "--out", "o"]
+        for extra in (
+            ["--controlled-trained", "x"],
+            ["--controlled-rows", "x", "--controlled-untrained", "y"],
+        ):
+            with (
+                mock.patch.object(sys, "argv", [*base, *extra]),
+                self.assertRaises(SystemExit) as stopped,
+            ):
+                evaluate.main()
+            self.assertEqual(stopped.exception.code, 2)
+
     def test_same_evidence_pairs_need_different_wording(self) -> None:
         pairs = [row("a", "cand-clarify", "Q1", 1), row("b", "cand-stop", "Q2", 1)]
         self.assertEqual(len(evaluate.same_evidence(pairs)), 1)

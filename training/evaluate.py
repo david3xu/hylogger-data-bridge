@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import math
 from collections import Counter, defaultdict
 from itertools import combinations
 from pathlib import Path
@@ -11,6 +12,7 @@ from training import rubric
 from training.records import load
 
 ACTIONS = ["cand-qa_check", "cand-interval_compare", "cand-clarify", "cand-stop"]
+TOLERANCE = 0.01
 OK = {
     "target_positions": 5,
     "reference_positions": 5,
@@ -52,6 +54,15 @@ def check(value: dict[str, Any], rows: list[dict[str, Any]], what: str) -> dict[
         offered = {c["id"] for c in row["request"]["candidates"]}
         if p["gold"] != row["gold"] or p["pred"] not in offered or set(p["scores"]) != offered:
             raise SystemExit(f"{what}: prediction {p['id']} does not match its row")
+        scores = p["scores"]
+        for score in scores.values():
+            number = isinstance(score, (int, float)) and not isinstance(score, bool)
+            if not number or not math.isfinite(score) or not 0 <= score <= 1:
+                raise SystemExit(f"{what}: prediction {p['id']} has an invalid probability")
+        if abs(sum(scores.values()) - 1) > TOLERANCE:
+            raise SystemExit(f"{what}: prediction {p['id']} probabilities do not sum to one")
+        if scores[p["pred"]] < max(scores.values()) - 1e-9:
+            raise SystemExit(f"{what}: prediction {p['id']} is not its highest-probability option")
     return {p["id"]: p["pred"] for p in value["predictions"]}
 
 
@@ -146,7 +157,11 @@ def same_evidence(rows: list[dict[str, Any]]) -> list[tuple[dict[str, Any], dict
     for r in rows:
         units[json.dumps(r["request"]["evidence"], sort_keys=True)].append(r)
     pairs = [(a, b) for u in units.values() for a, b in combinations(u, 2)]
-    return [(a, b) for a, b in pairs if a["gold"] != b["gold"] and words(a)[:2] != words(b)[:2]]
+    return [
+        (a, b)
+        for a, b in pairs
+        if a["gold"] != b["gold"] and words(a)[:2] != words(b)[:2] and words(a)[2] == words(b)[2]
+    ]
 
 
 def controlled(rows: list[dict[str, Any]]) -> list[tuple[dict[str, Any], dict[str, Any]]]:
@@ -171,6 +186,11 @@ def main() -> None:
     parser.add_argument("--controlled-untrained", type=Path)
     parser.add_argument("--controlled-trained", type=Path)
     args = parser.parse_args()
+    given = [args.controlled_rows, args.controlled_untrained, args.controlled_trained]
+    if any(given) and not all(given):
+        parser.error(
+            "give --controlled-rows, --controlled-untrained and --controlled-trained together"
+        )
     every = load(args.records)
     rows = [r for r in every if r["split"] == "test"]
     run = json.loads(args.run.read_text())

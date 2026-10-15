@@ -39,6 +39,7 @@ The local provider returns ranked candidate follow-ups through the shared assess
 
 - [Design](developer/docs/design.md): expert authority, local model, book and package boundaries.
 - [Model training](developer/docs/training.md): grounded examples, supervision, selected experiment, operating commands, supervision and evaluation.
+- [Real-data pilot](developer/docs/training.md#r1-real-data-pilot): real HyLogger evidence, a human-reviewed live case, and the disclosed model limits.
 - [API](developer/docs/api.md): implemented demo routes, worker lifecycle routes and MCP tools, and the event contract.
 - [Tasks](developer/docs/tasks.md): frontend/backend branches and acceptance gates.
 - [Contributing and CI](developer/docs/github.md): branches, checks and publication rules.

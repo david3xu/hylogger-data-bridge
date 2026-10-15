@@ -27,13 +27,13 @@ def rows(config: Path, per_stage: int, seed: int) -> list[dict[str, Any]]:
         family = re.match(r"[A-Za-z]+", hole.hole_id)
         if family is None or plan["groups"].get(family[0]) != "test":
             continue
-        for target, reference in windows(hole, 5):
+        for length, (target, reference) in [(n, w) for n in (2, 5, 10) for w in windows(hole, n)]:
             for stage in pool:
                 ask = build(hole, target, reference, stage, QUESTION, "")
                 gold = rubric.choose("difference", "none", stage, rubric.observed(ask["evidence"]))
                 pool[stage].append(
                     {
-                        "id": f"ctl-{hole.hole_id}-{target[0]:g}-{stage}",
+                        "id": f"ctl-{hole.hole_id}-{target[0]:g}-{length}m-{stage}",
                         "split": "controlled",
                         "group": hole.hole_id,
                         "gold": f"cand-{gold}",
@@ -42,7 +42,7 @@ def rows(config: Path, per_stage: int, seed: int) -> list[dict[str, Any]]:
                             "kind": "difference",
                             "stance": "none",
                             "stage": stage,
-                            "window_m": 5,
+                            "window_m": length,
                         },
                     }
                 )

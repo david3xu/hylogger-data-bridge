@@ -32,7 +32,11 @@ EVIDENCE_OPTIONAL = {"origin", "state"}
 
 class BookStore:
     def __init__(
-        self, path: Path, provider: Provider | None = None, science: live.Loader | None = None
+        self,
+        path: Path,
+        provider: Provider | None = None,
+        science: live.Loader | None = None,
+        start: dict[str, Any] | None = None,
     ) -> None:
         self.path = path
         self.provider: Provider = provider or FixtureProvider()
@@ -44,16 +48,21 @@ class BookStore:
         legacy.upgrade(path)
         with transaction(path, self.changed) as connection:
             tables.create(connection)
-            if connection.execute("SELECT id FROM book WHERE id=1").fetchone() is None:
-                page = new_page(1)
+            existing = connection.execute("SELECT data FROM book WHERE id=1").fetchone()
+            if existing is not None and start is not None:
+                if json.loads(existing[0])["run_id"] != start["run_id"]:
+                    raise ValueError("this database already holds a different case")
+            if existing is None:
+                page = start["page"] if start else new_page(1)
                 book = {
-                    "run_id": "demo",
-                    "source": "synthetic_demo",
+                    "run_id": start["run_id"] if start else "demo",
+                    "source": start["source"] if start else "synthetic_demo",
                     "current_page_id": page["id"],
                     "pages": [page],
                 }
                 connection.execute("INSERT INTO book VALUES (1, ?)", (json.dumps(book),))
-                state.save(connection, book, "page_created", page["id"], "Synthetic case created")
+                made = "Real case created" if start else "Synthetic case created"
+                state.save(connection, book, "page_created", page["id"], made)
             state.seal(connection)
 
     def snapshot(self) -> dict[str, Any]:
