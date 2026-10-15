@@ -4,11 +4,19 @@ An expert-in-the-loop investigation toolkit for reviewing an unfamiliar drill ho
 
 **Version one, honestly:** one real hole (SWMB007s) from the public NVCL WA catalogue. The tool checks data quality and compares two depth intervals using TSG-interpreted SWIR mineral groups, shows the evidence in a browser book, records your accept / modify / reject decision with your exact note, and continues the investigation according to that decision. It does not estimate resources, identify minerals from raw spectra, or use assays (none are linked in this case). The local model is weak (see [Limitations](#limitations)).
 
+## Download the public preview
+
+The owner authorised a public preview on 15 October 2026. Download the Apple Silicon installer from [GitHub Releases](https://github.com/david3xu/hylogger-data-bridge/releases). Extract `hylogger-macos-arm64.zip`, then run `bash Install.command` inside its folder. The installer downloads the existing experimental model and manages Python and dependencies. No source checkout or Node is needed. This release is unsigned and not notarized.
+
+The installer prints the installed command path. Run `hylogger review --workspace /path/to/folder` to list supported packages, then add `--package SWMB007s_chips --target 5 10 --reference 0 5` to open a real-data book. Enter your decision in the book. To continue explicitly, run `hylogger review --workspace /path/to/folder --case CASE_ID`. Each workspace has separate books. The release includes no HyLogger source data; use your own supported TSG package.
+
+This preview supports standalone books. Connected-folder chat discovery, automatic return and ChatGPT compatibility are unfinished; host registration is opt-in. The model is trained but weak and experimental. No PyPI package is published. See [submission readiness](developer/docs/submission.md) for the current gates.
+
 ## Real-data quickstart
 
 ### Installable build (in review)
 
-The product build carries its book interface, plugin files and scientific dependencies; running it does not require Node, Git or this checkout. The private Apple Silicon demo kit also carries the existing trained model and a managed Python installer. Double-click `Install.command`, then use the workspace already connected to your chat host. Setup does not select or permanently pin a HyLogger data folder. Installation requires internet access for Python/runtime dependencies and an installed, signed-in host. It preserves existing books and keeps new state in per-user folders.
+The product build carries its book interface, plugin files and scientific dependencies; running it does not require Node, Git or this checkout. The Apple Silicon preview installer downloads the existing trained model and a managed Python installer. Run `Install.command`, then use `hylogger review` with your workspace for this standalone preview. Setup does not select or permanently pin a HyLogger data folder. Installation requires internet access for Python/runtime dependencies ; host registration is optional. It preserves existing books and keeps new state in per-user folders.
 
 For an existing Python 3.12 environment, the built wheel can instead be installed with `python -m pip install /path/to/hylogger_data_bridge-0.1.1-py3-none-any.whl`; `hylogger setup` registers the plugin and selected data/model locations. `hylogger doctor` checks the installed resources. No package has been published to PyPI; the bare `pip install hylogger-data-bridge` product route is not a verified distribution yet.
 
@@ -53,7 +61,7 @@ outputs/science-env/bin/python -m training.live continue --book outputs/live-boo
 | --- | --- | --- |
 | Real scientific calculations (inventory, QA, interval comparison) | Yes | The quickstart above, from the public package |
 | Advice on the first page without the model | Yes, labelled | Default: the book shows `origin: fixture` and says no trained model was consulted |
-| Actual local model advice | Only with the model bundle | Add `--model outputs/model/real-r1/model --model-python <model environment python>` to `demo`. The bundle (Qwen3.5-4B base, LoRA adapters, decision head) is not published; [training](developer/docs/training.md#r1-real-data-pilot) documents how it was made |
+| Actual local model advice | Only with the model bundle | Add `--model outputs/model/real-r1/model --model-python <model environment python>` to `demo`. The public preview distributes the bundle (Qwen3.5-4B base, LoRA adapters, decision head); [training](developer/docs/training.md#r1-real-data-pilot) documents how it was made |
 
 No step needs a paid service or account. The model, when used, runs offline with network access blocked.
 

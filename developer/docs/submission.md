@@ -71,7 +71,7 @@ The repaired smoke script always uses a disposable registry and labels fixture a
 
 ### Installed-product readiness
 
-Codex is preparing the installed runtime on `codex/product-install`, based on `977bcd2`, separately from AGY's `codex/agy-return`. The wheel now carries the built book, plugin and schema; it installs the scientific reader and exposes setup, diagnostics and bounded model preflight. The private Apple Silicon kit includes the existing model and manages Python/runtime dependencies. See [current implementation evidence](../../CLAUDE.md#commands). Nothing is published to PyPI or a public plugin/model directory.
+Codex is preparing the installed runtime on `codex/product-install`, based on `977bcd2`, separately from AGY's `codex/agy-return`. The wheel now carries the built book, plugin and schema; it installs the scientific reader and exposes setup, diagnostics and bounded model preflight. The owner subsequently authorised a GitHub public preview containing the existing model, with held-out reference measurements excluded from the public manifest. The installer manages Python/runtime dependencies; standalone review is available without the pending host adapter. See [current implementation evidence](../../CLAUDE.md#commands). Nothing is published to PyPI or a public plugin/model directory.
 
 Normal setup does not pin a data folder. At use time, the supported host must provide the authorised workspace for the current conversation. The source --data-root route remains a developer override. The current package intentionally refuses that automatic workspace mode until AGY's adapter is integrated, rather than scanning an assumed directory.
 

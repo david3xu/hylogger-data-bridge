@@ -62,6 +62,13 @@ def main(argv: list[str] | None = None) -> None:
         prepare.add_argument(
             "--no-host", action="store_true", help="prepare without changing host registration"
         )
+        inspect = sub.add_parser("review", help="open a real-data book for this local workspace")
+        inspect.add_argument("--workspace", type=Path, default=Path.cwd())
+        inspect.add_argument("--package")
+        inspect.add_argument("--target", type=float, nargs=2)
+        inspect.add_argument("--reference", type=float, nargs=2)
+        inspect.add_argument("--case", help="continue this case after a browser decision")
+        inspect.add_argument("--no-browser", action="store_true")
         sub.add_parser("doctor", help="check installed resources and saved settings")
         model_check = sub.add_parser(
             "check-model", help="verify and warm the installed local model offline"
@@ -75,6 +82,22 @@ def main(argv: list[str] | None = None) -> None:
             result = setup(args.data_root, args.model, args.model_python, not args.no_host)
             print(json.dumps(result, indent=2))
             print("HyLogger is configured. Use the folder connected to your chat host.")
+        elif args.operation == "review":
+            from hylogger_bridge.install.review import review
+
+            print(
+                json.dumps(
+                    review(
+                        args.workspace,
+                        args.package,
+                        args.target,
+                        args.reference,
+                        args.case,
+                        not args.no_browser,
+                    ),
+                    indent=2,
+                )
+            )
         elif args.operation == "check-model":
             from hylogger_bridge.install.check import check_model
 

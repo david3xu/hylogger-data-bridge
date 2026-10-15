@@ -143,3 +143,8 @@ Use one responsibility at every level. Prefer short familiar names; parent direc
 | `app/src/state/`, `transport/`, `host/` | Reader state, backend access, capability messaging |
 
 Python paths above live under `src/hylogger_bridge/`. Add them only when implemented behaviour requires extraction. Keep training developer-only. Adapters must not call one another over HTTP to reuse logic; UI must not duplicate scientific calculations. Extract existing broad files in bounded changes preserving imports, commands and books. Do not leave a module and same-named package competing for imports.
+
+
+## Public preview release
+
+The owner authorised public distribution and a download/fresh-install acceptance test on 15 October 2026, without waiting for the separate automatic-return worker. Publish a pinned GitHub prerelease, not an implicit claim of PyPI or ChatGPT support. Include the installed science runtime, book and existing experimental model; exclude all source HyLogger data and private machine paths. A standalone `hylogger review` command operates on the workspace chosen for that invocation, with workspace-separated books. It never records expert decisions. Chat host registration is optional until its workspace adapter is integrated. Verify downloads and the model before use, retain third-party notices, and test in a new profile and copied real-data folder.

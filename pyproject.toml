@@ -29,6 +29,7 @@ packages = ["src/hylogger_bridge"]
 [tool.hatch.build.targets.wheel.force-include]
 "schemas/v1.json" = "hylogger_bridge/contracts/v1.json"
 "plugins/hylogger" = "hylogger_bridge/assets/plugin"
+"packaging/notices" = "hylogger_bridge/assets/notices"
 
 [tool.hatch.build.hooks.custom]
 path = "packaging/hook.py"

@@ -24,14 +24,37 @@ model_folder="$install_home/models/$install_id"
 if [[ ! -d "$model_folder" ]]; then
   temporary_model="$model_folder.installing-$$"
   trap 'rm -rf "$temporary_model"' EXIT
-  cp -R "$kit_dir/model" "$temporary_model"
+  if [[ -f "$kit_dir/model-parts.txt" ]]; then
+    mkdir -p "$kit_dir/downloads" "$temporary_model"
+    release_url="$(cat "$kit_dir/release-url")"
+    while read -r expected_hash part_name; do
+      if [[ ! "$part_name" =~ ^model-part-[0-9]+$ ]]; then echo "Invalid model part."; exit 1; fi
+      part_path="$kit_dir/downloads/$part_name"
+      if [[ ! -f "$part_path" ]] || [[ "$(/usr/bin/shasum -a 256 "$part_path" | /usr/bin/awk '{print $1}')" != "$expected_hash" ]]; then
+        /usr/bin/curl --fail --location --retry 3 "$release_url/$part_name" -o "$part_path.partial"
+        if [[ "$(/usr/bin/shasum -a 256 "$part_path.partial" | /usr/bin/awk '{print $1}')" != "$expected_hash" ]]; then
+          echo "Model download checksum mismatch."; exit 1
+        fi
+        mv "$part_path.partial" "$part_path"
+      fi
+    done < "$kit_dir/model-parts.txt"
+    cat "$kit_dir"/downloads/model-part-* | /usr/bin/tar -xf - -C "$temporary_model"
+  else
+    cp -R "$kit_dir/model" "$temporary_model"
+  fi
   mv "$temporary_model" "$model_folder"
   trap - EXIT
 fi
 setup_options=()
-if [[ "${HYLOGGER_SKIP_HOST:-0}" == 1 ]]; then setup_options+=(--no-host); fi
+# The public preview opens standalone books; host integration is explicitly opt-in.
+if [[ "${HYLOGGER_INSTALL_HOST:-0}" != 1 || "${HYLOGGER_SKIP_HOST:-0}" == 1 ]]; then
+  setup_options+=(--no-host)
+fi
 echo "Checking the installed local model before connecting it to your chat host."
 "$runtime/bin/hylogger" check-model --model "$model_folder" --model-python "$runtime/bin/python"
 "$runtime/bin/hylogger" setup --model "$model_folder" --model-python "$runtime/bin/python" "${setup_options[@]}"
-echo "Installation finished. Use the folder connected to your chat."
+echo "Installation finished. Open a real-data book with:"
+printf '"%s/bin/hylogger" review --workspace /path/to/folder --package SWMB007s_chips --target 5 10 --reference 0 5\n' "$runtime"
+echo "To discover packages first, omit --package, --target and --reference."
+echo "After deciding in the book, use the same command with --case CASE_ID instead of --package."
 echo "Host-workspace access and automatic return remain separate acceptance gates for this build."
