@@ -7,10 +7,14 @@ from pathlib import Path
 from typing import Any
 
 from hylogger_bridge.advice.encode import encode
-from training.records import convert, load
+from training.evaluate import sha
+from training.records import load
 
 
-def rows_of(records: Path, split: str) -> list[dict[str, Any]]:
+def rows_of(records: Path, split: str, rows: Path | None) -> list[dict[str, Any]]:
+    """The frozen records of one split, or evaluation-only rows from a separate file."""
+    if rows is not None:
+        return [json.loads(line) for line in rows.read_text().splitlines() if line.strip()]
     return [row for row in load(records) if row["split"] == split]
 
 
@@ -18,10 +22,17 @@ def answer(row: dict[str, Any], predict: Any) -> dict[str, Any]:
     state, questions, mapping = encode(row["request"])
     result = predict(state, questions)["follow_up"]
     scores = {mapping[key]: value for key, value in result["probabilities"].items()}
-    return {"id": row["id"], "gold": row["gold"], "pred": mapping[result["answer"]], "scores": scores}
+    return {
+        "id": row["id"],
+        "gold": row["gold"],
+        "pred": mapping[result["answer"]],
+        "scores": scores,
+    }
 
 
-def untrained(config: Path, records: Path, run: Path, split: str) -> dict[str, Any]:
+def untrained(
+    config: Path, records: Path, run: Path, split: str, rows: Path | None
+) -> dict[str, Any]:
     """The model as the training run began: same pinned base, seed and adapter/head setup."""
     from unsloth import FastDecisionModel
 
@@ -57,11 +68,15 @@ def untrained(config: Path, records: Path, run: Path, split: str) -> dict[str, A
         "model": "untrained",
         "same_start_as_training_run": start == recorded,
         "fingerprints": start,
-        "predictions": [answer(row, predict) for row in rows_of(records, split)],
+        "recorded_fingerprints": recorded,
+        "config_sha256": sha(config),
+        "records_sha256": sha(records),
+        "rows_sha256": sha(rows) if rows else None,
+        "predictions": [answer(row, predict) for row in rows_of(records, split, rows)],
     }
 
 
-def trained(folder: Path, records: Path, split: str) -> dict[str, Any]:
+def trained(folder: Path, records: Path, split: str, rows: Path | None) -> dict[str, Any]:
     """The saved base/adapter/head bundle, reloaded offline with network connections refused."""
     os.environ["HF_HUB_OFFLINE"] = "1"
     os.environ["TRANSFORMERS_OFFLINE"] = "1"
@@ -70,12 +85,18 @@ def trained(folder: Path, records: Path, split: str) -> dict[str, Any]:
         raise RuntimeError("network access is disabled during the offline reload")
 
     socket.socket.connect = no_network  # type: ignore[method-assign]
+    from hylogger_bridge.advice.assets import verify
     from hylogger_bridge.advice.local import LocalProvider
 
+    manifest = verify(folder)
     provider = LocalProvider(folder)
     return {
         "model": provider.version,
-        "predictions": [answer(row, provider.predict) for row in rows_of(records, split)],
+        "manifest_records_sha256": manifest.get("records_sha256"),
+        "records_sha256": sha(records),
+        "rows_sha256": sha(rows) if rows else None,
+        "offline": True,
+        "predictions": [answer(row, provider.predict) for row in rows_of(records, split, rows)],
     }
 
 
@@ -88,11 +109,12 @@ def main() -> None:
     parser.add_argument("--run", type=Path, help="run.json of the training run (untrained only)")
     parser.add_argument("--model", type=Path, help="saved model folder (trained only)")
     parser.add_argument("--split", default="test")
+    parser.add_argument("--rows", type=Path, help="evaluation-only rows instead of a split")
     args = parser.parse_args()
     if args.which == "untrained":
-        value = untrained(args.config, args.records, args.run, args.split)
+        value = untrained(args.config, args.records, args.run, args.split, args.rows)
     else:
-        value = trained(args.model, args.records, args.split)
+        value = trained(args.model, args.records, args.split, args.rows)
     args.out.write_text(json.dumps(value, indent=2) + "\n")
     print(args.which, len(value["predictions"]), "rows ->", args.out)
 

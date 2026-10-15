@@ -1,4 +1,4 @@
-# Purpose: calculate a scientific page's features from its attached scene; callers never supply them.
+# Purpose: calculate a scientific page's features from its attached scene, never from callers.
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any

@@ -1,5 +1,6 @@
-# Purpose: check the scientific adapter, calculations and live feature path on tiny labelled fixtures.
+# Purpose: check the scientific adapter, calculations and live path on tiny labelled fixtures.
 import math
+import threading
 import unittest
 from collections.abc import Sequence
 from dataclasses import replace
@@ -186,7 +187,16 @@ class LiveTests(BookCase):
 
         self.during: Any = None
         self.spy = Spy()
-        self.store = BookStore(self.path, provider=self.spy, science=lambda folder, name: self.hole)
+        self.entered = threading.Event()
+        self.release = threading.Event()
+        self.block = False
+        self.store = BookStore(self.path, provider=self.spy, science=self.load)
+
+    def load(self, folder: str, name: str) -> Hole:
+        if self.block:
+            self.entered.set()
+            self.release.wait(10)
+        return self.hole
 
     def scene(self) -> dict[str, Any]:
         page = working(self.store.snapshot())
@@ -273,7 +283,118 @@ class LiveTests(BookCase):
         self.measure("inventory")
         self.hole = replace(self.hole, files=(("FIX_tsg.tsg", "1" * 64),))
         with self.assertRaises(ValueError):
-            self.ask()
+            self.measure("qa")
+        self.ask()
+        self.assertEqual(self.seen[0]["evidence"][0]["features"]["target_positions"], 5)
+
+    def test_a_scene_cannot_be_silently_replaced(self) -> None:
+        self.scene()
+        page = working(self.store.snapshot())
+        before = (self.store.snapshot(), len(self.store.events_after(0)))
+        again = (page["id"], page["revision"], Path("pkg"), "FIX001_chips")
+        self.store.attach_scene(*again, (5, 10), (0, 5))
+        self.assertEqual((self.store.snapshot(), len(self.store.events_after(0))), before)
+        for target, reference in (((0, 2), (5, 7)), ((5, 10), (0, 4))):
+            with self.subTest(target=target), self.assertRaises(BookConflict):
+                self.store.attach_scene(*again, target, reference)
+        with self.assertRaises(BookConflict):
+            self.store.attach_scene(*again, (5, 10), (0, 5), question="A different question?")
+        self.measure("inventory")
+        page = working(self.store.snapshot())
+        with self.assertRaises(BookConflict):
+            self.store.attach_scene(
+                page["id"], page["revision"], Path("pkg"), "FIX001_chips", (0, 2), (5, 7)
+            )
+        self.assertEqual(working(self.store.snapshot())["revision"], page["revision"])
+
+    def test_attaching_counts_a_revision_and_an_event(self) -> None:
+        page = working(self.store.snapshot())
+        before = len(self.store.events_after(0))
+        self.store.attach_scene(
+            page["id"], page["revision"], Path("pkg"), "FIX001_chips", (5, 10), (0, 5), "Q?"
+        )
+        now = working(self.store.snapshot())
+        self.assertEqual((now["revision"], now["question"]), (page["revision"] + 1, "Q?"))
+        self.assertEqual(len(self.store.events_after(0)), before + 1)
+
+    def test_an_evidence_id_collision_gets_no_trusted_features(self) -> None:
+        self.scene()
+        page = working(self.store.snapshot())
+        fake: dict[str, object] = {
+            "id": "qa",
+            "label": "QA",
+            "value": "This calculation failed; no QA performed",
+            "source": "someone",
+            "kind": "calculation",
+            "origin": "synthetic",
+            "state": "failed",
+        }
+        self.store.add_evidence(page["id"], page["revision"], fake)
+        with self.assertRaises(BookConflict):
+            self.measure("qa")
+        self.ask()
+        (got,) = self.seen
+        self.assertEqual(
+            got["evidence"],
+            [{"evidence_id": "qa", "kind": "calculation", "state": "failed", "features": {}}],
+        )
+
+    def test_changed_evidence_content_loses_its_trusted_features(self) -> None:
+        import sqlite3
+
+        from hylogger_bridge.store import measures
+
+        item = {
+            "id": "qa",
+            "label": "L",
+            "value": "v",
+            "source": "s",
+            "kind": "calculation",
+            "origin": "actual",
+            "state": "complete",
+        }
+        with sqlite3.connect(":memory:") as connection:
+            connection.execute(
+                "CREATE TABLE measurements (page_id TEXT, evidence_id TEXT, "
+                "fingerprint TEXT, features TEXT)"
+            )
+            measures.put(connection, "p", item, {"x": 1.0})
+            page = {"id": "p", "evidence": [item]}
+            self.assertEqual(measures.trusted(connection, page), {"qa": {"x": 1.0}})
+            for change in ({"value": "other"}, {"origin": "synthetic"}, {"state": "failed"}):
+                page = {"id": "p", "evidence": [{**item, **change}]}
+                self.assertEqual(measures.trusted(connection, page), {})
+
+    def test_package_reading_never_holds_the_writer_lock(self) -> None:
+        self.scene()
+        page = working(self.store.snapshot())
+        outcome: list[BaseException] = []
+
+        def slow_measure() -> None:
+            try:
+                self.store.measure(page["id"], page["revision"], "inventory")
+            except BaseException as error:
+                outcome.append(error)
+
+        self.block = True
+        thread = threading.Thread(target=slow_measure)
+        thread.start()
+        self.assertTrue(self.entered.wait(10))
+        self.store.recover_interrupted()
+        ordinary: dict[str, object] = {
+            "id": "note",
+            "label": "Note",
+            "value": "v",
+            "source": "s",
+            "kind": "observation",
+        }
+        self.store.add_evidence(page["id"], page["revision"], ordinary)
+        self.release.set()
+        thread.join(10)
+        (error,) = outcome
+        assert isinstance(error, BookConflict)
+        self.assertEqual(error.code, "stale_revision")
+        self.assertEqual([e["id"] for e in working(self.store.snapshot())["evidence"]], ["note"])
 
     def test_measuring_a_page_without_a_scene_is_refused(self) -> None:
         page = working(self.store.snapshot())

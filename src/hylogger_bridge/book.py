@@ -1,5 +1,6 @@
 # Purpose: persist live book pages, evidence and immutable decision history for a local demo.
 import json
+import sqlite3
 import threading
 import time
 from collections.abc import Callable
@@ -20,7 +21,7 @@ from hylogger_bridge.pages.finish import finish, merged
 from hylogger_bridge.pages.make import new_page
 from hylogger_bridge.science import live
 from hylogger_bridge.science.request import KINDS, STAGES
-from hylogger_bridge.store import cont, legacy, scenes, state, tables, tries
+from hylogger_bridge.store import cont, legacy, measures, scenes, state, tables, tries
 from hylogger_bridge.store.conn import transaction
 
 __all__ = ["BookConflict", "BookStore", "new_page", "now"]
@@ -116,18 +117,29 @@ class BookStore:
         stored = {"origin": "unspecified", "state": "complete", **evidence}
         validate("Evidence", stored)
         with transaction(self.path, self.changed) as connection:
-            book = state.read(connection)
-            page = state.find(book, page_id, expected_revision)
-            if page["status"] != "draft":
-                raise BookConflict("Only the working draft can receive evidence", "page_locked")
-            fence(connection, page, claim, at or moment())
-            if any(item["id"] == evidence["id"] for item in page["evidence"]):
-                raise BookConflict("Evidence ID already exists", "invalid_request")
-            page["evidence"] = merged(page, [stored], None)
-            state.replace(book, page)
-            state.save(connection, book, "evidence_added", page_id, str(evidence["label"]))
+            self._store_evidence(connection, page_id, expected_revision, stored, claim, at)
             state.seal(connection)
             return state.snapshot(connection)
+
+    def _store_evidence(
+        self,
+        connection: sqlite3.Connection,
+        page_id: str,
+        expected_revision: int,
+        stored: dict[str, object],
+        claim: dict[str, Any] | None,
+        at: datetime | None,
+    ) -> None:
+        book = state.read(connection)
+        page = state.find(book, page_id, expected_revision)
+        if page["status"] != "draft":
+            raise BookConflict("Only the working draft can receive evidence", "page_locked")
+        fence(connection, page, claim, at or moment())
+        if any(item["id"] == stored["id"] for item in page["evidence"]):
+            raise BookConflict("Evidence ID already exists", "invalid_request")
+        page["evidence"] = merged(page, [stored], None)
+        state.replace(book, page)
+        state.save(connection, book, "evidence_added", page_id, str(stored["label"]))
 
     def begin_demo(
         self, page_id: str, expected_revision: int, at: datetime | None = None
@@ -330,11 +342,11 @@ class BookStore:
         asked = at or moment()
         with transaction(self.path, self.changed) as connection:
             request, token = advice_ops.prepare(
-                connection, self.science, page_id, expected_revision, candidates, instruction
+                connection, page_id, expected_revision, candidates, instruction
             )
         advice = self.provider.assess(request, stamp(asked))
         with transaction(self.path, self.changed) as connection:
-            advice_ops.record(connection, self.science, request, advice, token)
+            advice_ops.record(connection, request, advice, token)
             state.seal(connection)
             return state.snapshot(connection)
 
@@ -356,25 +368,43 @@ class BookStore:
     ) -> dict[str, Any]:
         """Tie a working page to a TSG package and two intervals. A trusted local call only.
 
-        The package is read and its identity checked; its file hashes are recorded so a changed
-        package is refused later. It is deliberately not an HTTP or MCP operation. A question,
-        if given, replaces the page's template question and counts as a page revision.
+        The package is read and its identity checked outside any writer transaction; its file
+        hashes are recorded. A scene is attached once and counts a page revision. Repeating the
+        identical call changes nothing; a different scene or question needs a new page. It is
+        deliberately not an HTTP or MCP operation.
         """
+        if question is not None and (
+            not isinstance(question, str) or not 0 < len(question.strip()) <= 300
+        ):
+            raise ValueError("question must be bounded text")
+        with transaction(self.path, self.changed) as connection:
+            self._draft(connection, page_id, expected_revision)
+        scene = live.attach(self.science, str(folder), package_id, target, reference)
         with transaction(self.path, self.changed) as connection:
             book = state.read(connection)
-            page = state.find(book, page_id, expected_revision)
-            if page["status"] != "draft":
-                raise BookConflict("Only the working draft can be attached", "page_locked")
-            scene = live.attach(self.science, str(folder), package_id, target, reference)
-            scenes.put(connection, page_id, scene)
+            page = self._draft(connection, page_id, expected_revision)
+            fresh = scenes.put(connection, page_id, scene)
+            if not fresh and question in (None, page["question"]):
+                state.seal(connection)
+                return state.snapshot(connection)
+            if not fresh:
+                raise BookConflict("This page already has its question and scene", "request_reuse")
             if question is not None:
-                if not isinstance(question, str) or not 0 < len(question.strip()) <= 300:
-                    raise ValueError("question must be bounded text")
                 page["question"] = question
-                state.replace(book, page)
-                state.save(connection, book, "scene_attached", page_id, "Package attached")
+            state.replace(book, page)
+            # Reported as evidence_added: the shared Event contract has no scene event, and
+            # changing that contract is not part of this work.
+            state.save(connection, book, "evidence_added", page_id, "Scientific scene attached")
             state.seal(connection)
             return state.snapshot(connection)
+
+    def _draft(
+        self, connection: sqlite3.Connection, page_id: str, expected_revision: int
+    ) -> dict[str, Any]:
+        page = state.find(state.read(connection), page_id, expected_revision)
+        if page["status"] != "draft":
+            raise BookConflict("Only the working draft can be changed", "page_locked")
+        return page
 
     def measure(
         self,
@@ -384,10 +414,16 @@ class BookStore:
         claim: dict[str, Any] | None = None,
         at: datetime | None = None,
     ) -> dict[str, Any]:
-        """Persist one calculated evidence item for the page's scene; the values are never supplied."""
+        """Persist one calculated evidence item with its features; the values are never supplied.
+
+        The package is read and calculated outside any writer transaction. The commit then
+        stores the evidence and its measurement together, only if the page revision, the claim
+        and the scene are still what the calculation used.
+        """
         if stage not in STAGES:
             raise ValueError(f"stage must be one of {STAGES}")
         with transaction(self.path, self.changed) as connection:
+            self._draft(connection, page_id, expected_revision)
             scene = scenes.get(connection, page_id)
         if scene is None:
             raise ValueError("this page has no scientific scene")
@@ -401,4 +437,13 @@ class BookStore:
             "origin": "actual",
             "state": "complete",
         }
-        return self.add_evidence(page_id, expected_revision, item, claim, at)
+        validate("Evidence", item)
+        with transaction(self.path, self.changed) as connection:
+            if scenes.get(connection, page_id) != scene:
+                raise BookConflict(
+                    "The page's scene changed during the calculation", "stale_revision"
+                )
+            self._store_evidence(connection, page_id, expected_revision, item, claim, at)
+            measures.put(connection, page_id, item, dict(values))
+            state.seal(connection)
+            return state.snapshot(connection)

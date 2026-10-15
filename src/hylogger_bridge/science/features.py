@@ -4,7 +4,7 @@ from collections import Counter
 
 from hylogger_bridge.science.hole import Hole
 
-METHOD = "qa-compare-2"
+METHOD = "qa-compare-3"
 TIE = 1e-9
 
 Features = dict[str, float | None]
@@ -20,15 +20,31 @@ def bounds(top: float, bottom: float) -> None:
         raise ValueError(f"interval bounds must be finite and increasing, got {top}, {bottom}")
 
 
-def pitch(hole: Hole) -> float | None:
-    """The package's own sampling step: the smallest gap between its distinct depths, if any.
+def lattice(hole: Hole) -> tuple[float, float] | None:
+    """The package's own regular sampling grid as (origin, step), or None if it has none.
 
-    The smallest gap, not a typical one, so that missing positions never widen the step and hide
-    their own gaps. Nothing here assumes a density; it is read from the package's depths.
+    The step is the smallest gap between distinct depths, so missing positions never widen it,
+    and the grid is accepted only if every depth lies on it. Nothing assumes a density; an
+    irregular or single-depth package has no grid and so no expected positions.
     """
     depths = sorted(set(hole.depth))
     gaps = [b - a for a, b in zip(depths, depths[1:], strict=False)]
-    return min(gaps) if gaps else None
+    if not gaps:
+        return None
+    step, origin = min(gaps), depths[0]
+    if any(
+        abs(origin + round((d - origin) / step) * step - d) > 1e-6 * max(1.0, step) for d in depths
+    ):
+        return None
+    return origin, step
+
+
+def expected(grid: tuple[float, float], top: float, bottom: float) -> int:
+    """How many grid positions fall in [top, bottom), by phase, not by width alone."""
+    origin, step = grid
+    first = math.ceil((top - origin) / step - 1e-9)
+    last = math.ceil((bottom - origin) / step - 1e-9) - 1
+    return max(0, last - first + 1)
 
 
 def spots(hole: Hole, top: float, bottom: float) -> list[int]:
@@ -41,20 +57,20 @@ def qa(hole: Hole, top: float, bottom: float) -> Features:
     """Row quality and depth coverage, kept apart.
 
     `valid_fraction` and the answer fractions describe the rows that exist. `coverage` is the
-    share of the interval's expected sampling positions holding at least one clean spot, with
-    the step taken from this package's own depths. An interval full of good rows in two
-    positions out of ten has fractions of 1.0 and coverage 0.2.
+    share of the interval's expected grid positions holding at least one clean spot. An interval
+    full of good rows in two positions out of ten has fractions of 1.0 and coverage 0.2. With no
+    regular grid, or no grid position inside the interval, coverage is unknown (None).
     """
     found = spots(hole, top, bottom)
     clean = [i for i in found if hole.valid[i]]
-    step = pitch(hole)
-    expected = None if step is None else max(1, round((bottom - top) / step))
+    grid = lattice(hole)
+    want = None if grid is None else expected(grid, top, bottom)
     held = len({hole.depth[i] for i in clean})
     return {
         "spots": len(found),
         "valid_fraction": _ratio(len(clean), len(found)),
-        "expected_positions": expected,
-        "coverage": None if expected is None else round(min(1.0, held / expected), 4),
+        "expected_positions": want,
+        "coverage": round(min(1.0, held / want), 4) if want else None,
         "swir_fraction": _ratio(sum(hole.swir[i] is not None for i in clean), len(clean)),
         "tir_fraction": _ratio(sum(hole.tir[i] is not None for i in clean), len(clean)),
     }

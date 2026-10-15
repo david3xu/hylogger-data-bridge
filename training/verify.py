@@ -17,7 +17,9 @@ def decode(block: Any, column: str, table: str) -> pd.Series:
     if not pd.api.types.is_numeric_dtype(values):
         text = values.astype(str).str.strip()
     else:
-        names = next((c.classes for c in block.classes.values() if c.name == table), {})
+        names: dict[int, str] = next(
+            (c.classes for c in block.classes.values() if c.name == table), {}
+        )
         text = values.map(lambda v: names.get(int(v), "") if v > -3.0e38 else "")
     return text.where(~text.isin(NO_ANSWER), None)
 
@@ -35,20 +37,32 @@ def frame(folder: Path) -> pd.DataFrame:
     )
 
 
+def grid_positions(depths: Any, top: float, bottom: float) -> int | None:
+    """Expected sampling positions by enumerating the package's own lattice, if it has one."""
+    unique = np.unique(depths)
+    if len(unique) < 2:
+        return None
+    step, origin = float(np.min(np.diff(unique))), float(unique[0])
+    on_grid = np.abs(origin + np.rint((unique - origin) / step) * step - unique)
+    if np.any(on_grid > 1e-6 * max(1.0, step)):
+        return None
+    ks = np.arange(
+        int(np.floor((top - origin) / step)) - 2, int(np.ceil((bottom - origin) / step)) + 3
+    )
+    points = origin + ks * step
+    return int(np.sum((points >= top - 1e-9) & (points < bottom - 1e-9)))
+
+
 def qa(df: pd.DataFrame, top: float, bottom: float) -> dict[str, Any]:
-    unique = np.unique(df["depth"].to_numpy())
-    step = float(np.min(np.diff(unique))) if len(unique) > 1 else None
     rows = df[(df["depth"] >= top) & (df["depth"] < bottom)]
     clean = rows[rows["valid"]]
-    expected = None if step is None else max(1, int(round((bottom - top) / step)))
+    expected = grid_positions(df["depth"].to_numpy(), top, bottom)
     n, c = len(rows), len(clean)
     return {
         "spots": n,
         "valid": round(c / n, 4) if n else None,
         "expected": expected,
-        "coverage": None
-        if expected is None
-        else round(min(1.0, clean["depth"].nunique() / expected), 4),
+        "coverage": round(min(1.0, clean["depth"].nunique() / expected), 4) if expected else None,
         "swir": round(clean["swir"].notna().sum() / c, 4) if c else None,
     }
 
@@ -65,7 +79,7 @@ def main() -> None:
     rows = [json.loads(line) for line in Path(sys.argv[1]).read_text().splitlines()]
     frames: dict[str, pd.DataFrame] = {}
     bad = []
-    examples = []
+    examples: list[dict[str, Any]] = []
     for row in rows:
         hole = row["provenance"]["hole_id"]
         if hole not in frames:
@@ -114,10 +128,22 @@ def main() -> None:
             }
         for key, features in got.items():
             if features != want[key]:
-                bad.append({"id": row["id"], "evidence": key, "record": features, "separate": want[key]})
-        if row["meta"]["stage"] == "compare" and len(examples) < 3 and want["compare"]["lead_changed"] == 1:
+                bad.append(
+                    {"id": row["id"], "evidence": key, "record": features, "separate": want[key]}
+                )
+        if (
+            row["meta"]["stage"] == "compare"
+            and len(examples) < 3
+            and want["compare"]["lead_changed"] == 1
+        ):
             examples.append({"id": row["id"], "target": t, "reference": r, "features": got})
-    report = {"records": len(rows), "holes": sorted(frames), "mismatches": bad[:5], "mismatch_count": len(bad), "examples": examples}
+    report = {
+        "records": len(rows),
+        "holes": sorted(frames),
+        "mismatches": bad[:5],
+        "mismatch_count": len(bad),
+        "examples": examples,
+    }
     Path(sys.argv[1]).with_suffix(".verify.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({k: report[k] for k in ("records", "mismatch_count", "mismatches")}, indent=2))
     sys.exit(1 if bad else 0)

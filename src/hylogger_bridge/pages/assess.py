@@ -8,7 +8,7 @@ from hylogger_bridge.contracts.assess import check_advice
 from hylogger_bridge.contracts.check import validate
 from hylogger_bridge.pages.actions import REGISTERED
 from hylogger_bridge.science import live
-from hylogger_bridge.store import scenes, state
+from hylogger_bridge.store import measures, scenes, state
 
 
 def default_candidates() -> list[dict[str, Any]]:
@@ -25,8 +25,9 @@ def request_for(
 ) -> dict[str, Any]:
     """Observed evidence by reference.
 
-    A generic page has no numbers, so none are invented. A page attached to a scientific scene
-    gets the scene's calculated features, but only for evidence that is persisted on the page.
+    A generic page has no numbers, so none are invented. `known` holds the features of evidence
+    that a trusted measurement persisted, exactly as persisted; any other evidence gets none,
+    whatever its ID.
     """
     found = known or {}
     return {
@@ -50,7 +51,6 @@ def request_for(
 
 def prepare(
     connection: sqlite3.Connection,
-    load: live.Loader,
     page_id: str,
     expected_revision: int,
     candidates: list[dict[str, Any]] | None,
@@ -61,14 +61,13 @@ def prepare(
     The whole request is checked against the contract before any candidate field is read, so a
     malformed element is an invalid request, not an internal error. Nothing is written until it
     is valid; then the page's latest-ask token is replaced, so an older ask can no longer record.
-    Features of a scientific page are calculated here from its attached package, never supplied.
+    Scientific features come from persisted measurements only: no package is read here.
     """
     page = state.find(state.read(connection), page_id, expected_revision)
     scene = scenes.get(connection, page_id)
-    known = None if scene is None else live.known(load, scene)
     if candidates is None:
         candidates = default_candidates() if scene is None else live.candidates(scene)
-    request = request_for(page, candidates, instruction, known)
+    request = request_for(page, candidates, instruction, measures.trusted(connection, page))
     validate("AssessmentRequest", request)
     for item in request["candidates"]:
         if item["action_type"] not in REGISTERED:
@@ -80,7 +79,6 @@ def prepare(
 
 def record(
     connection: sqlite3.Connection,
-    load: live.Loader,
     request: dict[str, Any],
     advice: dict[str, Any],
     token: str,
@@ -98,8 +96,7 @@ def record(
     ).fetchone()
     if latest is None or latest[0] != token:
         raise BookConflict("A newer assessment was requested for this page", "stale_revision")
-    scene = scenes.get(connection, request["page_id"])
-    known = None if scene is None else live.known(load, scene)
+    known = measures.trusted(connection, page)
     if request_for(page, request["candidates"], request["instruction"], known) != request:
         raise BookConflict("The page changed while the advice was computed", "stale_revision")
     # Advice is advisory metadata: it is recorded without counting a page revision, and it

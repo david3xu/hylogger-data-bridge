@@ -42,7 +42,14 @@ def variants(rng: random.Random) -> list[tuple[str, str]]:
 
 
 def unit(
-    hole: Hole, family: str, split: str, source: dict[str, Any], window: Window, length: int, stage: str, rng: random.Random
+    hole: Hole,
+    family: str,
+    split: str,
+    source: dict[str, Any],
+    window: Window,
+    length: int,
+    stage: str,
+    rng: random.Random,
 ) -> list[dict[str, Any]]:
     """One observed state with two different questions: same evidence, different intent."""
     target, reference = window
@@ -76,7 +83,9 @@ def unit(
     return rows
 
 
-def draw(hole: Hole, family: str, source: dict[str, Any], plan: dict[str, Any]) -> list[list[dict[str, Any]]]:
+def draw(
+    hole: Hole, family: str, source: dict[str, Any], plan: dict[str, Any]
+) -> list[list[dict[str, Any]]]:
     rng = random.Random(f"{plan['seed']}:{hole.hole_id}")
     split = plan["groups"][family]
     return [
@@ -104,7 +113,9 @@ def stratified(
     return chosen
 
 
-def hole_entry(hole: Hole, name: str, family: str, split: str, source: dict[str, Any]) -> dict[str, Any]:
+def hole_entry(
+    hole: Hole, name: str, family: str, split: str, source: dict[str, Any]
+) -> dict[str, Any]:
     return {
         "hole_id": hole.hole_id,
         "package": name,
@@ -166,7 +177,10 @@ def build_all(config: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
             }
             for s in pool
         },
-        "sampling": "Whole units (one observed state, two different questions) are drawn round-robin over (stage, label) buckets, so label shares are balanced, not natural.",
+        "sampling": (
+            "Whole units (one observed state, two different questions) are drawn round-robin "
+            "over (stage, label) buckets, so label shares are balanced, not natural."
+        ),
         "label_origins": dict(Counter(r["label_origin"] for r in rows)),
         "limitations": [
             "Labels come from the teaching rubric, not expert review; no expert labels exist.",

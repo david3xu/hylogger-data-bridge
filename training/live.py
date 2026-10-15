@@ -32,7 +32,9 @@ class Relay:
 
 
 def working(snapshot: dict[str, Any]) -> dict[str, Any]:
-    page: dict[str, Any] = next(p for p in snapshot["pages"] if p["id"] == snapshot["current_page_id"])
+    page: dict[str, Any] = next(
+        p for p in snapshot["pages"] if p["id"] == snapshot["current_page_id"]
+    )
     return page
 
 
@@ -44,7 +46,13 @@ def prepare(args: argparse.Namespace) -> None:
     target, reference = tuple(args.target), tuple(args.reference)
     page = working(
         store.attach_scene(
-            page["id"], page["revision"], args.package, args.package_id, target, reference, args.question
+            page["id"],
+            page["revision"],
+            args.package,
+            args.package_id,
+            target,
+            reference,
+            args.question,
         )
     )
     for stage in ("inventory", "qa"):
@@ -111,7 +119,8 @@ def live_scene(db: Path, page_id: str) -> dict[str, Any]:
     with sqlite3.connect(db) as connection:
         scene = scenes.get(connection, page_id)
     assert scene is not None
-    return scene
+    found: dict[str, Any] = scene
+    return found
 
 
 def main() -> None:
