@@ -18,7 +18,9 @@ from hylogger_bridge.pages import assess as advice_ops
 from hylogger_bridge.pages.decide import decide as commit_decision
 from hylogger_bridge.pages.finish import finish, merged
 from hylogger_bridge.pages.make import new_page
-from hylogger_bridge.store import cont, legacy, state, tables, tries
+from hylogger_bridge.science import live
+from hylogger_bridge.science.request import KINDS, STAGES
+from hylogger_bridge.store import cont, legacy, scenes, state, tables, tries
 from hylogger_bridge.store.conn import transaction
 
 __all__ = ["BookConflict", "BookStore", "new_page", "now"]
@@ -28,9 +30,13 @@ EVIDENCE_OPTIONAL = {"origin", "state"}
 
 
 class BookStore:
-    def __init__(self, path: Path, provider: Provider | None = None) -> None:
+    def __init__(
+        self, path: Path, provider: Provider | None = None, science: live.Loader | None = None
+    ) -> None:
         self.path = path
         self.provider: Provider = provider or FixtureProvider()
+        # Reads a TSG package for pages attached to one; pytsg loads only when one is attached.
+        self.science: live.Loader = science or live.default_loader
         self.changed = threading.Condition()
         self._runs: dict[str, runner.Run] = {}
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -321,15 +327,14 @@ class BookStore:
         re-checks the page, so a slow provider never blocks other operations and advice for a
         page that changed meanwhile is refused rather than stored as current.
         """
-        chosen = advice_ops.default_candidates() if candidates is None else candidates
         asked = at or moment()
         with transaction(self.path, self.changed) as connection:
             request, token = advice_ops.prepare(
-                connection, page_id, expected_revision, chosen, instruction
+                connection, self.science, page_id, expected_revision, candidates, instruction
             )
         advice = self.provider.assess(request, stamp(asked))
         with transaction(self.path, self.changed) as connection:
-            advice_ops.record(connection, request, advice, token)
+            advice_ops.record(connection, self.science, request, advice, token)
             state.seal(connection)
             return state.snapshot(connection)
 
@@ -338,3 +343,62 @@ class BookStore:
             if cont.get(connection, continuation_id) is None:
                 raise BookConflict("Unknown delivery", "not_found")
             return tries.history(connection, continuation_id)
+
+    def attach_scene(
+        self,
+        page_id: str,
+        expected_revision: int,
+        folder: Path,
+        package_id: str,
+        target: tuple[float, float],
+        reference: tuple[float, float],
+        question: str | None = None,
+    ) -> dict[str, Any]:
+        """Tie a working page to a TSG package and two intervals. A trusted local call only.
+
+        The package is read and its identity checked; its file hashes are recorded so a changed
+        package is refused later. It is deliberately not an HTTP or MCP operation. A question,
+        if given, replaces the page's template question and counts as a page revision.
+        """
+        with transaction(self.path, self.changed) as connection:
+            book = state.read(connection)
+            page = state.find(book, page_id, expected_revision)
+            if page["status"] != "draft":
+                raise BookConflict("Only the working draft can be attached", "page_locked")
+            scene = live.attach(self.science, str(folder), package_id, target, reference)
+            scenes.put(connection, page_id, scene)
+            if question is not None:
+                if not isinstance(question, str) or not 0 < len(question.strip()) <= 300:
+                    raise ValueError("question must be bounded text")
+                page["question"] = question
+                state.replace(book, page)
+                state.save(connection, book, "scene_attached", page_id, "Package attached")
+            state.seal(connection)
+            return state.snapshot(connection)
+
+    def measure(
+        self,
+        page_id: str,
+        expected_revision: int,
+        stage: str,
+        claim: dict[str, Any] | None = None,
+        at: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Persist one calculated evidence item for the page's scene; the values are never supplied."""
+        if stage not in STAGES:
+            raise ValueError(f"stage must be one of {STAGES}")
+        with transaction(self.path, self.changed) as connection:
+            scene = scenes.get(connection, page_id)
+        if scene is None:
+            raise ValueError("this page has no scientific scene")
+        values = live.known(self.science, scene)[stage]
+        item: dict[str, object] = {
+            "id": stage,
+            "label": f"Scientific {stage}",
+            "value": live.evidence_text(stage, values),
+            "source": f"{scene['hole_id']} via pytsg; {scene['method']}",
+            "kind": KINDS[stage],
+            "origin": "actual",
+            "state": "complete",
+        }
+        return self.add_evidence(page_id, expected_revision, item, claim, at)
