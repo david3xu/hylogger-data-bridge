@@ -15,14 +15,41 @@ The preview is unsigned and not notarized. No source checkout, Git, Node, admini
 
 ## Install
 
+Use the macOS account that will run Codex. Installation is per user: an admin account’s installation does not configure another account. Run without `sudo`; it is not needed to install this preview.
+
 1. Download `hylogger-macos-arm64.zip` and extract it with Finder.
 2. Open `Install.command` inside the extracted folder. Alternatively, open Terminal in that folder and run `bash Install.command`.
-3. Wait for model verification and “Installation finished.” The installer prints the installed command path.
+3. If macOS blocks `uv`, use the [security-prompt steps below](#macos-blocks-uv), then rerun the installer. Wait for model verification and **“Installation finished.”** The installer prints the installed command path.
 4. Start a new local Codex conversation in your data workspace so the installed tools and skill can load.
 
 Setup installs a managed Python runtime, scientific reader, prebuilt book interface, existing fine-tuned model and local Codex integration. It registers only HyLogger's plugin/marketplace and MCP server. An older local HyLogger marketplace is upgraded with rollback on setup failure; unrelated host configuration is preserved. No scientific-data folder is selected globally at installation.
 
 For an isolated standalone install, run `HYLOGGER_SKIP_HOST=1 bash Install.command`. This skips host registration. ChatGPT/Work support is not certified by the Codex installation.
+
+## macOS blocks uv
+
+The downloaded preview includes `uv`, the helper that installs managed Python and dependencies. macOS may show **“uv Not Opened”** or **“Apple could not verify uv is free of malware.”** This is Gatekeeper blocking an unnotarized executable, not a folder-permission error. Passing the installer's checksum checks confirms file integrity; it does not establish Apple signing or a malware scan.
+
+If you trust the release you downloaded and choose to authorise this executable:
+
+1. Click **Done** on the warning.
+2. Open **System Settings → Privacy & Security** and scroll down to the **Security** section near the bottom. `uv` is not an entry in the app-permissions list.
+3. Find the recent message about blocked `uv`, select **Open Anyway**, and confirm the system prompt yourself.
+4. Return to Terminal in the extracted installer folder and rerun:
+
+   ```sh
+   bash Install.command
+   ```
+
+If no blocked-`uv` entry appears, trigger a fresh attempt from that same folder:
+
+```sh
+./uv --version
+```
+
+Dismiss the warning with **Done**, reopen Privacy & Security, and check **Security** again. After allowing it, rerun `bash Install.command`.
+
+This uses [Apple's per-app exception procedure](https://support.apple.com/en-ie/102445). Do not disable Gatekeeper globally, remove quarantine attributes recursively, or use `sudo` as a workaround. If your organisation manages the Mac and does not offer the exception, ask its administrator or stop installation.
 
 ## Prepare a data folder
 
@@ -98,7 +125,7 @@ Default locations:
 | “Decision committed; pending delivery” | Check the separate chat-return status. An active chat turn must finish before a queued notification can run. If no return occurs, tell the same conversation that you committed the decision. |
 | Model cannot load | Read the installer/runtime error and retry setup with the verified bundle. A model error is not replaced with fabricated fixture advice. |
 | `uv: Permission denied` after extraction | Extract the original ZIP with Finder or macOS Archive Utility; some generic extraction libraries discard executable permissions. |
-| macOS blocks this unsigned preview | Read the system message and review the release source. Signing/notarization is not provided; installation may require your organisation's approval. |
+| macOS blocks `uv` / no Open Anyway entry | Follow [macOS blocks uv](#macos-blocks-uv): the message is under **Security**, not the app-permissions list. |
 
 To inspect local installation settings and bundled resources:
 

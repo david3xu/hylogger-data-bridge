@@ -10,6 +10,8 @@ HyLogger Data Bridge helps geologists check data quality and compare depth inter
 
 Requires an Apple Silicon Mac and an installed, signed-in Codex desktop. The first installation needs internet and about 3.2 GB of model downloads. Model and runtime use about 4.3 GiB on disk, plus managed Python and caches. This is an unsigned preview.
 
+Install from the macOS account that will run Codex; do not use `sudo`.
+
 1. **Download** the ZIP above and extract it with Finder.
 2. **Install:** open `Install.command` in the extracted folder. To run it from Terminal instead, open Terminal in that folder and run:
 
@@ -17,7 +19,9 @@ Requires an Apple Silicon Mac and an installed, signed-in Codex desktop. The fir
    bash Install.command
    ```
 
-3. **Start a new local Codex chat** in the folder containing your supported HyLogger data.
+3. **Start a new local Codex chat** in the folder containing your supported HyLogger data, after the installer prints **“Installation finished.”**
+
+**If macOS blocks `uv`:** this is the installer’s Python setup helper. If you trust the downloaded release, click **Done**, then go to **System Settings → Privacy & Security → Security** and choose **Open Anyway** for `uv`. Rerun `bash Install.command`. If the entry is missing, follow the [full security-prompt steps](developer/docs/install.md#macos-blocks-uv).
 
 The installer sets up Python, scientific dependencies, the book, the existing model and Codex tools. You do not need Git, Node, a source checkout or a training run. No HyLogger source data is included. See [data preparation and troubleshooting](developer/docs/install.md).
 
