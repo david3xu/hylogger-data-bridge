@@ -137,3 +137,24 @@ def test_failed_host_registration_restores_prior_settings(tmp_path: Path, monkey
     with pytest.raises(ValueError, match="host unavailable"):
         setup()
     assert config_path().read_bytes() == previous
+
+
+def test_installer_passes_resolved_host_path_to_the_adapter(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    folder = isolate(tmp_path, monkeypatch)
+    codex = tmp_path / "Application Resources/codex"
+    monkeypatch.setattr(host, "find_codex", lambda: codex)
+    monkeypatch.setattr(host, "register", lambda root, path: None)
+    setup(folder)
+    assert json.loads(config_path().read_text())["codex_path"] == str(codex)
+    monkeypatch.setenv("HYLOGGER_CODEX", "old value")
+    monkeypatch.setenv("HYLOGGER_FIXTURE", "1")
+    from hylogger_bridge.install.cli import mcp
+
+    seen = []
+    monkeypatch.setattr(
+        "hylogger_bridge.mcp.server.main", lambda argv: seen.append(os.environ["HYLOGGER_CODEX"])
+    )
+    mcp([])
+    assert seen == [str(codex)]

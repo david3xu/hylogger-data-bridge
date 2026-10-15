@@ -15,6 +15,8 @@ def mcp(arguments: list[str]) -> None:
     config = read_config()
     if not config.get("runtime_python"):
         raise ValueError("Run HyLogger setup first")
+    if config.get("codex_path"):
+        os.environ["HYLOGGER_CODEX"] = config["codex_path"]
     os.environ["HYLOGGER_UI_ROOT"] = str(asset("book"))
     flags = ["--tools", "expert", "--cases", config["cases"]]
     if config.get("workspace_mode") == "host":

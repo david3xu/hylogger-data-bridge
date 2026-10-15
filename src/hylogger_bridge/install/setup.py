@@ -86,6 +86,8 @@ def setup(
         value["data_root"] = str(folder)
     else:
         value.pop("data_root", None)
+    if codex is not None:
+        value["codex_path"] = str(codex)
     settings = config_path()
     previous = settings.read_bytes() if settings.exists() else None
     save_config(value)
