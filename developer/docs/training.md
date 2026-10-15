@@ -1,7 +1,7 @@
 # Local model training
 
 Updated: 2026-10-15
-Status: the owner selected Qwen3.5-4B on 2026-10-15; the local synthetic demonstration has completed training and strict offline reload. The owner then resumed real-data work and assigned Claude the bounded [R1 delivery](tasks.md#r1--claude-real-data-model). Real organiser-data validation remains outstanding.
+Status: the owner selected Qwen3.5-4B on 2026-10-15; the local synthetic demonstration has completed training and strict offline reload. The owner then resumed real-data work and assigned Claude the bounded [R1 delivery](tasks.md#r1--claude-real-data-model). Real organiser-data validation remains outstanding. The [R1 pilot](#r1-real-data-pilot) has since trained on real organiser measurements with teaching-rule labels; its model only matches the majority baseline.
 
 ## Purpose and authority
 
@@ -12,6 +12,14 @@ The owner selected Qwen3.5-4B with LoRA and a decision head for the first experi
 Model/data design stays with the owner and Codex. Gemini's frontend and Claude's backend can progress through the assessment contract with visibly labelled fixtures. Their initial briefs do not include scientific adapters, data preparation or model fitting; those need a subsequent bounded assignment.
 
 Training task families must serve the [resource-evaluation evidence-review scope](design.md#mvp-scope-resource-evaluation-evidence-review). Do not broaden supervision to operational ore–waste, grade-control or other applications without a scope decision. The one-hole product demonstration does not replace independent source-group evaluation or establish model generalisation.
+
+## Owner decision: real-data training deferred
+
+Initially recorded on 2026-10-15: the owner deferred real-data model work. The owner subsequently instructed: "allocate the model trainign task to claude. make it use real data,". That instruction supersedes the deferral for the bounded R1 assignment: Claude may inspect/download suitable organiser packages, prepare grounded records, fine-tune and evaluate. No deadline is assigned; extra compute purchases, model publication and unrelated feature expansion remain outside scope. The heading is retained so existing references to this decision remain valid.
+
+The current Qwen artifact used only code-generated synthetic teaching records and rule-defined labels. No organiser HyLogger spectra, assay records, geological logs or expert action labels were used in that run. It remains a synthetic demonstration, not completion of the required organiser-data-grounded decision model. Its repeated teaching patterns and synthetic test results do not establish geological usefulness or generalisation. Preserve it separately from any new real-data artifact.
+
+When resumed, inspect and validate the organiser products through the scientific adapter, calculate reproducible evidence/features, construct grounded question–evidence–candidate records with explicit label origins, then fine-tune and evaluate using independent hole/project groups. Keep teaching-rule labels distinct from expert-reviewed labels and compare against the teaching rules. The detailed preparation and evaluation requirements below remain applicable. The resulting R1 pilot and its negative result are recorded in [R1 real-data pilot](#r1-real-data-pilot).
 
 ## 1. Inspect real packages
 
